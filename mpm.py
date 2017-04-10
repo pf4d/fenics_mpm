@@ -1,7 +1,6 @@
 from dolfin import *
 #import fenicstools       as ft
 import numpy             as np
-import pandas            as pd
 import matplotlib.pyplot as plt
 from colored           import fg, attr
 
@@ -91,6 +90,7 @@ def print_text(text, color='white', atrb=0, cls=None):
       text = ('%s' + text + '%s') % (fg(color), attr(0))
     print text
 
+
 # sunflower seed arrangement :
 # "A better way to construct the sunflower head"
 # https://doi.org/10.1016/0025-5564(79)90080-4
@@ -116,6 +116,7 @@ def sunflower(n, alpha, x0, y0, r_max):
     X       = np.ascontiguousarray(np.array([x_v, y_v]).T)
     return X
 
+
 class Material(object):
   """
   Representation material consisting of n particles with mass m, 
@@ -124,10 +125,12 @@ class Material(object):
   def __init__(self, n, m, x, u):
     """
     """
-    self.n = n
-    self.m = m
-    self.x = x
-    self.u = u
+    self.n = n                       # number of particles
+    self.m = m                       # mass vector
+    self.x = x                       # position vector
+    self.u = u                       # velocity vector
+    self.a = np.zeros(n)             # acceleration vector
+    self.grad_u = np.zeros((n,2,2))  # velocity gradient
   
   def plot(self):
     """
@@ -137,16 +140,18 @@ class Material(object):
     plt.axis('equal')
     plt.show()
 
+
 class Model(object):
 
-  def __init__(self, out_dir, order, n):
+  def __init__(self, out_dir, order, n, dt):
     """
     """
     # have the compiler generate code for evaluating basis derivatives :
     parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
 
-    self.order   = order
     self.out_dir = out_dir
+    self.order   = order
+    self.dt      = dt
     self.mesh    = UnitSquareMesh(n, n)
     self.Q       = FunctionSpace(self.mesh, 'CG', order)
     self.V       = VectorFunctionSpace(self.mesh, 'CG', order)
@@ -161,6 +166,13 @@ class Model(object):
     self.u, self.v      = self.U3.split()
     self.u.rename('u', '')
     self.v.rename('v', '')
+    
+    # grid acceleration :
+    self.a_mag          = Function(self.Q, name='a_mag')
+    self.a3             = Function(self.V, name='a3')
+    self.a_x, self.a_y  = self.a3.split()
+    self.a_x.rename('a_x', '')
+    self.a_y.rename('a_y', '')
 
     # particle velocity gradient :
     self.grad_U         = Function(self.T, name='grad_U')
@@ -171,7 +183,7 @@ class Model(object):
     self.dvdy.rename('dvdy', '')
 
     # grid mass :
-    self.m              = Function(self.Q, name='m')
+    self.m             = Function(self.Q, name='m')
 
     # function assigners speed assigning up :
     self.assdudx       = FunctionAssigner(self.dudx.function_space(), self.Q)
@@ -228,41 +240,9 @@ class Model(object):
       vrt.append(vrt_i)
 
     # save as arrays :
+    self.vrt      = np.array(vrt)
     self.phi      = np.array(phi, dtype=float)
-    self.vrt      = np.array(vrt, dtype=float)
     self.grad_phi = np.array(grad_phi, dtype=float)
-
-    # save the unique vertex values for interpolating back to material points :
-    vrt_i, idx = np.unique(self.vrt, return_index=True)
-    self.vrt_i = Vector(mpi_comm_world(), idx.size)
-    self.vrt_i.set_local(vrt_i)
-
-    # the corresponding unique basis values :
-    phi_i      = self.phi.flatten()[idx]
-    self.phi_i = Vector(mpi_comm_world(), idx.size)
-    self.phi_i.set_local(phi_i)
-
-    # basis derivatives :
-    grad_phi_i        = self.grad_phi.reshape(self.vrt.size, self.top_dim)[idx]
-    self.grad_phi_i_x = Vector(mpi_comm_world(), idx.size)
-    self.grad_phi_i_y = Vector(mpi_comm_world(), idx.size)
-    self.grad_phi_i_x.set_local(grad_phi_i[:,0])
-    self.grad_phi_i_y.set_local(grad_phi_i[:,1])
-
-    # and save the non-zero vertex values for later :
-    self.nonzero_nodes = idx
-
-  def advect_particles(self):
-    """
-    """
-    self.vrt_i
-
-    # the corresponding unique basis values :
-    self.phi_i
-
-    # and basis derivatives :
-    self.grad_phi_i_x
-    self.grad_phi_i_y
 
   def interpolate_particle_mass_to_grid(self, M):
     """
@@ -289,7 +269,7 @@ class Model(object):
     # interpolation of mass-conserving velocity to the grid :
     u_i = []
     for p, phi_p, m_p, u_p in zip(self.vrt, self.phi, M.m, M.u):
-      m_i = m.vector()[p]
+      m_i = self.m.vector()[p]
       u.vector()[p] += u_p[0] * phi_p * m_p / m_i
       v.vector()[p] += u_p[1] * phi_p * m_p / m_i
       u_i.append([u.vector()[p], v.vector()[p]])
@@ -301,81 +281,72 @@ class Model(object):
   def calculate_particle_velocity_gradient(self, M):
     """
     """
-    # basis derivatives :
-    grad_phi_i_x = self.grad_phi_i_x
-    grad_phi_i_y = self.grad_phi_i_y
+    u, v       = self.U3.split(True)
+    grad_U_p_v = []
 
     # calculate particle velocity gradients :
-    for p, grad_phi_p, u_p in zip(self.vrt, self.grad_phi, M.u):
-      u_i = u.vector()[p]
-      v_i = v.vector()[p]
-      dudx.vector()[p] += grad_phi_p[0] * u_i
-      dudy.vector()[p] += grad_phi_p[1] * u_i
-      dvdx.vector()[p] += grad_phi_p[2] * v_i
-      dvdy.vector()[p] += grad_phi_p[3] * v_i
-
-  def interpolate_material_to_grid(self, M):
-    """
-    """
-    element = self.element
-    mesh    = self.mesh
-    n       = mesh.num_vertices()           # number of mesh vertices
-    m       = self.m
-
-    # zero the vector :
-    #model.assign_variable(self.U3, DOLFIN_EPS)
-    #u,v = self.U3.split(True)
-    u    = Function(self.Q)
-    v    = Function(self.Q)
-    dudx = Function(self.Q)
-    dudy = Function(self.Q)
-    dvdx = Function(self.Q)
-    dvdy = Function(self.Q)
-
-    # interpolation of mass to the grid :
-    for p, phi_p, m_p in zip(self.vrt, self.phi, M.m):
-      m.vector()[p] += phi_p * m_p
-
-    # interpolation of mass-conserving velocity to the grid :
-    u_i = []
-    for p, phi_p, m_p, u_p in zip(self.vrt, self.phi, M.m, M.u):
-      m_i = m.vector()[p]
-      u.vector()[p] += u_p[0] * phi_p * m_p / m_i
-      v.vector()[p] += u_p[1] * phi_p * m_p / m_i
-      u_i.append([u.vector()[p], v.vector()[p]])
-
-    ## calculate particle velocity gradients :
-    #for p, grad_phi_p, u_p in zip(self.vrt, self.grad_phi, M.u):
-    #  u_i = u.vector()[p]
-    #  v_i = v.vector()[p]
-    #  dudx.vector()[p] += grad_phi_p[0] * u_i
-    #  dudy.vector()[p] += grad_phi_p[1] * u_i
-    #  dvdx.vector()[p] += grad_phi_p[2] * v_i
-    #  dvdy.vector()[p] += grad_phi_p[3] * v_i
+    for i, grad_phi_i in zip(self.vrt, self.grad_phi):
+      u_i = u.vector()[i]
+      v_i = v.vector()[i]
+      dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
+      dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
+      dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
+      dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
+      grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
     
-    # assign the variables to the functions
-    self.assm.assign(self.m, m)
-    self.assx.assign(self.u, u)
-    self.assy.assign(self.v, v)
-    self.assdudx.assign(self.dudx, dudx)
-    self.assdudy.assign(self.dudy, dudy)
-    self.assdvdx.assign(self.dvdx, dvdx)
-    self.assdvdy.assign(self.dvdy, dvdy)
+    # update the particle velocity gradients :
+    M.grad_u = np.array(grad_U_p_v, dtype=float)
 
-  def calculate_particle_velocity_gradient(self):
+  def calculate_particle_velocity(self, M):
     """
     """
-    # array for values with derivatives of all 
-    # basis functions, 4 * element dim
-    grad_phi = np.zeros(4*self.element.space_dimension(), dtype=float)
-    
-    # compute all 2nd order derivatives
-    el.evaluate_basis_derivatives_all(1, grad_phi, x, 
-                                      coordinate_dofs, cell.orientation())
+    u, v  = self.U3.split(True)
+    v_p_v = []
 
-    # reshape such that rows are [d/dx, d/dy] :
-    deriv_values = deriv_values.reshape((-1, 2))
-    print deriv_values
+    for i, phi_i in zip(self.vrt, self.phi):
+      u_p = np.sum(phi_i * u.vector()[i])
+      v_p = np.sum(phi_i * v.vector()[i])
+      v_p_v.append(np.array([u_p, v_p]))
+
+    # update particle velocity :
+    M.u = np.array(v_p_v, dtype=float)
+
+  def calculate_particle_acceleration(self, M):
+    """
+    """
+    a_x, a_y = self.a3.split(True)
+    a_p_v    = []
+
+    for i, phi_i in zip(self.vrt, self.phi):
+      a_x_p = np.sum(phi_i * a_x.vector()[i])
+      a_y_p = np.sum(phi_i * a_y.vector()[i])
+      a_p_v.append(np.array([a_x_p, a_y_p]))
+
+    # update particle acceleration :
+    M.a = np.array(a_p_v, dtype=float)
+
+  def update_grid_velocity(self):
+    """
+    """
+    v_i   = self.U3.vector().array()
+    a_i   = self.a3.vector().array()
+    dt    = self.dt
+    v_i_n = v_i + a_i * dt
+
+    # assign the new velocity vector :
+    self.assign_variable(self.U3, v_i_n)
+
+  def advect_material_particles(self, M):
+    """
+    """
+    self.calculate_particle_acceleration(M)
+    u_p_n = M.u + M.a * self.dt
+    self.update_grid_velocity()
+    self.calculate_particle_velocity(M)
+    x_p_n = M.x + M.u * self.dt
+    M.u = u_p_n
+    M.x = x_p_n
+
 
   def assign_variable(self, u, var):
     """
@@ -435,10 +406,61 @@ class Model(object):
       u = var
     print_min_max(u, u.name())
 
-  def save_pvd(self, v):
+  def save_pvd(self, u, name, f=None, t=0.0):
     """
+    Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
+    :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
+    ``self.out_dir``.
+    
+    If ``f`` is a :class:`~fenics.XDMFFile` object, save to this instead.
+
+    If ``t`` is a float or an int, mark the file with the timestep ``t``.
+
+    :param u:    the function to save
+    :param name: the name of the .xdmf file to save
+    :param f:    the file to save to
+    :param t:    the timestep to mark the file with
+    :type f:     :class:`~fenics.XDMFFile`
+    :type u:     :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type t:     int or float
     """
-    File(self.out_dir + '/' + v.name() + '.pvd') << v
+    if f != None:
+      s       = "::: saving %s.pdf file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f << (u, float(t))
+    else :
+      s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
+      print_text(s, 'green')#cls=self.this)
+      f = File(self.out_dir + 'pvd/' +  name + '.pvd')
+      f << (u, float(t))
+
+  def save_xdmf(self, u, name, f=None, t=0.0):
+    """
+    Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
+    :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
+    ``self.out_dir``.
+    
+    If ``f`` is a :class:`~fenics.XDMFFile` object, save to this instead.
+
+    If ``t`` is a float or an int, mark the file with the timestep ``t``.
+
+    :param u:    the function to save
+    :param name: the name of the .xdmf file to save
+    :param f:    the file to save to
+    :param t:    the timestep to mark the file with
+    :type f:     :class:`~fenics.XDMFFile`
+    :type u:     :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type t:     int or float
+    """
+    if f != None:
+      s       = "::: saving %s.xdmf file :::" % name
+      print_text(s, 'green')#cls=self.this)
+      f.write(u, float(t))
+    else :
+      s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
+      print_text(s, 'green')#cls=self.this)
+      f = XDMFFile(self.out_dir + 'xdmf/' +  name + '.xdmf')
+      f.write(u)
 
 
 #===============================================================================
@@ -446,6 +468,7 @@ class Model(object):
 out_dir  = 'output/'
 order    = 1
 n_x      = 100
+dt       = 0.1
 
 # create a material :
 n        = 500
@@ -460,17 +483,31 @@ U        = 1 * np.ones([n,2])
 M1       = Material(n,M,X,U)
 
 # initialize the model :
-model    = Model(out_dir, order, n_x)
+model    = Model(out_dir, order, n_x, dt)
 
 # calculate the particle basis :
 model.formulate_material_basis_functions(M1)
 
 # interpolate the material to the grid :
-model.interpolate_material_to_grid(M1)
+model.interpolate_particle_mass_to_grid(M1)
+model.interpolate_particle_velocity_to_grid(M1)
+model.calculate_particle_velocity_gradient(M1)
+
+# files for saving :
+m_file = File(out_dir + '/m.pvd')
+u_file = File(out_dir + '/u.pvd')
 
 # save the result :
-model.save_pvd(model.m)
-model.save_pvd(model.U3)
+model.save_pvd(model.m,   'm', f=m_file, t=0.0)
+model.save_pvd(model.U3, 'U3', f=u_file, t=0.0)
+
+# move the model forward in time :
+model.advect_material_particles(M1)
+model.formulate_material_basis_functions(M1)
+model.interpolate_particle_mass_to_grid(M1)
+model.interpolate_particle_velocity_to_grid(M1)
+model.save_pvd(model.m,   'm', f=m_file, t=dt)
+model.save_pvd(model.U3, 'U3', f=u_file, t=dt)
 
 #mu    = E / (2.0*(1.0 + nu))
 #lmbda = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
