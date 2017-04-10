@@ -1,6 +1,7 @@
 from dolfin import *
 #import fenicstools       as ft
 import numpy             as np
+import pandas            as pd
 import matplotlib.pyplot as plt
 from colored           import fg, attr
 
@@ -138,36 +139,180 @@ class Material(object):
 
 class Model(object):
 
-  def __init__(self, order, n):
+  def __init__(self, out_dir, order, n):
     """
     """
     # have the compiler generate code for evaluating basis derivatives :
     parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
 
     self.order   = order
+    self.out_dir = out_dir
     self.mesh    = UnitSquareMesh(n, n)
     self.Q       = FunctionSpace(self.mesh, 'CG', order)
     self.V       = VectorFunctionSpace(self.mesh, 'CG', order)
+    self.T       = TensorFunctionSpace(self.mesh, 'CG', order)
     self.element = self.Q.element()
+    self.top_dim = self.element.topological_dimension()
     self.dofmap  = self.Q.dofmap()
     
-    # grid functions :
-    self.U_mag         = Function(self.Q, name='U_mag')
-    self.U3            = Function(self.V, name='U3')
-    u,v                = self.U3.split()
-    u.rename('u', '')
-    v.rename('v', '')
-    self.u             = u
-    self.v             = v
-    self.m             = Function(self.Q, name='m')
-    #self.grad_u        = Function(
+    # grid velocity :
+    self.U_mag          = Function(self.Q, name='U_mag')
+    self.U3             = Function(self.V, name='U3')
+    self.u, self.v      = self.U3.split()
+    self.u.rename('u', '')
+    self.v.rename('v', '')
+
+    # particle velocity gradient :
+    self.grad_U         = Function(self.T, name='grad_U')
+    self.dudx, self.dudy, self.dvdx, self.dvdy = self.grad_U.split()
+    self.dudx.rename('dudx', '')
+    self.dudy.rename('dudy', '')
+    self.dvdx.rename('dvdx', '')
+    self.dvdy.rename('dvdy', '')
+
+    # grid mass :
+    self.m              = Function(self.Q, name='m')
 
     # function assigners speed assigning up :
-    self.assx          = FunctionAssigner(self.u.function_space(), self.Q)
+    self.assdudx       = FunctionAssigner(self.dudx.function_space(), self.Q)
+    self.assdudy       = FunctionAssigner(self.dudy.function_space(), self.Q)
+    self.assdvdx       = FunctionAssigner(self.dvdx.function_space(), self.Q)
+    self.assdvdy       = FunctionAssigner(self.dvdy.function_space(), self.Q)
+    self.assx          = FunctionAssigner(self.u.function_space(),    self.Q)
     #                                      self.V.sub(0))
-    self.assy          = FunctionAssigner(self.v.function_space(), self.Q)
+    self.assy          = FunctionAssigner(self.v.function_space(),    self.Q)
     #                                      self.V.sub(1))
-    self.assm          = FunctionAssigner(self.m.function_space(), self.Q)
+    self.assm          = FunctionAssigner(self.m.function_space(),    self.Q)
+
+  def formulate_material_basis_functions(self, M):
+    """
+    """
+    element  = self.element
+    mesh     = self.mesh
+
+    phi      = []
+    vrt      = []
+    grad_phi = []
+    
+    # iterate through all the particle positions :
+    for x_p in M.x: 
+      # find the cell with point :
+      x_pt       = Point(x_p) 
+      cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
+      cell       = Cell(mesh, cell_id)
+      coord_dofs = cell.get_vertex_coordinates()       # local coordinates
+      
+      # array for all basis functions of the cell :
+      phi_i = np.zeros(element.space_dimension(), dtype=float)
+    
+      # array for values with derivatives of all 
+      # basis functions, 2 * element dim :
+      grad_phi_i = np.zeros(2*element.space_dimension(), dtype=float)
+     
+      # compute basis function values :
+      element.evaluate_basis_all(phi_i, x_p, coord_dofs, cell.orientation())
+      
+      # compute 1st order derivatives :
+      element.evaluate_basis_derivatives_all(1, grad_phi_i, x_p, 
+                                             coord_dofs, cell.orientation())
+
+      # reshape such that rows are [d/dx, d/dy] :
+      grad_phi_i = grad_phi_i.reshape((-1, 2))
+
+      # get corresponding vertex indices, in dof indicies : 
+      vrt_i = self.dofmap.cell_dofs(cell.index())
+
+      # append these to a list corresponding with particles : 
+      phi.append(phi_i)
+      grad_phi.append(grad_phi_i)
+      vrt.append(vrt_i)
+
+    # save as arrays :
+    self.phi      = np.array(phi, dtype=float)
+    self.vrt      = np.array(vrt, dtype=float)
+    self.grad_phi = np.array(grad_phi, dtype=float)
+
+    # save the unique vertex values for interpolating back to material points :
+    vrt_i, idx = np.unique(self.vrt, return_index=True)
+    self.vrt_i = Vector(mpi_comm_world(), idx.size)
+    self.vrt_i.set_local(vrt_i)
+
+    # the corresponding unique basis values :
+    phi_i      = self.phi.flatten()[idx]
+    self.phi_i = Vector(mpi_comm_world(), idx.size)
+    self.phi_i.set_local(phi_i)
+
+    # basis derivatives :
+    grad_phi_i        = self.grad_phi.reshape(self.vrt.size, self.top_dim)[idx]
+    self.grad_phi_i_x = Vector(mpi_comm_world(), idx.size)
+    self.grad_phi_i_y = Vector(mpi_comm_world(), idx.size)
+    self.grad_phi_i_x.set_local(grad_phi_i[:,0])
+    self.grad_phi_i_y.set_local(grad_phi_i[:,1])
+
+    # and save the non-zero vertex values for later :
+    self.nonzero_nodes = idx
+
+  def advect_particles(self):
+    """
+    """
+    self.vrt_i
+
+    # the corresponding unique basis values :
+    self.phi_i
+
+    # and basis derivatives :
+    self.grad_phi_i_x
+    self.grad_phi_i_y
+
+  def interpolate_particle_mass_to_grid(self, M):
+    """
+    """
+    # new mass must start at zero :
+    m    = Function(self.Q)
+
+    # interpolation of mass to the grid :
+    for p, phi_p, m_p in zip(self.vrt, self.phi, M.m):
+      m.vector()[p] += phi_p * m_p
+    
+    # assign the mass to the model variable :
+    self.assm.assign(self.m, m)
+
+  def interpolate_particle_velocity_to_grid(self, M):
+    """
+    """
+    # new velocity must start at zero :
+    #model.assign_variable(self.U3, DOLFIN_EPS)
+    #u,v = self.U3.split(True)
+    u    = Function(self.Q)
+    v    = Function(self.Q)
+
+    # interpolation of mass-conserving velocity to the grid :
+    u_i = []
+    for p, phi_p, m_p, u_p in zip(self.vrt, self.phi, M.m, M.u):
+      m_i = m.vector()[p]
+      u.vector()[p] += u_p[0] * phi_p * m_p / m_i
+      v.vector()[p] += u_p[1] * phi_p * m_p / m_i
+      u_i.append([u.vector()[p], v.vector()[p]])
+
+    # assign the variables to the functions
+    self.assx.assign(self.u, u)
+    self.assy.assign(self.v, v)
+
+  def calculate_particle_velocity_gradient(self, M):
+    """
+    """
+    # basis derivatives :
+    grad_phi_i_x = self.grad_phi_i_x
+    grad_phi_i_y = self.grad_phi_i_y
+
+    # calculate particle velocity gradients :
+    for p, grad_phi_p, u_p in zip(self.vrt, self.grad_phi, M.u):
+      u_i = u.vector()[p]
+      v_i = v.vector()[p]
+      dudx.vector()[p] += grad_phi_p[0] * u_i
+      dudy.vector()[p] += grad_phi_p[1] * u_i
+      dvdx.vector()[p] += grad_phi_p[2] * v_i
+      dvdy.vector()[p] += grad_phi_p[3] * v_i
 
   def interpolate_material_to_grid(self, M):
     """
@@ -180,55 +325,52 @@ class Model(object):
     # zero the vector :
     #model.assign_variable(self.U3, DOLFIN_EPS)
     #u,v = self.U3.split(True)
-    u = Function(self.Q)
-    v = Function(self.Q)
-
-    phi = []
-    vrt = []
-  
-    # iterate through all the particle positions :
-    for x_p in M.x: 
-      # find the cell with point :
-      x_pt       = Point(x_p) 
-      cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
-      cell       = Cell(mesh, cell_id)
-      coord_dofs = cell.get_vertex_coordinates()       # local coordinates
-      
-      # get all basis functions of the cell :
-      phi_i = np.zeros(element.space_dimension(), dtype=float)
-      element.evaluate_basis_all(phi_i, x_p, coord_dofs, cell.orientation())
-
-      # get corresponding vertex indices, in dof indicies : 
-      vrt_i = self.dofmap.cell_dofs(cell.index())
-
-      # append these to a list corresponding with particles : 
-      phi.append(phi_i)
-      vrt.append(vrt_i)
+    u    = Function(self.Q)
+    v    = Function(self.Q)
+    dudx = Function(self.Q)
+    dudy = Function(self.Q)
+    dvdx = Function(self.Q)
+    dvdy = Function(self.Q)
 
     # interpolation of mass to the grid :
-    for p, phi_p, m_p in zip(vrt, phi, M.m):
+    for p, phi_p, m_p in zip(self.vrt, self.phi, M.m):
       m.vector()[p] += phi_p * m_p
 
     # interpolation of mass-conserving velocity to the grid :
-    for p, phi_p, m_p, u_p in zip(vrt, phi, M.m, M.u):
+    u_i = []
+    for p, phi_p, m_p, u_p in zip(self.vrt, self.phi, M.m, M.u):
       m_i = m.vector()[p]
       u.vector()[p] += u_p[0] * phi_p * m_p / m_i
       v.vector()[p] += u_p[1] * phi_p * m_p / m_i
+      u_i.append([u.vector()[p], v.vector()[p]])
+
+    ## calculate particle velocity gradients :
+    #for p, grad_phi_p, u_p in zip(self.vrt, self.grad_phi, M.u):
+    #  u_i = u.vector()[p]
+    #  v_i = v.vector()[p]
+    #  dudx.vector()[p] += grad_phi_p[0] * u_i
+    #  dudy.vector()[p] += grad_phi_p[1] * u_i
+    #  dvdx.vector()[p] += grad_phi_p[2] * v_i
+    #  dvdy.vector()[p] += grad_phi_p[3] * v_i
     
     # assign the variables to the functions
     self.assm.assign(self.m, m)
     self.assx.assign(self.u, u)
     self.assy.assign(self.v, v)
+    self.assdudx.assign(self.dudx, dudx)
+    self.assdudy.assign(self.dudy, dudy)
+    self.assdvdx.assign(self.dvdx, dvdx)
+    self.assdvdy.assign(self.dvdy, dvdy)
 
-  def calculate_particle_velocity_gradients(self):
+  def calculate_particle_velocity_gradient(self):
     """
     """
     # array for values with derivatives of all 
     # basis functions, 4 * element dim
-    deriv_values = np.zeros(4*self.element.space_dimension(), dtype=float)
+    grad_phi = np.zeros(4*self.element.space_dimension(), dtype=float)
     
     # compute all 2nd order derivatives
-    el.evaluate_basis_derivatives_all(1, deriv_values, x, 
+    el.evaluate_basis_derivatives_all(1, grad_phi, x, 
                                       coordinate_dofs, cell.orientation())
 
     # reshape such that rows are [d/dx, d/dy] :
@@ -293,9 +435,15 @@ class Model(object):
       u = var
     print_min_max(u, u.name())
 
+  def save_pvd(self, v):
+    """
+    """
+    File(self.out_dir + '/' + v.name() + '.pvd') << v
+
 
 #===============================================================================
 # model properties :
+out_dir  = 'output/'
 order    = 1
 n_x      = 100
 
@@ -312,14 +460,17 @@ U        = 1 * np.ones([n,2])
 M1       = Material(n,M,X,U)
 
 # initialize the model :
-model    = Model(order, n_x)
+model    = Model(out_dir, order, n_x)
+
+# calculate the particle basis :
+model.formulate_material_basis_functions(M1)
 
 # interpolate the material to the grid :
 model.interpolate_material_to_grid(M1)
 
 # save the result :
-File('m.pvd') << model.m
-File('u.pvd') << model.U3
+model.save_pvd(model.m)
+model.save_pvd(model.U3)
 
 #mu    = E / (2.0*(1.0 + nu))
 #lmbda = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))

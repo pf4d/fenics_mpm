@@ -8,8 +8,8 @@ import numpy as np
 # Have the compiler generate code for evaluating derivatives
 parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
 
-mesh = UnitCubeMesh(2, 2, 2)
-#mesh = UnitSquareMesh(2, 2)
+#mesh = UnitCubeMesh(2, 2, 2)
+mesh = UnitSquareMesh(1, 1)
 #mesh = UnitIntervalMesh(2)
 V    = FunctionSpace(mesh, 'CG', 1)
 Ve   = V.ufl_element()
@@ -47,7 +47,7 @@ deriv_values = np.zeros(2*el.space_dimension(), dtype=float)
 el.evaluate_basis_derivatives_all(1, deriv_values, x, 
                                   coordinate_dofs, cell.orientation())
 # Reshape such that columns are [d/dxx, d/dxy, d/dyx, d/dyy]
-#deriv_values = deriv_values.reshape((-1, 2))
+deriv_values = deriv_values.reshape((-1, 2))
 print deriv_values
 
 import sys
