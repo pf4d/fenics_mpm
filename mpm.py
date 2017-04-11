@@ -122,15 +122,96 @@ class Material(object):
   Representation material consisting of n particles with mass m, 
   position x, and velocity u.
   """
-  def __init__(self, n, m, x, u):
+  def __init__(self, m, x, u, E, nu):
     """
     """
-    self.n = n                       # number of particles
-    self.m = m                       # mass vector
-    self.x = x                       # position vector
-    self.u = u                       # velocity vector
-    self.a = np.zeros(n)             # acceleration vector
-    self.grad_u = np.zeros((n,2,2))  # velocity gradient
+    self.N        = len(x[:,0])        # number of particles
+    self.d        = len(x[0])          # topological dimension
+    self.m        = m                  # mass vector
+    self.x        = x                  # position vector
+    self.u        = u                  # velocity vector
+    self.a        = None               # acceleration vector
+    self.grad_u   = None               # velocity gradient tensor
+    self.vrt      = None               # grid nodal indicies for points
+    self.phi      = None               # grid basis values at points
+    self.grad_phi = None               # grid basis gradient values at points
+    self.rho      = None               # density vector
+    self.V0       = None               # initial volume vector
+    self.V        = None               # volume vector
+    self.E        = E                  # Young's modulus
+    self.nu       = nu                 # Poisson's ratio
+    self.epsilon  = None               # strain-rate tensor
+    self.sigma    = None               # stress tensor
+      
+    self.mu       = E / (2.0*(1.0 + nu))
+    self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
+
+  def calculate_strain_rate(self):
+    """
+    """
+    epsilon = []
+
+    # calculate particle velocity gradients :
+    for grad_u_p in self.grad_u:
+      dudx   = grad_u_p[0,0]
+      dudy   = grad_u_p[0,1]
+      dvdx   = grad_u_p[1,0]
+      dvdy   = grad_u_p[1,1]
+      eps_xx = dudx
+      eps_xy = 0.5*(dudy + dvdx)
+      eps_yy = dvdy
+      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
+      epsilon.append(eps)
+    
+    # update the particle strain-rate tensors :
+    self.epsilon = np.array(epsilon, dtype=float)
+
+  def calculate_cauchy_stress_tensor(self):
+    """
+    Calculate Cauchy-stress tensor.
+    """
+    sigma = []
+
+    # calculate particle velocity gradients :
+    for epsilon_p in self.grad_u:
+      #sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)
+      trace_eps  = epsilon_p[0,0] + epsilon_p[1,1]
+      c1         = 2.0 * self.mu
+      c2         = self.lmbda * trace_eps
+      sig_xx     = c1 * epsilon_p[0,0] + c2
+      sig_xy     = c1 * epsilon_p[0,1] 
+      sig_yy     = c1 * epsilon_p[1,1] + c2
+      sigma_p    = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]], dtype=float )
+      sigma.append(sigma_p)
+    
+    # update particle Cauchy stress tensors :
+    self.sigma = np.array(sigma, dtype=float)
+
+  #def calculate_strain_rate(self):
+  #  """
+  #  Calculate the strain-rate tensor.
+  #  """
+  #  dudx   = self.grad_u[:,0,0]
+  #  dudy   = self.grad_u[:,0,1]
+  #  dvdx   = self.grad_u[:,1,0]
+  #  dvdy   = self.grad_u[:,1,1]
+  #  eps_xx = dudx
+  #  eps_xy = 0.5*(dudy + dvdx)
+  #  eps_yy = dvdy
+  #  self.epsilon = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]] )
+
+  #def calculate_cauchy_stress_tensor(self):
+  #  """
+  #  Calculate Cauchy-stress tensor.
+  #  """
+  #  #sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)
+  #  trace_eps = self.epsilon[0,0] + self.epsilon[1,1]
+  #  c1        = 2.0 * self.mu
+  #  c2        = self.lmbda * trace_eps
+  #  sig_xx    = c1 * self.epsilon[0,0] + c2
+  #  sig_xy    = c1 * self.epsilon[0,1] 
+  #  sig_yy    = c1 * self.epsilon[1,1] + c2
+  #  self.sigma = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]] )
   
   def plot(self):
     """
@@ -143,7 +224,201 @@ class Material(object):
 
 class Model(object):
 
-  def __init__(self, out_dir, order, n, dt):
+  def __init__(self, out_dir, grid_model, dt):
+    """
+    This class connects the grid to each material.
+    """
+    self.out_dir    = out_dir      # output directory
+    self.grid_model = grid_model   # grid model
+    self.dt         = dt           # time step
+    self.materials  = []           # list of Material objects, initially none
+
+  def add_material(self, M):
+    """
+    Add material ``M`` to the model.
+    """
+    self.materials.append(M)
+
+  def formulate_material_basis_functions(self):
+    """
+    """
+    # iterate through all materials :
+    for M in self.materials:
+
+      vrt      = []  # grid nodal indicies for points
+      phi      = []  # grid basis values at points
+      grad_phi = []  # grid basis gradient values at points
+
+      # iterate through particle positions :
+      for x_p in M.x: 
+        # get the grid node indices, basis values, and basis gradient values :
+        out = self.grid_model.get_particle_basis_functions(x_p)
+      
+        # append these to a list corresponding with particles : 
+        vrt.append(out[0])
+        phi.append(out[1])
+        grad_phi.append(out[2])
+
+      print 'done'
+
+      # save as array within each material :
+      M.vrt      = np.array(vrt)
+      M.phi      = np.array(phi, dtype=float)
+      M.grad_phi = np.array(grad_phi, dtype=float)
+
+  def interpolate_material_mass_to_grid(self):
+    """
+    """
+    # new mass must start at zero :
+    m    = Function(self.grid_model.Q)
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      # interpolation of mass to the grid :
+      for p, phi_p, m_p in zip(M.vrt, M.phi, M.m):
+        m.vector()[p] += phi_p * m_p
+      
+    # assign the new mass to the grid model variable :
+    self.grid_model.update_mass(m)
+
+  def interpolate_material_velocity_to_grid(self):
+    """
+    """
+    # new velocity must start at zero :
+    #model.assign_variable(self.U3, DOLFIN_EPS)
+    #u,v = self.U3.split(True)
+    u    = Function(self.grid_model.Q)
+    v    = Function(self.grid_model.Q)
+    
+    # iterate through all materials :
+    for M in self.materials:
+
+      # interpolation of mass-conserving velocity to the grid :
+      for p, phi_p, m_p, u_p in zip(M.vrt, M.phi, M.m, M.u):
+        m_i = self.grid_model.m.vector()[p]
+        u.vector()[p] += u_p[0] * phi_p * m_p / m_i
+        v.vector()[p] += u_p[1] * phi_p * m_p / m_i
+
+    # assign the variables to the functions
+    self.grid_model.update_velocity([u,v])
+
+  def update_grid_velocity(self):
+    """
+    """
+    v   = self.grid_model.U3.vector().array()
+    a   = self.grid_model.a3.vector().array()
+    v_n = v + a * self.dt
+
+    # assign the new velocity vector :
+    self.grid_model.assign_variable(self.grid_model.U3, v_n)
+
+  def calculate_material_density(self):
+    """
+    """
+    h   = self.grid_model.h           # cell diameter
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      rho = []
+
+      # calculate particle densities :
+      for i, phi_i in zip(M.vrt, M.phi):
+        m_i   = self.grid_model.m.vector()[i]
+        rho_p = np.sum( m_i * phi_i ) / h**3
+        rho.append(rho_p)
+      
+      # update material density :
+      M.rho = np.array(rho, dtype=float)
+
+  def calculate_material_initial_volume(self):
+    """
+    """
+    # iterate through all materials :
+    for M in self.materials:
+
+      # calculate inital volume from particle mass and density :
+      M.V0 = np.array(M.m / M.rho, dtype=float)
+
+  def calculate_material_velocity_gradient(self):
+    """
+    """
+    # recover the grid nodal velocities :
+    u,v = self.grid_model.U3.split(True)
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      grad_U_p_v = []
+      
+      # calculate particle velocity gradients :
+      for i, grad_phi_i in zip(M.vrt, M.grad_phi):
+        u_i    = u.vector()[i]
+        v_i    = v.vector()[i]
+        dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
+        dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
+        dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
+        dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
+        grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
+      
+      # update the particle velocity gradients :
+      M.grad_u = np.array(grad_U_p_v, dtype=float)
+
+  def calculate_material_velocity(self):
+    """
+    """
+    u, v  = self.grid_model.U3.split(True)
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      v_p_v = []
+
+      # iterate through each particle :
+      for i, phi_i in zip(M.vrt, M.phi):
+        u_p = np.sum(phi_i * u.vector()[i])
+        v_p = np.sum(phi_i * v.vector()[i])
+        v_p_v.append(np.array([u_p, v_p]))
+
+      # update material velocity :
+      M.u = np.array(v_p_v, dtype=float)
+
+  def calculate_material_acceleration(self):
+    """
+    """
+    a_x, a_y = self.a3.split(True)
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      a_p_v = []
+
+      for i, phi_i in zip(M.vrt, M.phi):
+        a_x_p = np.sum(phi_i * a_x.vector()[i])
+        a_y_p = np.sum(phi_i * a_y.vector()[i])
+        a_p_v.append(np.array([a_x_p, a_y_p]))
+
+      # update material acceleration :
+      M.a = np.array(a_p_v, dtype=float)
+
+  def advect_material_particles(self):
+    """
+    """
+    # iterate through all materials :
+    for M in self.materials:
+      self.particle_model.calculate_acceleration(M)
+      u_n = M.u + M.a * self.dt
+      self.update_grid_velocity()
+      self.particle_model.calculate_velocity(M)
+      x_n = M.x + M.u * self.dt
+      M.u = u_n
+      M.x = x_n
+
+
+class GridModel(object):
+
+  def __init__(self, out_dir, order, n):
     """
     """
     # have the compiler generate code for evaluating basis derivatives :
@@ -151,7 +426,6 @@ class Model(object):
 
     self.out_dir = out_dir
     self.order   = order
-    self.dt      = dt
     self.mesh    = UnitSquareMesh(n, n)
     self.Q       = FunctionSpace(self.mesh, 'CG', order)
     self.V       = VectorFunctionSpace(self.mesh, 'CG', order)
@@ -159,6 +433,7 @@ class Model(object):
     self.element = self.Q.element()
     self.top_dim = self.element.topological_dimension()
     self.dofmap  = self.Q.dofmap()
+    self.h       = self.mesh.hmax()  # cell diameter
     
     # grid velocity :
     self.U_mag          = Function(self.Q, name='U_mag')
@@ -184,6 +459,7 @@ class Model(object):
 
     # grid mass :
     self.m             = Function(self.Q, name='m')
+    self.m0            = Function(self.Q, name='m0')
 
     # function assigners speed assigning up :
     self.assdudx       = FunctionAssigner(self.dudx.function_space(), self.Q)
@@ -195,158 +471,63 @@ class Model(object):
     self.assy          = FunctionAssigner(self.v.function_space(),    self.Q)
     #                                      self.V.sub(1))
     self.assm          = FunctionAssigner(self.m.function_space(),    self.Q)
-
-  def formulate_material_basis_functions(self, M):
-    """
-    """
-    element  = self.element
-    mesh     = self.mesh
-
-    phi      = []
-    vrt      = []
-    grad_phi = []
     
-    # iterate through all the particle positions :
-    for x_p in M.x: 
-      # find the cell with point :
-      x_pt       = Point(x_p) 
-      cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
-      cell       = Cell(mesh, cell_id)
-      coord_dofs = cell.get_vertex_coordinates()       # local coordinates
-      
-      # array for all basis functions of the cell :
-      phi_i = np.zeros(element.space_dimension(), dtype=float)
-    
-      # array for values with derivatives of all 
-      # basis functions, 2 * element dim :
-      grad_phi_i = np.zeros(2*element.space_dimension(), dtype=float)
-     
-      # compute basis function values :
-      element.evaluate_basis_all(phi_i, x_p, coord_dofs, cell.orientation())
-      
-      # compute 1st order derivatives :
-      element.evaluate_basis_derivatives_all(1, grad_phi_i, x_p, 
-                                             coord_dofs, cell.orientation())
-
-      # reshape such that rows are [d/dx, d/dy] :
-      grad_phi_i = grad_phi_i.reshape((-1, 2))
-
-      # get corresponding vertex indices, in dof indicies : 
-      vrt_i = self.dofmap.cell_dofs(cell.index())
-
-      # append these to a list corresponding with particles : 
-      phi.append(phi_i)
-      grad_phi.append(grad_phi_i)
-      vrt.append(vrt_i)
-
-    # save as arrays :
-    self.vrt      = np.array(vrt)
-    self.phi      = np.array(phi, dtype=float)
-    self.grad_phi = np.array(grad_phi, dtype=float)
-
-  def interpolate_particle_mass_to_grid(self, M):
+  def get_particle_basis_functions(self, x):
     """
     """
-    # new mass must start at zero :
-    m    = Function(self.Q)
+    mesh    = self.mesh
+    element = self.element
 
-    # interpolation of mass to the grid :
-    for p, phi_p, m_p in zip(self.vrt, self.phi, M.m):
-      m.vector()[p] += phi_p * m_p
+    # find the cell with point :
+    x_pt       = Point(x)
+    cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
+    cell       = Cell(mesh, cell_id)
+    coord_dofs = cell.get_vertex_coordinates()       # local coordinates
     
+    # array for all basis functions of the cell :
+    phi = np.zeros(element.space_dimension(), dtype=float)
+    
+    # array for values with derivatives of all 
+    # basis functions, 2 * element dim :
+    grad_phi = np.zeros(2*element.space_dimension(), dtype=float)
+    
+    # compute basis function values :
+    element.evaluate_basis_all(phi, x, coord_dofs, cell.orientation())
+    
+    # compute 1st order derivatives :
+    element.evaluate_basis_derivatives_all(1, grad_phi, x, 
+                                           coord_dofs, cell.orientation())
+
+    # reshape such that rows are [d/dx, d/dy] :
+    grad_phi = grad_phi.reshape((-1, 2))
+
+    # get corresponding vertex indices, in dof indicies : 
+    vrt = self.dofmap.cell_dofs(cell.index())
+
+    return vrt, phi, grad_phi
+
+  def update_mass(self, m):
+    """
+    """
     # assign the mass to the model variable :
     self.assm.assign(self.m, m)
 
-  def interpolate_particle_velocity_to_grid(self, M):
+  def update_velocity(self, U):
     """
     """
-    # new velocity must start at zero :
-    #model.assign_variable(self.U3, DOLFIN_EPS)
-    #u,v = self.U3.split(True)
-    u    = Function(self.Q)
-    v    = Function(self.Q)
-
-    # interpolation of mass-conserving velocity to the grid :
-    u_i = []
-    for p, phi_p, m_p, u_p in zip(self.vrt, self.phi, M.m, M.u):
-      m_i = self.m.vector()[p]
-      u.vector()[p] += u_p[0] * phi_p * m_p / m_i
-      v.vector()[p] += u_p[1] * phi_p * m_p / m_i
-      u_i.append([u.vector()[p], v.vector()[p]])
-
     # assign the variables to the functions
-    self.assx.assign(self.u, u)
-    self.assy.assign(self.v, v)
+    self.assx.assign(self.u, U[0])
+    self.assy.assign(self.v, U[1])
 
-  def calculate_particle_velocity_gradient(self, M):
-    """
-    """
-    u, v       = self.U3.split(True)
-    grad_U_p_v = []
-
-    # calculate particle velocity gradients :
-    for i, grad_phi_i in zip(self.vrt, self.grad_phi):
-      u_i = u.vector()[i]
-      v_i = v.vector()[i]
-      dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
-      dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
-      dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
-      dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
-      grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
-    
-    # update the particle velocity gradients :
-    M.grad_u = np.array(grad_U_p_v, dtype=float)
-
-  def calculate_particle_velocity(self, M):
-    """
-    """
-    u, v  = self.U3.split(True)
-    v_p_v = []
-
-    for i, phi_i in zip(self.vrt, self.phi):
-      u_p = np.sum(phi_i * u.vector()[i])
-      v_p = np.sum(phi_i * v.vector()[i])
-      v_p_v.append(np.array([u_p, v_p]))
-
-    # update particle velocity :
-    M.u = np.array(v_p_v, dtype=float)
-
-  def calculate_particle_acceleration(self, M):
-    """
-    """
-    a_x, a_y = self.a3.split(True)
-    a_p_v    = []
-
-    for i, phi_i in zip(self.vrt, self.phi):
-      a_x_p = np.sum(phi_i * a_x.vector()[i])
-      a_y_p = np.sum(phi_i * a_y.vector()[i])
-      a_p_v.append(np.array([a_x_p, a_y_p]))
-
-    # update particle acceleration :
-    M.a = np.array(a_p_v, dtype=float)
-
-  def update_grid_velocity(self):
+  def update_grid_velocity(self, dt):
     """
     """
     v_i   = self.U3.vector().array()
     a_i   = self.a3.vector().array()
-    dt    = self.dt
     v_i_n = v_i + a_i * dt
 
     # assign the new velocity vector :
     self.assign_variable(self.U3, v_i_n)
-
-  def advect_material_particles(self, M):
-    """
-    """
-    self.calculate_particle_acceleration(M)
-    u_p_n = M.u + M.a * self.dt
-    self.update_grid_velocity()
-    self.calculate_particle_velocity(M)
-    x_p_n = M.x + M.u * self.dt
-    M.u = u_p_n
-    M.x = x_p_n
-
 
   def assign_variable(self, u, var):
     """
@@ -469,87 +650,55 @@ out_dir  = 'output/'
 order    = 1
 n_x      = 100
 dt       = 0.1
+E        = 1000.0
+nu       = 0.3
 
 # create a material :
 n        = 500
-x0, y0   = 0.6,0.6
 r_max    = 0.1
 
-X        = sunflower(n, 2, x0, y0, r_max)
-#X        = np.ascontiguousarray(np.array([[0.4,0.1],[0.9,0.1]]))
-M        = 1 * np.ones(n)
-U        = 1 * np.ones([n,2])
+X1       = sunflower(n, 2, 0.6, 0.6, r_max)
+M1       = 1 * np.ones(n)
+U1       = -1 * np.ones([n,2])
 
-M1       = Material(n,M,X,U)
+X2       = sunflower(n, 2, 0.4, 0.4, r_max)
+M2       = 1 * np.ones(n)
+U2       = 1 * np.ones([n,2])
+
+M1       = Material(M1, X1, U1, E, nu)
+M2       = Material(M2, X2, U2, E, nu)
 
 # initialize the model :
-model    = Model(out_dir, order, n_x, dt)
+grid_model = GridModel(out_dir, order, n_x)
+model      = Model(out_dir, grid_model, dt)
+
+model.add_material(M1)
+model.add_material(M2)
 
 # calculate the particle basis :
-model.formulate_material_basis_functions(M1)
+model.formulate_material_basis_functions()
 
 # interpolate the material to the grid :
-model.interpolate_particle_mass_to_grid(M1)
-model.interpolate_particle_velocity_to_grid(M1)
-model.calculate_particle_velocity_gradient(M1)
+model.interpolate_material_mass_to_grid()
+model.interpolate_material_velocity_to_grid()
+model.calculate_material_velocity_gradient()
 
 # files for saving :
 m_file = File(out_dir + '/m.pvd')
 u_file = File(out_dir + '/u.pvd')
 
 # save the result :
-model.save_pvd(model.m,   'm', f=m_file, t=0.0)
-model.save_pvd(model.U3, 'U3', f=u_file, t=0.0)
+grid_model.save_pvd(grid_model.m,   'm', f=m_file, t=0.0)
+grid_model.save_pvd(grid_model.U3, 'U3', f=u_file, t=0.0)
 
 # move the model forward in time :
-model.advect_material_particles(M1)
-model.formulate_material_basis_functions(M1)
-model.interpolate_particle_mass_to_grid(M1)
-model.interpolate_particle_velocity_to_grid(M1)
-model.save_pvd(model.m,   'm', f=m_file, t=dt)
-model.save_pvd(model.U3, 'U3', f=u_file, t=dt)
+model.advect_material_particles()
+model.formulate_material_basis_functions()
+model.interpolate_material_mass_to_grid()
+model.interpolate_material_velocity_to_grid()
+model.calculate_material_velocity_gradient()
+grid_model.save_pvd(grid_model.m,   'm', f=m_file, t=dt)
+grid_model.save_pvd(grid_model.U3, 'U3', f=u_file, t=dt)
 
-#mu    = E / (2.0*(1.0 + nu))
-#lmbda = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
 
-# Stress tensor
-def sigma(r):
-  return 2.0*mu*sym(grad(r)) + lmbda*tr(sym(grad(r)))*Identity(len(r))
 
-#===============================================================================
-# evaluate basis function derivatives at a point (x,y) :
-
-## Array for values with derivatives of all basis functions. 4 * element dim
-#deriv_values = np.zeros(4*el.space_dimension(), dtype=float)
-## Compute all 2nd order derivatives
-#el.evaluate_basis_derivatives_all(1, deriv_values, x, 
-#                                  coordinate_dofs, cell.orientation())
-## Reshape such that columns are [d/dxx, d/dxy, d/dyx, d/dyy]
-#deriv_values = deriv_values.reshape((-1, 4))
-#print deriv_values
-#
-#
-##===============================================================================
-## evaluation of a function at a set of points (x_i, y_i) :
-#
-## Initialize some functions in V
-#u = interpolate(Expression('x[0]',degree = 1), V)
-#v = interpolate(Expression('1-x[0]',degree = 1), V)
-#w = interpolate(Expression('x[0]+1',degree =1 ), V)
-#flist = [u, v, w]
-#
-## Define some points
-#xp = np.array([[0.1, 0.1],[0.2, 0.2],[0.3, 0.3]])
-#
-## Initialize Probes class from fenicstools and evaluate
-#p = ft.Probes(xp.flatten(), V)
-#for f in flist:
-#  p(f)
-#
-## Print the result as np.array
-#print p.array()
-#
-## Print results of first probings on rank 0
-#pa = p.array()
-#if MPI.rank(mpi_comm_world()) == 0:
-#  print "Probe = ", pa[0]
