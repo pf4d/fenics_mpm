@@ -140,11 +140,33 @@ class Material(object):
     self.V        = None               # volume vector
     self.E        = E                  # Young's modulus
     self.nu       = nu                 # Poisson's ratio
-    self.epsilon  = None               # strain-rate tensor
+    self.F        = None               # deformation gradient tensor
     self.sigma    = None               # stress tensor
+    self.epsilon  = None               # strain-rate tensor
+
+    # identity tensors :
+    self.I        = np.array([np.identity(self.d)]*self.N)
       
     self.mu       = E / (2.0*(1.0 + nu))
     self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
+
+  def calculate_strain_rate(self):
+    """
+    """
+    epsilon_n = []
+
+    # calculate particle deformation gradients :
+    for grad_u_p in self.grad_u:
+      dudx   = grad_u_p[0,0]
+      dudy   = grad_u_p[0,1]
+      dvdx   = grad_u_p[1,0]
+      dvdy   = grad_u_p[1,1]
+      eps_xx = dudx
+      eps_xy = 0.5*(dudy + dvdx)
+      eps_yy = dvdy
+      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
+      epsilon_n.append(eps)
+    return np.array(epsilon_n, dtype=float)
 
   def calculate_stress(self):
     """
@@ -152,7 +174,7 @@ class Material(object):
     """
     sigma = []
 
-    # calculate particle velocity gradients :
+    # calculate particle stress :
     for epsilon_p in self.epsilon:
       #sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)
       trace_eps  = epsilon_p[0,0] + epsilon_p[1,1]
@@ -370,50 +392,30 @@ class Model(object):
       # update material acceleration :
       M.a = np.array(a_p_v, dtype=float)
 
-  def calculate_material_strain_rate(self, M):
-    """
-    """
-    epsilon_n = []
-
-    # calculate particle velocity gradients :
-    for grad_u_p in M.grad_u:
-      dudx   = grad_u_p[0,0]
-      dudy   = grad_u_p[0,1]
-      dvdx   = grad_u_p[1,0]
-      dvdy   = grad_u_p[1,1]
-      eps_xx = dudx
-      eps_xy = 0.5*(dudy + dvdx)
-      eps_yy = dvdy
-      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
-      epsilon_n.append(eps)
-    return np.array(epsilon_n, dtype=float)
-
   def initialize_material_tensors(self):
     """
     """
     # iterate through all materials :
     for M in self.materials:
-      M.epsilon = self.calculate_material_strain_rate(M)
+      M.F       = M.grad_u * self.dt
+      M.epsilon = M.calculate_strain_rate()
       M.sigma   = M.calculate_stress()
 
-  def update_material_strain_rate(self):
+  def update_material_deformation_gradient(self):
     """
     """
     # iterate through all materials :
     for M in self.materials:
-      epsilon_n  = self.calculate_material_strain_rate(M)
-      #M.epsilon += epsilon_n * self.dt
-      M.epsilon  = epsilon_n
+      M.F *= M.I + M.grad_u * self.dt
 
   def update_material_stress(self):
     """
     """
     # iterate through all materials :
     for M in self.materials:
-      sigma_n = M.calculate_stress()
-
-      #M.sigma += sigma_n * self.dt
-      M.sigma = sigma_n
+      epsilon_n  = M.calculate_strain_rate()
+      M.epsilon += epsilon_n * self.dt
+      M.sigma    = M.calculate_stress()
 
   def calculate_grid_internal_forces(self):
     """
@@ -426,10 +428,10 @@ class Model(object):
     for M in self.materials:
 
       # interpolation particle internal forces to grid :
-      for p, grad_phi_p, eps_p, sig_p, V0_p in zip(M.vrt, M.grad_phi,
-                                                   M.epsilon, M.sigma,
-                                                   M.V0):
-        V_i   = (eps_p[0,0] * eps_p[1,1] + eps_p[1,0] * eps_p[0,1]) * V0_p
+      for p, grad_phi_p, F_p, sig_p, V0_p in zip(M.vrt, M.grad_phi,
+                                                 M.F, M.sigma,
+                                                 M.V0):
+        V_i   = (F_p[0,0] * F_p[1,1] + F_p[1,0] * F_p[0,1]) * V0_p
         f_int = []
         for grad_phi_i in grad_phi_p:
           f_int.append(- np.dot(sig_p, grad_phi_i) * V_i)
@@ -511,7 +513,7 @@ class Model(object):
         self.calculate_material_density()
         self.calculate_material_initial_volume()
      
-      self.update_material_strain_rate()
+      self.update_material_deformation_gradient()
       self.update_material_stress()
       self.calculate_grid_internal_forces()
       self.calculate_grid_acceleration()
@@ -639,21 +641,21 @@ class GridModel(object):
   def update_velocity(self, U):
     """
     """
-    # assign the variables to the functions
+    # assign the variables to the functions :
     self.assu.assign(self.u, U[0])
     self.assv.assign(self.v, U[1])
 
   def update_acceleration(self, a):
     """
     """
-    # assign the variables to the functions
+    # assign the variables to the functions :
     self.assa_x.assign(self.a_x, a[0])
     self.assa_y.assign(self.a_y, a[1])
 
   def update_internal_force_vector(self, f_int):
     """
     """
-    # assign the variables to the functions
+    # assign the variables to the functions :
     self.assf_int_x.assign(self.f_int_x, f_int[0])
     self.assf_int_y.assign(self.f_int_y, f_int[1])
 
@@ -791,7 +793,7 @@ dt       = 0.01
 E        = 1000.0
 nu       = 0.3
 u_mag    = 0.1
-m_mag    = 100
+m_mag    = 1
 
 # create a material :
 n        = 500
