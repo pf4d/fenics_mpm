@@ -104,17 +104,17 @@ def radius(k,n,b,r_max):
 
 #  example: n=500, alpha=2
 def sunflower(n, alpha, x0, y0, r_max):
-    b       = np.round(alpha*np.sqrt(n))  # number of boundary points
-    phi     = (np.sqrt(5)+1) / 2.0        # golden ratio
-    r_v     = []
-    theta_v = []
-    for k in range(1, n+1):
-      r_v.append( radius(k,n,b,r_max) )
-      theta_v.append( 2*pi*k / phi**2 )
-    x_v     = x0 + r_v*np.cos(theta_v)
-    y_v     = y0 + r_v*np.sin(theta_v)
-    X       = np.ascontiguousarray(np.array([x_v, y_v]).T)
-    return X
+  b       = np.round(alpha*np.sqrt(n))  # number of boundary points
+  phi     = (np.sqrt(5)+1) / 2.0        # golden ratio
+  r_v     = []
+  theta_v = []
+  for k in range(1, n+1):
+    r_v.append( radius(k,n,b,r_max) )
+    theta_v.append( 2*pi*k / phi**2 )
+  x_v     = x0 + r_v*np.cos(theta_v)
+  y_v     = y0 + r_v*np.sin(theta_v)
+  X       = np.ascontiguousarray(np.array([x_v, y_v]).T)
+  return X
 
 
 class Material(object):
@@ -146,34 +146,14 @@ class Material(object):
     self.mu       = E / (2.0*(1.0 + nu))
     self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
 
-  def calculate_strain_rate(self):
-    """
-    """
-    epsilon = []
-
-    # calculate particle velocity gradients :
-    for grad_u_p in self.grad_u:
-      dudx   = grad_u_p[0,0]
-      dudy   = grad_u_p[0,1]
-      dvdx   = grad_u_p[1,0]
-      dvdy   = grad_u_p[1,1]
-      eps_xx = dudx
-      eps_xy = 0.5*(dudy + dvdx)
-      eps_yy = dvdy
-      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
-      epsilon.append(eps)
-    
-    # update the particle strain-rate tensors :
-    self.epsilon = np.array(epsilon, dtype=float)
-
-  def calculate_cauchy_stress_tensor(self):
+  def calculate_stress(self):
     """
     Calculate Cauchy-stress tensor.
     """
     sigma = []
 
     # calculate particle velocity gradients :
-    for epsilon_p in self.grad_u:
+    for epsilon_p in self.epsilon:
       #sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)
       trace_eps  = epsilon_p[0,0] + epsilon_p[1,1]
       c1         = 2.0 * self.mu
@@ -184,8 +164,8 @@ class Material(object):
       sigma_p    = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]], dtype=float )
       sigma.append(sigma_p)
     
-    # update particle Cauchy stress tensors :
-    self.sigma = np.array(sigma, dtype=float)
+    # return particle Cauchy stress tensors :
+    return np.array(sigma, dtype=float)
 
   #def calculate_strain_rate(self):
   #  """
@@ -259,8 +239,6 @@ class Model(object):
         phi.append(out[1])
         grad_phi.append(out[2])
 
-      print 'done'
-
       # save as array within each material :
       M.vrt      = np.array(vrt)
       M.phi      = np.array(phi, dtype=float)
@@ -302,16 +280,6 @@ class Model(object):
 
     # assign the variables to the functions
     self.grid_model.update_velocity([u,v])
-
-  def update_grid_velocity(self):
-    """
-    """
-    v   = self.grid_model.U3.vector().array()
-    a   = self.grid_model.a3.vector().array()
-    v_n = v + a * self.dt
-
-    # assign the new velocity vector :
-    self.grid_model.assign_variable(self.grid_model.U3, v_n)
 
   def calculate_material_density(self):
     """
@@ -387,7 +355,7 @@ class Model(object):
   def calculate_material_acceleration(self):
     """
     """
-    a_x, a_y = self.a3.split(True)
+    a_x, a_y = self.grid_model.a3.split(True)
 
     # iterate through all materials :
     for M in self.materials:
@@ -402,18 +370,163 @@ class Model(object):
       # update material acceleration :
       M.a = np.array(a_p_v, dtype=float)
 
-  def advect_material_particles(self):
+  def calculate_material_strain_rate(self, M):
+    """
+    """
+    epsilon_n = []
+
+    # calculate particle velocity gradients :
+    for grad_u_p in M.grad_u:
+      dudx   = grad_u_p[0,0]
+      dudy   = grad_u_p[0,1]
+      dvdx   = grad_u_p[1,0]
+      dvdy   = grad_u_p[1,1]
+      eps_xx = dudx
+      eps_xy = 0.5*(dudy + dvdx)
+      eps_yy = dvdy
+      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
+      epsilon_n.append(eps)
+    return np.array(epsilon_n, dtype=float)
+
+  def initialize_material_tensors(self):
     """
     """
     # iterate through all materials :
     for M in self.materials:
-      self.particle_model.calculate_acceleration(M)
-      u_n = M.u + M.a * self.dt
-      self.update_grid_velocity()
-      self.particle_model.calculate_velocity(M)
-      x_n = M.x + M.u * self.dt
-      M.u = u_n
-      M.x = x_n
+      M.epsilon = self.calculate_material_strain_rate(M)
+      M.sigma   = M.calculate_stress()
+
+  def update_material_strain_rate(self):
+    """
+    """
+    # iterate through all materials :
+    for M in self.materials:
+      epsilon_n  = self.calculate_material_strain_rate(M)
+      #M.epsilon += epsilon_n * self.dt
+      M.epsilon  = epsilon_n
+
+  def update_material_stress(self):
+    """
+    """
+    # iterate through all materials :
+    for M in self.materials:
+      sigma_n = M.calculate_stress()
+
+      #M.sigma += sigma_n * self.dt
+      M.sigma = sigma_n
+
+  def calculate_grid_internal_forces(self):
+    """
+    """
+    # new internal forces start at zero :
+    f_int_x  = Function(self.grid_model.Q)
+    f_int_y  = Function(self.grid_model.Q)
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      # interpolation particle internal forces to grid :
+      for p, grad_phi_p, eps_p, sig_p, V0_p in zip(M.vrt, M.grad_phi,
+                                                   M.epsilon, M.sigma,
+                                                   M.V0):
+        V_i   = (eps_p[0,0] * eps_p[1,1] + eps_p[1,0] * eps_p[0,1]) * V0_p
+        f_int = []
+        for grad_phi_i in grad_phi_p:
+          f_int.append(- np.dot(sig_p, grad_phi_i) * V_i)
+        f_int = np.array(f_int, dtype=float)
+        
+        f_int_x.vector()[p] = f_int[:,0].astype(float)
+        f_int_y.vector()[p] = f_int[:,1].astype(float)
+      
+    # assign the variables to the functions
+    self.grid_model.update_internal_force_vector([f_int_x, f_int_y])
+
+  def update_grid_velocity(self):
+    """
+    """
+    # calculate the new grid velocity :
+    u_i   = self.grid_model.U3.vector().array()
+    a_i   = self.grid_model.a3.vector().array()
+    u_i_n = u_i + a_i * self.dt
+    
+    # assign the new velocity vector :
+    self.grid_model.assign_variable(self.grid_model.U3, u_i_n)
+
+  def calculate_grid_acceleration(self):
+    """
+    """
+    f_int_x, f_int_y = self.grid_model.f_int.split(True)
+    f_int_x_a = f_int_x.vector().array()
+    f_int_y_a = f_int_y.vector().array()
+    m_a       = self.grid_model.m.vector().array()
+
+    f_int_x_a[m_a == 0] = 0.0
+    f_int_y_a[m_a == 0] = 0.0
+    
+    a_x    = Function(self.grid_model.Q)
+    a_y    = Function(self.grid_model.Q)
+
+    a_x.vector().set_local(f_int_x_a / (m_a + DOLFIN_EPS))
+    a_y.vector().set_local(f_int_y_a / (m_a + DOLFIN_EPS))
+    self.grid_model.update_acceleration([a_x, a_y])
+
+  def advect_material_particles(self):
+    """
+    """
+    # update the grid velocity :
+    self.update_grid_velocity()
+
+    # calc. the new particle acceleration using the updated grid velocities : 
+    self.calculate_material_acceleration()
+
+    # iterate through all materials :
+    for M in self.materials:
+
+      # calculate the new material velocity :
+      M.u += M.a * self.dt
+
+      # advect the material :
+      M.x += M.u * self.dt
+
+  def mpm(self, t_start, t_end):
+    """
+    """
+    t = t_start
+      
+    # files for saving :
+    m_file = File(self.out_dir + '/m.pvd')
+    u_file = File(self.out_dir + '/u.pvd')
+    a_file = File(self.out_dir + '/a.pvd')
+    f_file = File(self.out_dir + '/f.pvd')
+
+    while t <= t_end:
+      self.formulate_material_basis_functions()
+      self.interpolate_material_mass_to_grid()
+      self.interpolate_material_velocity_to_grid()
+      self.calculate_material_velocity_gradient()
+      
+      # initialization step :
+      if t == t_start:
+        self.initialize_material_tensors()
+        self.calculate_material_density()
+        self.calculate_material_initial_volume()
+     
+      self.update_material_strain_rate()
+      self.update_material_stress()
+      self.calculate_grid_internal_forces()
+      self.calculate_grid_acceleration()
+      
+      # save the result :
+      self.grid_model.save_pvd(self.grid_model.m,   'm', f=m_file, t=t)
+      self.grid_model.save_pvd(self.grid_model.U3, 'U3', f=u_file, t=t)
+      self.grid_model.save_pvd(self.grid_model.a3, 'a3', f=a_file, t=t)
+      self.grid_model.save_pvd(self.grid_model.f_int, 'f_int', f=f_file, t=t)
+      
+      # move the model forward in time :
+      self.advect_material_particles()
+
+      # increment time step :
+      t += self.dt
 
 
 class GridModel(object):
@@ -449,6 +562,13 @@ class GridModel(object):
     self.a_x.rename('a_x', '')
     self.a_y.rename('a_y', '')
 
+    # grid internal force vector :
+    self.f_int_mag      = Function(self.Q, name='f_int_mag')
+    self.f_int          = Function(self.V, name='f_int')
+    self.f_int_x, self.f_int_y  = self.f_int.split()
+    self.f_int_x.rename('f_int_x', '')
+    self.f_int_y.rename('f_int_y', '')
+
     # particle velocity gradient :
     self.grad_U         = Function(self.T, name='grad_U')
     self.dudx, self.dudy, self.dvdx, self.dvdy = self.grad_U.split()
@@ -466,10 +586,14 @@ class GridModel(object):
     self.assdudy       = FunctionAssigner(self.dudy.function_space(), self.Q)
     self.assdvdx       = FunctionAssigner(self.dvdx.function_space(), self.Q)
     self.assdvdy       = FunctionAssigner(self.dvdy.function_space(), self.Q)
-    self.assx          = FunctionAssigner(self.u.function_space(),    self.Q)
+    self.assu          = FunctionAssigner(self.u.function_space(),    self.Q)
     #                                      self.V.sub(0))
-    self.assy          = FunctionAssigner(self.v.function_space(),    self.Q)
+    self.assv          = FunctionAssigner(self.v.function_space(),    self.Q)
     #                                      self.V.sub(1))
+    self.assa_x        = FunctionAssigner(self.a_x.function_space(),  self.Q)
+    self.assa_y        = FunctionAssigner(self.a_y.function_space(),  self.Q)
+    self.assf_int_x    = FunctionAssigner(self.f_int_x.function_space(), self.Q)
+    self.assf_int_y    = FunctionAssigner(self.f_int_y.function_space(), self.Q)
     self.assm          = FunctionAssigner(self.m.function_space(),    self.Q)
     
   def get_particle_basis_functions(self, x):
@@ -516,8 +640,22 @@ class GridModel(object):
     """
     """
     # assign the variables to the functions
-    self.assx.assign(self.u, U[0])
-    self.assy.assign(self.v, U[1])
+    self.assu.assign(self.u, U[0])
+    self.assv.assign(self.v, U[1])
+
+  def update_acceleration(self, a):
+    """
+    """
+    # assign the variables to the functions
+    self.assa_x.assign(self.a_x, a[0])
+    self.assa_y.assign(self.a_y, a[1])
+
+  def update_internal_force_vector(self, f_int):
+    """
+    """
+    # assign the variables to the functions
+    self.assf_int_x.assign(self.f_int_x, f_int[0])
+    self.assf_int_y.assign(self.f_int_y, f_int[1])
 
   def update_grid_velocity(self, dt):
     """
@@ -606,7 +744,7 @@ class GridModel(object):
     :type t:     int or float
     """
     if f != None:
-      s       = "::: saving %s.pdf file :::" % name
+      s       = "::: saving pvd file :::"
       print_text(s, 'green')#cls=self.this)
       f << (u, float(t))
     else :
@@ -649,21 +787,23 @@ class GridModel(object):
 out_dir  = 'output/'
 order    = 1
 n_x      = 100
-dt       = 0.1
+dt       = 0.01
 E        = 1000.0
 nu       = 0.3
+u_mag    = 0.1
+m_mag    = 100
 
 # create a material :
 n        = 500
 r_max    = 0.1
 
 X1       = sunflower(n, 2, 0.6, 0.6, r_max)
-M1       = 1 * np.ones(n)
-U1       = -1 * np.ones([n,2])
+M1       =  m_mag * np.ones(n)
+U1       = -u_mag * np.ones([n,2])
 
 X2       = sunflower(n, 2, 0.4, 0.4, r_max)
-M2       = 1 * np.ones(n)
-U2       = 1 * np.ones([n,2])
+M2       = m_mag * np.ones(n)
+U2       = u_mag * np.ones([n,2])
 
 M1       = Material(M1, X1, U1, E, nu)
 M2       = Material(M2, X2, U2, E, nu)
@@ -675,30 +815,7 @@ model      = Model(out_dir, grid_model, dt)
 model.add_material(M1)
 model.add_material(M2)
 
-# calculate the particle basis :
-model.formulate_material_basis_functions()
-
-# interpolate the material to the grid :
-model.interpolate_material_mass_to_grid()
-model.interpolate_material_velocity_to_grid()
-model.calculate_material_velocity_gradient()
-
-# files for saving :
-m_file = File(out_dir + '/m.pvd')
-u_file = File(out_dir + '/u.pvd')
-
-# save the result :
-grid_model.save_pvd(grid_model.m,   'm', f=m_file, t=0.0)
-grid_model.save_pvd(grid_model.U3, 'U3', f=u_file, t=0.0)
-
-# move the model forward in time :
-model.advect_material_particles()
-model.formulate_material_basis_functions()
-model.interpolate_material_mass_to_grid()
-model.interpolate_material_velocity_to_grid()
-model.calculate_material_velocity_gradient()
-grid_model.save_pvd(grid_model.m,   'm', f=m_file, t=dt)
-grid_model.save_pvd(grid_model.U3, 'U3', f=u_file, t=dt)
-
+# material point method :
+model.mpm(0, 5)
 
 
