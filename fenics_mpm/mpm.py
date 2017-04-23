@@ -1,12 +1,24 @@
-from dolfin import *
+# -*- coding: iso-8859-15 -*-
+
+import inspect
+from   fenics   import *
+from   colored  import fg, attr
 #import fenicstools       as ft
 import numpy             as np
 import matplotlib.pyplot as plt
-from colored           import fg, attr
 
+
+def raiseNotDefined():
+  fileName = inspect.stack()[1][1]
+  line     = inspect.stack()[1][2]
+  method   = inspect.stack()[1][3]
+       
+  text = "*** Method not implemented: %s at line %s of %s"
+  print text % (method, line, fileName)
+  sys.exit(1)
 
 def print_min_max(u, title, color='97'):
-  """
+  r"""
   Print the minimum and maximum values of ``u``, a Vector, Function, or array.
 
   :param u: the variable to print the min and max of
@@ -47,7 +59,7 @@ def print_min_max(u, title, color='97'):
 
 
 def get_text(text, color='white', atrb=0, cls=None):
-  """
+  r"""
   Returns text ``text`` from calling class ``cls`` for printing at a later time.
 
   :param text: the text to print
@@ -70,7 +82,7 @@ def get_text(text, color='white', atrb=0, cls=None):
 
 
 def print_text(text, color='white', atrb=0, cls=None):
-  """
+  r"""
   Print text ``text`` from calling class ``cls`` to the screen.
 
   :param text: the text to print
@@ -92,50 +104,133 @@ def print_text(text, color='white', atrb=0, cls=None):
     print text
 
 
-# sunflower seed arrangement :
-# "A better way to construct the sunflower head"
-# https://doi.org/10.1016/0025-5564(79)90080-4
-
-def radius(k,n,b,r_max):
-  # put on the boundary :
-  if k > n-b:  r = r_max
-  # apply square root :
-  else:        r = r_max*np.sqrt(k - 0.5) / np.sqrt( n - (b+1) / 2.0)
-  return r
-
-#  example: n=500, alpha=2
-def sunflower(n, alpha, x0, y0, r_max):
-  b       = np.round(alpha*np.sqrt(n))  # number of boundary points
-  phi     = (np.sqrt(5)+1) / 2.0        # golden ratio
-  r_v     = []
-  theta_v = []
-  for k in range(1, n+1):
-    r_v.append( radius(k,n,b,r_max) )
-    theta_v.append( 2*pi*k / phi**2 )
-  x_v     = x0 + r_v*np.cos(theta_v)
-  y_v     = y0 + r_v*np.sin(theta_v)
-  X       = np.ascontiguousarray(np.array([x_v, y_v]).T)
-  return X
-
-
 class GridModel(object):
+  r"""
+  Representation of the model on a finite-element grid. 
+    
+  :param out_dir: directory to save results, defalult is ``./output/``.
+  :param mesh: the finite-element mesh.
+  :type out_dir: string
+  :type mesh: :class:`~fenics.Mesh`
+  """
 
-  def __init__(self, out_dir, order, n):
+  def __init__(self, mesh, out_dir='./output/'):
     """
+    Create and instance of the model.
     """
+    self.this = self
+    #self.this = super(type(self), self)  # pointer to this base class
+    
     # have the compiler generate code for evaluating basis derivatives :
     parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
+  
+    s = "::: INITIALIZING BASE MODEL :::"
+    print_text(s, cls=self.this)
+    
+    parameters['form_compiler']['quadrature_degree']  = 2
+    parameters["std_out_all_processes"]               = False
+    parameters['form_compiler']['cpp_optimize']       = True
 
-    self.out_dir = out_dir
-    self.order   = order
-    self.mesh    = UnitSquareMesh(n, n)
-    self.Q       = FunctionSpace(self.mesh, 'CG', order)
-    self.V       = VectorFunctionSpace(self.mesh, 'CG', order)
-    self.T       = TensorFunctionSpace(self.mesh, 'CG', order)
+    PETScOptions.set("mat_mumps_icntl_14", 100.0)
+
+    self.mesh        = mesh
+    self.out_dir     = out_dir
+    self.MPI_rank    = MPI.rank(mpi_comm_world())
+    
+    self.generate_function_spaces()
+    self.initialize_variables()
+
+  def color(self):
+    r"""
+    The color used for printing messages to the screen.
+
+    :rtype: string
+    """
+    return '148'
+
+  def generate_function_spaces(self, order=1, use_periodic=False):
+    r"""
+    Generates the finite-element function spaces used with topological dimension :math:`d` set by variable ``self.top_dim``.
+
+    :param order:        order :math:`k` of the shape function, currently only supported are Lagrange :math:`P_1` elements.
+    :param use_periodic: use periodic boundaries along lateral boundary (currently not supported).
+    :type use_periodic:  bool
+
+    The element shape-functions available from this method are :
+
+    * ``self.Q`` -- :math:`\mathcal{H}^k(\Omega)`
+    * ``self.V`` -- :math:`[\mathcal{H}^k(\Omega)]^d`  formed using :class:`~fenics.VectorFunctionSpace`
+    * ``self.T`` -- :math:`[\mathcal{H}^k(\Omega)]^{d \times d}` formed using :class:`~fenics.TensorFunctionSpace`
+    """
+    s = "::: generating fundamental function spaces of order %i :::" % order
+    print_text(s, cls=self.this)
+
+    if use_periodic:
+      self.generate_pbc()
+    else:
+      self.pBC = None
+
+    order        = 1
+    space        = 'CG'
+    self.Q       = FunctionSpace(self.mesh, space, order)
+    self.V       = VectorFunctionSpace(self.mesh, space, order)
+    self.T       = TensorFunctionSpace(self.mesh, space, order)
+    
+    s = "    - fundamental function spaces created - "
+    print_text(s, cls=self.this)
+
+  def initialize_variables(self):
+    r"""
+    Initialize the model variables to default values.  The variables 
+    defined here are:
+
+    Various things :
+    
+    * ``self.element``    -- the finite-element
+    * ``self.top_dim``    -- the topological dimension
+    * ``self.dofmap``     -- :class:`~fenics.DofMap` for converting between vertex to nodal indicies
+    * ``self.h``          -- :class:`~fenics.CellSize` for ``self.mesh``
+    
+    Grid velocity vector :math:`\mathbf{u}_i = [u\ v\ w]^{\intercal}`:
+
+    * ``self.U_mag``      -- velocity vector magnitude
+    * ``self.U3``         -- velocity vector
+    * ``self.u``          -- :math:`x`-component of velocity vector
+    * ``self.v``          -- :math:`y`-component of velocity vector
+    * ``self.w``          -- :math:`z`-component of velocity vector
+    
+    Grid acceleration vector :math:`\mathbf{a}_i = [a_x\ a_y\ a_z]^{\intercal}`:
+
+    * ``self.a_mag``      -- acceleration vector magnitude
+    * ``self.a3``         -- acceleration vector
+    * ``self.a_x``        -- :math:`x`-component of acceleration vector
+    * ``self.a_y``        -- :math:`y`-component of acceleration vector
+    * ``self.a_z``        -- :math:`z`-component of acceleration vector
+
+    Grid internal force vector :math:`\mathbf{f}_i^{\mathrm{int}} = [f_x^{\mathrm{int}}\ f_y^{\mathrm{int}}\ f_z^{\mathrm{int}}]^{\intercal}`:
+
+    * ``self.f_int_mag``  -- internal force vector magnitude
+    * ``self.f_int``      -- internal force vector
+    * ``self.f_int_x``    -- :math:`x`-component of internal force vector
+    * ``self.f_int_y``    -- :math:`y`-component of internal force vector
+    * ``self.f_int_z``    -- :math:`z`-component of internal force vector
+
+    Grid mass :math:`m_i`:
+
+    * ``self.m``          -- mass :math:`m_i` 
+    * ``self.m0``         -- inital mass :math:`m_i^0`
+    """
+    # the finite-element used :
     self.element = self.Q.element()
+    
+    # topological dimension :
     self.top_dim = self.element.topological_dimension()
+
+    # map from verticies to nodes :
     self.dofmap  = self.Q.dofmap()
-    self.h       = project(CellSize(self.mesh))  # cell diameter vector
+
+    # cell diameter :
+    self.h       = project(CellSize(self.mesh), self.Q)  # cell diameter vector
     
     # grid velocity :
     self.U_mag          = Function(self.Q, name='U_mag')
@@ -158,35 +253,27 @@ class GridModel(object):
     self.f_int_x.rename('f_int_x', '')
     self.f_int_y.rename('f_int_y', '')
 
-    # particle velocity gradient :
-    self.grad_U         = Function(self.T, name='grad_U')
-    self.dudx, self.dudy, self.dvdx, self.dvdy = self.grad_U.split()
-    self.dudx.rename('dudx', '')
-    self.dudy.rename('dudy', '')
-    self.dvdx.rename('dvdx', '')
-    self.dvdy.rename('dvdy', '')
-
     # grid mass :
     self.m             = Function(self.Q, name='m')
     self.m0            = Function(self.Q, name='m0')
 
     # function assigners speed assigning up :
-    self.assdudx       = FunctionAssigner(self.dudx.function_space(), self.Q)
-    self.assdudy       = FunctionAssigner(self.dudy.function_space(), self.Q)
-    self.assdvdx       = FunctionAssigner(self.dvdx.function_space(), self.Q)
-    self.assdvdy       = FunctionAssigner(self.dvdy.function_space(), self.Q)
-    self.assu          = FunctionAssigner(self.u.function_space(),    self.Q)
-    #                                      self.V.sub(0))
-    self.assv          = FunctionAssigner(self.v.function_space(),    self.Q)
-    #                                      self.V.sub(1))
-    self.assa_x        = FunctionAssigner(self.a_x.function_space(),  self.Q)
-    self.assa_y        = FunctionAssigner(self.a_y.function_space(),  self.Q)
-    self.assf_int_x    = FunctionAssigner(self.f_int_x.function_space(), self.Q)
-    self.assf_int_y    = FunctionAssigner(self.f_int_y.function_space(), self.Q)
-    self.assm          = FunctionAssigner(self.m.function_space(),    self.Q)
-    
+    self.assu       = FunctionAssigner(self.u.function_space(),       self.Q)
+    #                                   self.V.sub(0))                
+    self.assv       = FunctionAssigner(self.v.function_space(),       self.Q)
+    #                                   self.V.sub(1))                
+    self.assa_x     = FunctionAssigner(self.a_x.function_space(),     self.Q)
+    self.assa_y     = FunctionAssigner(self.a_y.function_space(),     self.Q)
+    self.assf_int_x = FunctionAssigner(self.f_int_x.function_space(), self.Q)
+    self.assf_int_y = FunctionAssigner(self.f_int_y.function_space(), self.Q)
+    self.assm       = FunctionAssigner(self.m.function_space(),       self.Q)
+
   def get_particle_basis_functions(self, x):
-    """
+    r"""
+    Create particle basis functions for the coordinates :math:`x`.
+
+    :param x: global coordinate to evaluate.
+    :type x: :class:`~numpy.ndarray`, int, float
     """
     mesh    = self.mesh
     element = self.element
@@ -220,44 +307,50 @@ class GridModel(object):
     return vrt, phi, grad_phi
 
   def update_mass(self, m):
-    """
+    r"""
+    Update the grid mass :math:`m_i`, ``self.m`` to parameter ``m``.
+    
+    :param m: grid mass
+    :type m: :class:`~fenics.Function`,
     """
     # assign the mass to the model variable :
     self.assm.assign(self.m, m)
 
   def update_velocity(self, U):
-    """
+    r"""
+    Update the grid velocity :math:`\mathbf{u}_i = [u\ v\ w]^{\intercal}`, ``self.U3`` to parameter ``U``.
+    
+    :param U: grid velocity
+    :type U: list of :class:`~fenics.Function`\s
     """
     # assign the variables to the functions :
     self.assu.assign(self.u, U[0])
     self.assv.assign(self.v, U[1])
 
   def update_acceleration(self, a):
-    """
+    r"""
+    Update the grid acceleration :math:`\mathbf{a}_i = [a_x\ a_y\ a_z]^{\intercal}`, ``self.a3`` to parameter ``a``.
+    
+    :param a: grid acceleration
+    :type a: list of :class:`~fenics.Function`\s
     """
     # assign the variables to the functions :
     self.assa_x.assign(self.a_x, a[0])
     self.assa_y.assign(self.a_y, a[1])
 
   def update_internal_force_vector(self, f_int):
-    """
+    r"""
+    Update the grid acceleration :math:`\mathbf{f}_i^{\mathrm{int}} = [f_x^{\mathrm{int}}\ f_y^{\mathrm{int}}\ f_z^{\mathrm{int}}]^{\intercal}` to paramter ``f_int``.
+    
+    :param f_int: grid internal force
+    :type f_int: list of :class:`~fenics.Function`\s
     """
     # assign the variables to the functions :
     self.assf_int_x.assign(self.f_int_x, f_int[0])
     self.assf_int_y.assign(self.f_int_y, f_int[1])
 
-  def update_grid_velocity(self, dt):
-    """
-    """
-    v_i   = self.U3.vector().array()
-    a_i   = self.a3.vector().array()
-    v_i_n = v_i + a_i * dt
-
-    # assign the new velocity vector :
-    self.assign_variable(self.U3, v_i_n)
-
   def assign_variable(self, u, var):
-    """
+    r"""
     Manually assign the values from ``var`` to ``u``.  The parameter ``var``
     may be a string pointing to the location of an :class:`~fenics.XDMFFile`, 
     :class:`~fenics.HDF5File`, or an xml file.
@@ -315,7 +408,7 @@ class GridModel(object):
     print_min_max(u, u.name())
 
   def save_pvd(self, u, name, f=None, t=0.0):
-    """
+    r"""
     Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
     :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
     ``self.out_dir``.
@@ -343,7 +436,7 @@ class GridModel(object):
       f << (u, float(t))
 
   def save_xdmf(self, u, name, f=None, t=0.0):
-    """
+    r"""
     Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
     :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
     ``self.out_dir``.
@@ -372,13 +465,25 @@ class GridModel(object):
 
 
 class Material(object):
+  r"""
+  Representation of an abstract material with initial conditions given by the 
+  parameters ``m``, ``x`` and ``u``.
+
+  :param m: particle mass vector :math:`\mathbf{m}_p`
+  :param x: particle position vector :math:`\mathbf{x}_p`
+  :param u: particle velocity vector :math:`\mathbf{u}_p`
+  :type m: :class:`~numpy.ndarray`
+  :type x: :class:`~numpy.ndarray`
+  :type u: :class:`~numpy.ndarray`
   """
-  Representation material consisting of n particles with mass m, 
-  position x, and velocity u.
-  """
-  def __init__(self, m, x, u, E, nu):
+  def __init__(self, m, x, u):
     """
     """
+    self.this     = super(type(self), self)  # pointer to this base class
+
+    s = "::: INITIALIZING BASE MATERIAL :::"
+    print_text(s, cls=self.this)
+
     self.N        = len(x[:,0])        # number of particles
     self.d        = len(x[0])          # topological dimension
     self.m        = m                  # mass vector
@@ -393,8 +498,6 @@ class Material(object):
     self.rho      = None               # density vector
     self.V0       = None               # initial volume vector
     self.V        = None               # volume vector
-    self.E        = E                  # Young's modulus
-    self.nu       = nu                 # Poisson's ratio
     self.F        = None               # deformation gradient tensor
     self.sigma    = None               # stress tensor
     self.epsilon  = None               # strain-rate tensor
@@ -402,11 +505,23 @@ class Material(object):
     # identity tensors :
     self.I        = np.array([np.identity(self.d)]*self.N)
       
-    self.mu       = E / (2.0*(1.0 + nu))
-    self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
+  def color(self):
+    """
+    The color used for printing messages to the screen.
+
+    :rtype: string
+    """
+    return '148'
 
   def calculate_strain_rate(self):
-    """
+    r"""
+    Calculate the particle strain-rate tensor
+    
+    .. math::
+
+      \dot{\epsilon}_p = \frac{1}{2} \left( \nabla \mathbf{u}_p + \left( \nabla \mathbf{u}_p \right)^{\intercal} \right)
+
+    from particle velocity :math:`\mathbf{u}_p`.
     """
     epsilon_n = []
 
@@ -424,8 +539,65 @@ class Material(object):
     return np.array(epsilon_n, dtype=float)
 
   def calculate_stress(self):
+    r"""
+    This method must be implemented by child classes.
     """
-    Calculate Cauchy-stress tensor.
+    raiseNotDefined()
+
+  def plot(self):
+    r"""
+    Plot the positions of each particle with coordinates ``self.X`` to the 
+    screen.
+    """
+    plt.subplot(111)
+    plt.plot(self.X[:,0], self.X[:,1], 'r*')
+    plt.axis('equal')
+    plt.show()
+
+
+class ElasticMaterial(Material):
+  r"""
+  Representation of an elastic material with initial conditions given by the 
+  parameters ``m``, ``x``, ``u``, ``E``, and ``nu``.
+
+  :param m: particle mass vector :math:`\mathbf{m}_p`
+  :param x: particle position vector :math:`\mathbf{x}_p`
+  :param u: particle velocity vector :math:`\mathbf{u}_p`
+  :param E: Young's modulus :math:`E`
+  :param nu: Poisson's ratio :math:`\nu`
+  :type m: :class:`~numpy.ndarray`
+  :type x: :class:`~numpy.ndarray`
+  :type u: :class:`~numpy.ndarray`
+  :type E: float
+  :type nu: float
+  """
+  def __init__(self, m, x, u, E, nu):
+    """
+    """
+    s = "::: INITIALIZING ELASTIC MATERIAL :::"
+    print_text(s, cls=self)
+
+    Material.__init__(self, m, x, u)
+
+    self.E        = E         # Young's modulus
+    self.nu       = nu        # Poisson's ratio
+
+    # Lamé parameters :
+    self.mu       = E / (2.0*(1.0 + nu))
+    self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
+
+  def color(self):
+    return '150'
+
+  def calculate_stress(self):
+    r"""
+    Calculate elastic particle-Cauchy-stress tensor
+    
+    .. math::
+
+      \sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I
+
+    with Lamé parameters :math:`\mu` and :math:`\lambda`.
     """
     sigma = []
 
@@ -444,16 +616,18 @@ class Material(object):
     # return particle Cauchy stress tensors :
     return np.array(sigma, dtype=float)
 
-  def plot(self):
-    """
-    """
-    plt.subplot(111)
-    plt.plot(self.X[:,0], self.X[:,1], 'r*')
-    plt.axis('equal')
-    plt.show()
-
 
 class Model(object):
+  r"""
+  A material point method model.
+
+  :param out_dir: directory to save results, defalult is ``./output/``.  Currently not used by this class.
+  :param grid_model: the finite-element model instance.
+  :param dt: the timestep :math:`\Delta t`.
+  :type out_dir: string
+  :type mesh: :class:`~GridModel`
+  :type dt: float
+  """
 
   def __init__(self, out_dir, grid_model, dt):
     """
@@ -465,13 +639,15 @@ class Model(object):
     self.materials  = []           # list of Material objects, initially none
 
   def add_material(self, M):
-    """
-    Add material ``M`` to the model.
+    r"""
+    Add :class:`~Material` ``M`` to the list of materials ``self.materials``.
     """
     self.materials.append(M)
 
   def formulate_material_basis_functions(self):
-    """
+    r"""
+    Iterate through each material and calculate the particle basis function
+    value for each position.
     """
     # iterate through all materials :
     for M in self.materials:
@@ -496,7 +672,7 @@ class Model(object):
       M.grad_phi = np.array(grad_phi, dtype=float)
 
   def interpolate_material_mass_to_grid(self):
-    """
+    r"""
     """
     # new mass must start at zero :
     m    = Function(self.grid_model.Q)
@@ -512,7 +688,7 @@ class Model(object):
     self.grid_model.update_mass(m)
 
   def interpolate_material_velocity_to_grid(self):
-    """
+    r"""
     """
     # new velocity must start at zero :
     #model.assign_variable(self.U3, DOLFIN_EPS)
@@ -533,7 +709,7 @@ class Model(object):
     self.grid_model.update_velocity([u,v])
 
   def calculate_material_density(self):
-    """
+    r"""
     """
     h   = self.grid_model.h.vector().array()    # cell diameter
     m   = self.grid_model.m.vector().array()
@@ -552,7 +728,7 @@ class Model(object):
       M.rho = np.array(rho, dtype=float)
 
   def calculate_material_initial_volume(self):
-    """
+    r"""
     """
     # iterate through all materials :
     for M in self.materials:
@@ -561,7 +737,14 @@ class Model(object):
       M.V = np.array(M.m / M.rho, dtype=float)
 
   def calculate_material_velocity_gradient(self):
-    """
+    r"""
+    Calculate particle velocity gradient for each material :
+
+    * ``self.grad_U``     -- particle velocity gradient tensor :math:`\nabla \mathbf{u}_p`
+    * ``self.dudx``       -- :math:`\frac{\partial u_p}{\partial x}`
+    * ``self.dudy``       -- :math:`\frac{\partial u_p}{\partial y}`
+    * ``self.dvdx``       -- :math:`\frac{\partial v_p}{\partial x}`
+    * ``self.dvdy``       -- :math:`\frac{\partial v_p}{\partial y}`
     """
     # recover the grid nodal velocities :
     u,v = self.grid_model.U3.split(True)
@@ -585,7 +768,7 @@ class Model(object):
       M.grad_u = np.array(grad_U_p_v, dtype=float)
 
   def interpolate_grid_velocity_to_material(self):
-    """
+    r"""
     """
     u, v  = self.grid_model.U3.split(True)
 
@@ -604,7 +787,7 @@ class Model(object):
       M.u_star = np.array(v_p_v, dtype=float)
 
   def interpolate_grid_acceleration_to_material(self):
-    """
+    r"""
     """
     a_x, a_y = self.grid_model.a3.split(True)
 
@@ -622,7 +805,7 @@ class Model(object):
       M.a = np.array(a_p_v, dtype=float)
 
   def initialize_material_tensors(self):
-    """
+    r"""
     """
     self.calculate_material_velocity_gradient()
 
@@ -634,14 +817,14 @@ class Model(object):
       M.sigma   = M.calculate_stress()
 
   def update_material_volume(self):
-    """
+    r"""
     """
     # iterate through all materials :
     for M in self.materials:
       M.V = (M.dF[:,0,0] * M.dF[:,1,1] + M.dF[:,1,0] * M.dF[:,0,1]) * M.V
 
   def update_material_deformation_gradient(self):
-    """
+    r"""
     """
     # iterate through all materials :
     for M in self.materials:
@@ -649,7 +832,7 @@ class Model(object):
       M.F *= M.dF
 
   def update_material_stress(self):
-    """
+    r"""
     """
     # iterate through all materials :
     for M in self.materials:
@@ -658,7 +841,7 @@ class Model(object):
       M.sigma    = M.calculate_stress()
 
   def calculate_grid_internal_forces(self):
-    """
+    r"""
     """
     # new internal forces start at zero :
     f_int_x  = Function(self.grid_model.Q)
@@ -683,7 +866,7 @@ class Model(object):
     self.grid_model.update_internal_force_vector([f_int_x, f_int_y])
 
   def update_grid_velocity(self):
-    """
+    r"""
     """
     # calculate the new grid velocity :
     u_i   = self.grid_model.U3.vector().array()
@@ -694,7 +877,7 @@ class Model(object):
     self.grid_model.assign_variable(self.grid_model.U3, u_i_n)
 
   def calculate_grid_acceleration(self):
-    """
+    r"""
     """
     f_int_x, f_int_y = self.grid_model.f_int.split(True)
     f_int_x_a = f_int_x.vector().array()
@@ -714,7 +897,7 @@ class Model(object):
     self.grid_model.update_acceleration([a_x, a_y])
 
   def advect_material_particles(self):
-    """
+    r"""
     """
     # interpolate the grid acceleration from the grid to the particles : 
     self.interpolate_grid_acceleration_to_material()
@@ -732,7 +915,7 @@ class Model(object):
       M.x += M.u_star * self.dt
 
   def mpm(self, t_start, t_end):
-    """
+    r"""
     """
     t = t_start
       
@@ -773,44 +956,5 @@ class Model(object):
 
       # increment time step :
       t += self.dt
-
-
-
-
-#===============================================================================
-# model properties :
-out_dir  = 'output/'
-order    = 1
-n_x      = 20
-dt       = 0.002
-E        = 1000.0
-nu       = 0.3
-u_mag    = 0.1
-m_mag    = 0.15
-
-# create a material :
-n        = 100
-r_max    = 0.15
-
-X1       = sunflower(n, 2, 0.66, 0.66, r_max)
-M1       =  m_mag * np.ones(n)
-U1       = -u_mag * np.ones([n,2])
-
-X2       = sunflower(n, 2, 0.34, 0.34, r_max)
-M2       = m_mag * np.ones(n)
-U2       = u_mag * np.ones([n,2])
-
-M1       = Material(M1, X1, U1, E, nu)
-M2       = Material(M2, X2, U2, E, nu)
-
-# initialize the model :
-grid_model = GridModel(out_dir, order, n_x)
-model      = Model(out_dir, grid_model, dt)
-
-model.add_material(M1)
-model.add_material(M2)
-
-# material point method :
-model.mpm(0, 5)
 
 
