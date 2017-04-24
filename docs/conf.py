@@ -32,23 +32,23 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
 #
 # needs_sphinx = '1.0'
 
-## moock out packages for autodock
-#
-#from mock import Mock as MagicMock
-#
-#class Mock(MagicMock):
-#  __all__ = []
-#  @classmethod
-#  def __getattr__(cls, name):
-#    return Mock()
-#
-#MOCK_MODULES = ['fenics', 'ufl']
-#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+# mock out packages for autodock
 
-#if os.environ.get('READTHEDOCS', None) == 'True':
-#  sys.path.insert(0,'.')
-#  from readthedocs import *
-#  sys.path.pop(0)
+from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+  __all__ = []
+  @classmethod
+  def __getattr__(cls, name):
+    return Mock()
+
+MOCK_MODULES = ['fenics', 'ufl']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+
+if os.environ.get('READTHEDOCS', None) == 'True':
+  sys.path.insert(0,'.')
+  from readthedocs import *
+  sys.path.pop(0)
 
 
 # Add any Sphinx extension module names here, as strings. They can be
