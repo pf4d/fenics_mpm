@@ -257,10 +257,17 @@ class Model(object):
 
   def update_material_volume(self):
     r"""
-    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle volumes from the incremental deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle volumes from the incremental particle deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula
 
     .. math::
-      V_p^t = \mathrm{det}(\mathrm{d}F_b) V_p^{t-1}.
+      V_p^t = \mathrm{det}(\mathrm{d}F_p) V_p^{t-1}.
+
+    This is equivalent to the operation
+
+    .. math::
+      V_p^t = \mathrm{det}(F_p) V_p^0,
+
+    with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial volume :math:`V_p^0` calculated by :func:`~model.Model.calculate_material_initial_volume` and set to ``M.V0``.
     """
     # iterate through all materials :
     # NOTE: the new volume can be calculated using either the differential 

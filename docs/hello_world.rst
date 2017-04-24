@@ -78,7 +78,7 @@ and finally perform the material point method algorithm from ``t=0`` to ``t=5``:
 
   model.mpm(0, 5)
 
-Check the ``output_dir`` directory for ``.pvd`` files.  Open them with ``ParaView``.  You can find the entire simulation file in the ``fenics_mpm/simulations/`` directory.
+Currently, the simulation will terminate with an error when a particle moves beyond the grid.  Check the ``output_dir`` directory for ``.pvd`` files.  Open them with ``ParaView``.  You can find the entire simulation file in the ``fenics_mpm/simulations/`` directory.
 
 
 
