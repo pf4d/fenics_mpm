@@ -25,8 +25,7 @@ sys.path.insert(0, os.path.abspath('../fenics_mpm/'))
 intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),
                        'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net/', None),
-                       'pyproj': ('https://jswhit.github.io/pyproj/', None)}
+                       'matplotlib': ('http://matplotlib.sourceforge.net/', None)}
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
@@ -371,5 +370,3 @@ texinfo_documents = [
 # texinfo_no_detailmenu = False
 
 
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
