@@ -149,7 +149,8 @@ class Model(object):
     for M in self.materials:
 
       # calculate inital volume from particle mass and density :
-      M.V = np.array(M.m / M.rho, dtype=float)
+      M.V0 = np.array(M.m / M.rho, dtype=float)
+      M.V  = M.V0
 
   def calculate_material_velocity_gradient(self):
     r"""
@@ -262,8 +263,11 @@ class Model(object):
       V_p^t = \mathrm{det}(\mathrm{d}F_b) V_p^{t-1}.
     """
     # iterate through all materials :
+    # NOTE: the new volume can be calculated using either the differential 
+    #       deformation gradient or current deformation gradient :
     for M in self.materials:
       M.V = (M.dF[:,0,0] * M.dF[:,1,1] + M.dF[:,1,0] * M.dF[:,0,1]) * M.V
+      #M.V = (M.F[:,0,0] * M.F[:,1,1] + M.F[:,1,0] * M.F[:,0,1]) * M.V0
 
   def update_material_deformation_gradient(self):
     r"""
