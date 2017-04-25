@@ -417,7 +417,7 @@ class Model(object):
     * :func:`~model.Model.interpolate_material_mass_to_grid`
     * :func:`~model.Model.interpolate_material_velocity_to_grid`
     
-    If this is the initialization step (``t == t_end``):
+    If this is the initialization step (``t == t_start``):
 
     * :func:`~model.Model.initialize_material_tensors`
     * :func:`~model.Model.calculate_material_density`
