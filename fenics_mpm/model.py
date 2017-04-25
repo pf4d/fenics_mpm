@@ -112,7 +112,7 @@ class Model(object):
 
   def calculate_material_density(self):
     r"""
-    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities :math:`\rho_p` given by ``M.rho`` with grid mass :math:`m_i` and using the cell diameter :math:`h_i` to approximate the cell volume :math:`v_i = \frac{4}{3} \pi \left(\frac{h_i}{2}\right)^3`.  That is,
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities :math:`\rho_p` given by ``M.rho`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal masses :math:`m_i` and nodal cell diameter volume estimates :math:`v_i = \frac{4}{3} \pi \left(\frac{h_i}{2}\right)^3` using approximate nodal cell diameter :math:`h_i`.  That is,
 
     .. math::
       \rho_p = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \frac{m_i}{v_i}
@@ -154,13 +154,10 @@ class Model(object):
 
   def calculate_material_velocity_gradient(self):
     r"""
-    Calculate particle velocity gradient for each material :
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle velocity gradient vectors :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal velocity vectors :math:`\nabla \mathbf{u}_i` using the grid basis function gradients evaluated at the particle position :math:`\nabla \phi_i(\mathbf{x}_p)`.  That is,
 
-    * ``self.grad_U``     -- particle velocity gradient tensor :math:`\nabla \mathbf{u}_p`
-    * ``self.dudx``       -- :math:`\frac{\partial u_p}{\partial x}`
-    * ``self.dudy``       -- :math:`\frac{\partial u_p}{\partial y}`
-    * ``self.dvdx``       -- :math:`\frac{\partial v_p}{\partial x}`
-    * ``self.dvdy``       -- :math:`\frac{\partial v_p}{\partial y}`
+    .. math::
+      \nabla \mathbf{u}_p = \sum_{i=1}^{n_n} \nabla \phi_i(\mathbf{x}_p) \mathbf{u}_i.
     """
     # recover the grid nodal velocities :
     u,v = self.grid_model.U3.split(True)
@@ -363,7 +360,7 @@ class Model(object):
     .. math::
       \mathbf{a}_i = \frac{\mathbf{f}_i^{\mathrm{int}} + \mathbf{f}_i^{\mathrm{ext}}}{m_i},
 
-    where the grid mass :math:`m_i` has been limited to be :math:`\geq \varepsilon = 1 \times 10^{-2}`, and external forces is currently only :math:`\mathbf{f}_i^{\mathrm{ext}} = \mathbf{0}`.
+    where the grid mass :math:`m_i` has been limited to be :math:`\geq \varepsilon = 1 \times 10^{-2}`, and external forces are currently only :math:`\mathbf{f}_i^{\mathrm{ext}} = \mathbf{0}`.
     """
     f_int_x, f_int_y = self.grid_model.f_int.split(True)
     f_int_x_a = f_int_x.vector().array()
