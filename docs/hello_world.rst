@@ -7,7 +7,7 @@ First, import the ``fenics_mpm`` package::
 
   from fenics_mpm import *
 
-Now we can use the ``sunflower`` pattern defined `here <https://doi.org/10.1016/0025-5564(79)90080-4/>`_ to create our two disks::
+Now we can use the ``sunflower`` pattern defined `here <https://doi.org/10.1016/0025-5564(79)90080-4>`_ to create our two disks::
 
   # radial measure :  
   def radius(k,n,b,r_max):
