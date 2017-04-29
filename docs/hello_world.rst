@@ -43,7 +43,7 @@ define some model parameters::
   n          = 100         # number of particles
   r_max      = 0.15        # disk radius
 
-create two elastic materials using the :class:`~material.ElasticMaterial` class.  First generate coordinate vector :math:`\mathbf{x}_p` and velocity vector :math:`\mathbf{u}_p` for the upper-right disk::
+create two elastic materials using the :class:`~material.ElasticMaterial` class.  First generate coordinate vector :math:`\mathbf{x}_p`, mass :math:`m_p`, and velocity vector :math:`\mathbf{u}_p` for the upper-right disk::
 
   X1         = sunflower(n, 2, 0.66, 0.66, r_max)
   M1         =  m_mag * np.ones(n)
