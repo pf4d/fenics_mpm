@@ -2,7 +2,7 @@
 
 using namespace dolfin;
 
-Probe::Probe(const FunctionSpace& V)
+MPMModel::MPMModel(const FunctionSpace& V)
 {
 
   const Mesh& mesh = *V.mesh();
@@ -56,7 +56,7 @@ Probe::Probe(const FunctionSpace& V)
     return vrt, phi, grad_phi
 */
 
-void Probe::eval(const Array<double>& x)
+void MPMModel::eval(const Array<double>& x)
 {
 
   // Find the cell that contains probe

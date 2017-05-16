@@ -1,18 +1,14 @@
-#ifndef __PROBE_H
-#define __PROBE_H
+#ifndef __MPMMODEL_H
+#define __MPMMODEL_H
 
 #include <dolfin/function/FunctionSpace.h>
-#include <dolfin/function/Function.h>
-#include <dolfin/geometry/BoundingBoxTree.h>
-#include <fstream>
-#include <boost/lexical_cast.hpp>
 
 namespace dolfin
 {
-  class Probe
+  class MPMModel
   {
     public:
-      Probe(const FunctionSpace& V);
+      MPMModel(const FunctionSpace& V);
       void eval(const Function& u);
       std::size_t num_components() {return value_size_loc;};
       const std::vector<dolfin::la_index> get_vrt() {return vrt;};

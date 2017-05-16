@@ -4,6 +4,7 @@ from   fenics            import *
 from   fenics_mpm.helper import print_text, print_min_max
 import numpy                 as np
 import os
+import inspect
 
 
 class GridModel(object):
@@ -30,9 +31,13 @@ class GridModel(object):
     header_file.close()
 
     # compile this with Instant JIT compiler :
-    self.mpm_module = compile_extension_module(
-      code=code, source_directory=cpp_src_dir, sources=["MPMModel.cpp"],
-      include_dirs=[".", cpp_src_dir])
+    inst_params = {'code'                      : code,
+                   'module_name'               : "MPMModel",
+                   'source_directory'          : cpp_src_dir,
+                   'sources'                   : ["MPMModel.cpp"],
+                   'additional_system_headers' : ["petscsys.h"],
+                   'include_dirs'              : [".", cpp_src_dir]}
+    self.mpm_module = compile_extension_module(**inst_params)
     
     # have the compiler generate code for evaluating basis derivatives :
     #parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
