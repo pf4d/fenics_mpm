@@ -24,14 +24,15 @@ class GridModel(object):
     #self.this = super(type(self), self)  # pointer to this base class
 
     # open the cpp code for evaluating the basis functions :
-    header_file = open("cpp/MPMModel.h", "r")
+    cpp_src_dir = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
+    header_file = open(cpp_src_dir + "MPMModel.h", "r")
     code        = header_file.read()
     header_file.close()
 
     # compile this with Instant JIT compiler :
     self.mpm_module = compile_extension_module(
-      code=code, source_directory="cpp", sources=["MPMModel.cpp"],
-      include_dirs=[".", os.path.abspath("cpp")])
+      code=code, source_directory=cpp_src_dir, sources=["MPMModel.cpp"],
+      include_dirs=[".", cpp_src_dir])
     
     # have the compiler generate code for evaluating basis derivatives :
     #parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
@@ -206,34 +207,38 @@ class GridModel(object):
 
     :rtype: :py:obj:`tuple` (:class:`~numpy.ndarray`, :class:`~numpy.ndarray`, :class:`~numpy.ndarray`)
     """
-    mesh    = self.mesh
-    element = self.element
+    #mesh    = self.mesh
+    #element = self.element
 
-    # find the cell with point :
-    x_pt       = Point(x)
-    cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
-    cell       = Cell(mesh, cell_id)
-    coord_dofs = cell.get_vertex_coordinates()       # local coordinates
-    
-    # array for all basis functions of the cell :
-    phi = np.zeros(element.space_dimension(), dtype=float)
-    
-    # array for values with derivatives of all 
-    # basis functions, 2 * element dim :
-    grad_phi = np.zeros(2*element.space_dimension(), dtype=float)
-    
-    # compute basis function values :
-    element.evaluate_basis_all(phi, x, coord_dofs, cell.orientation())
-    
-    # compute 1st order derivatives :
-    element.evaluate_basis_derivatives_all(1, grad_phi, x, 
-                                           coord_dofs, cell.orientation())
+    ## find the cell with point :
+    #x_pt       = Point(x)
+    #cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
+    #cell       = Cell(mesh, cell_id)
+    #coord_dofs = cell.get_vertex_coordinates()       # local coordinates
+    #
+    ## array for all basis functions of the cell :
+    #phi = np.zeros(element.space_dimension(), dtype=float)
+    #
+    ## array for values with derivatives of all 
+    ## basis functions, 2 * element dim :
+    #grad_phi = np.zeros(2*element.space_dimension(), dtype=float)
+    #
+    ## compute basis function values :
+    #element.evaluate_basis_all(phi, x, coord_dofs, cell.orientation())
+    #
+    ## compute 1st order derivatives :
+    #element.evaluate_basis_derivatives_all(1, grad_phi, x, 
+    #                                       coord_dofs, cell.orientation())
 
-    # reshape such that rows are [d/dx, d/dy] :
-    grad_phi = grad_phi.reshape((-1, 2))
+    ## reshape such that rows are [d/dx, d/dy] :
+    #grad_phi = grad_phi.reshape((-1, 2))
 
-    # get corresponding vertex indices, in dof indicies : 
-    vrt = self.dofmap.cell_dofs(cell.index())
+    ## get corresponding vertex indices, in dof indicies : 
+    #vrt = self.dofmap.cell_dofs(cell.index())
+    self.probe(x);
+    vrt      = self.probe.get_vrt()
+    phi      = self.probe.get_phi()
+    grad_phi = self.probe.get_grad_phi()
 
     return vrt, phi, grad_phi
 
