@@ -1,9 +1,9 @@
 # -*- coding: iso-8859-15 -*-
 
-from   fenics   import *
-#import fenicstools       as ft
-import numpy             as np
+from   fenics            import *
 from   fenics_mpm.helper import print_text, print_min_max
+import numpy                 as np
+import os
 
 
 class GridModel(object):
@@ -22,9 +22,19 @@ class GridModel(object):
     """
     self.this = self
     #self.this = super(type(self), self)  # pointer to this base class
+
+    # open the cpp code for evaluating the basis functions :
+    header_file = open("cpp/MPMModel.h", "r")
+    code        = header_file.read()
+    header_file.close()
+
+    # compile this with Instant JIT compiler :
+    self.mpm_module = compile_extension_module(
+      code=code, source_directory="cpp", sources=["MPMModel.cpp"],
+      include_dirs=[".", os.path.abspath("cpp")])
     
     # have the compiler generate code for evaluating basis derivatives :
-    parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
+    #parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
   
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
@@ -77,6 +87,9 @@ class GridModel(object):
     self.Q       = FunctionSpace(self.mesh, space, order)
     self.V       = VectorFunctionSpace(self.mesh, space, order)
     self.T       = TensorFunctionSpace(self.mesh, space, order)
+
+    # create a Probe instance from mpm_model.cpp :
+    self.probe = self.mpm_model.Probe(self.Q)
     
     s = "    - fundamental function spaces created - "
     print_text(s, cls=self.this)

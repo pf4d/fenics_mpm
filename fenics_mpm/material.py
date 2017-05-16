@@ -88,7 +88,7 @@ class Material(object):
     """
     epsilon_n = []
 
-    # calculate particle deformation gradients :
+    # calculate particle strain-rate tensors :
     for grad_u_p in self.grad_u:
       dudx   = grad_u_p[0,0]
       dudy   = grad_u_p[0,1]
