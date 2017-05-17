@@ -1,7 +1,8 @@
 # -*- coding: iso-8859-15 -*-
 
 from   fenics import *
-import numpy  as np
+import numpy      as np
+import os
 
 
 class Model(object):
@@ -30,34 +31,85 @@ class Model(object):
     self.grid_model = grid_model   # grid model
     self.dt         = dt           # time step
     self.materials  = []           # list of Material objects, initially none
+    self.mat_models = []           # list of cpp material models
+    
+    # open the cpp code for evaluating the basis functions :
+    cpp_src_dir = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
+    header_file = open(cpp_src_dir + "MPMModel.h", "r")
+    code        = header_file.read()
+    header_file.close()
+
+    # compile this with Instant JIT compiler :
+    inst_params = {'code'                      : code,
+                   'module_name'               : "MPMModel",
+                   'source_directory'          : cpp_src_dir,
+                   'sources'                   : ["MPMModel.cpp"],
+                   'additional_system_headers' : ["petscsys.h"],
+                   'include_dirs'              : [".", cpp_src_dir]}
+    self.mpm_module = compile_extension_module(**inst_params)
 
   def add_material(self, M):
     r"""
     Add :class:`~material.Material` ``M`` to the list of materials ``self.materials``.
     """
+    mat_model = self.mpm_module.MPMModel(self.grid_model.Q, M.n)
     self.materials.append(M)
+    self.mat_models.append(mat_model)
+
+  def get_particle_basis_functions(self, x):
+    r"""
+    Create particle basis functions for the single particle coordinate vector :math:`\mathbf{x}_p`.  In what follows, the topological dimension of the mesh is :math:`d` and the number of nodes per element is :math:`n_n`.
+
+    Returns a :py:obj:`tuple` of :class:`~numpy.ndarray`\s, respectively :
+
+    * ``vrt`` -- set of :math:`n_n` node indices :math:`i` for this particle's cell.  Shape is :math:`1 \times n_n`.
+    * ``phi`` -- interpolation function values :math:`\phi_i(\mathbf{x}_p)` corresponding to each node :math:`i` in ``vrt``.  Shape is :math:`1 \times n_n`.
+    * ``grad_phi`` -- gradient of interpolation function values :math:`\nabla \phi_i(\mathbf{x}_p)` corresponding to each node :math:`i` in ``vrt``.  Shape is :math:`d \times n_n`.  For example, in three dimensions :math:`\mathbf{x}_p = [x\ y\ z]^{\intercal}`, and with nodal indicies :math:`1,2,\ldots,n` ``grad_phi`` is
+
+    .. math:: \nabla \phi_i(\mathbf{x}_p) = 
+                                   \begin{bmatrix}
+                                      \frac{\partial \phi_1}{\partial x} & \frac{\partial \phi_1}{\partial y} & \frac{\partial \phi_1}{\partial z} \\
+                                      \frac{\partial \phi_2}{\partial x} & \frac{\partial \phi_2}{\partial y} & \frac{\partial \phi_2}{\partial z} \\
+                                      \vdots & \vdots & \vdots \\
+                                      \frac{\partial \phi_n}{\partial x} & \frac{\partial \phi_n}{\partial y} & \frac{\partial \phi_3}{\partial z}
+                                    \end{bmatrix}
+
+    :param x: global coordinate to evaluate.
+    :type x:  :py:obj:`int` or :py:obj:`float` or :class:`~numpy.ndarray`
+
+    :rtype: :py:obj:`tuple` (:class:`~numpy.ndarray`, :class:`~numpy.ndarray`, :class:`~numpy.ndarray`)
+    """
+    self.MPMModel.eval(x);
+    vrt      = self.MPMModel.get_vrt()
+    phi      = self.MPMModel.get_phi()
+    grad_phi = self.MPMModel.get_grad_phi()
+
+    # reshape such that rows are [d/dx, d/dy] :
+    grad_phi = grad_phi.reshape((-1, 2))
+
+    #print "vrt =", type(vrt), vrt
+    #print "phi =", type(phi), phi
+    #print "grad_phi = ", type(grad_phi), grad_phi
+
+    return vrt, phi, grad_phi
 
   def formulate_material_basis_functions(self):
     r"""
     Iterate through each particle for each material ``M`` in :py:obj:`list` ``self.materials`` and calculate the particle interpolation function :math:`\phi_i(\mathbf{x}_p)` and gradient function :math:`\nabla \phi_i(\mathbf{x}_p)` values for each of the :math:`n_n` nodes of the corresponding grid cell.  This overwrites each :class:`~material.Material`\s ``M.vrt``, ``M.phi``, and ``M.grad_phi`` values.
     """
     # iterate through all materials :
-    for M in self.materials:
+    for M, m_m in zip(self.materials, self.mat_models):
 
-      vrt      = []  # grid nodal indicies for points
-      phi      = []  # grid basis values at points
-      grad_phi = []  # grid basis gradient values at points
-
-      # iterate through particle positions :
-      for x_p in M.x: 
-        # get the grid node indices, basis values, and basis gradient values :
-        out = self.grid_model.get_particle_basis_functions(x_p)
+      # get the grid node indices, basis values, and basis gradient values :
+      m_m.eval(M.x.flatten());
+      vrt_p      = m_m.get_vrt()
+      phi_p      = m_m.get_phi()
+      grad_phi_p = m_m.get_grad_phi()
+      print vrt_p, phi_p, grad_phi_p
       
-        # append these to a list corresponding with particles : 
-        vrt.append(out[0])
-        phi.append(out[1])
-        grad_phi.append(out[2])
-
+      # reshape such that rows are [d/dx, d/dy] :
+      grad_phi_p = grad_phi_p.reshape((-1, 2))
+      
       # save as array within each material :
       M.vrt      = np.array(vrt)
       M.phi      = np.array(phi, dtype=float)
