@@ -2,6 +2,8 @@
 #define __MPMMODEL_H
 
 #include <dolfin/function/FunctionSpace.h>
+#include <dolfin/geometry/BoundingBoxTree.h>
+#include <dolfin/fem/GenericDofMap.h>
 
 namespace dolfin
 {
@@ -9,21 +11,25 @@ namespace dolfin
   {
     public:
       MPMModel(const FunctionSpace& V);
-      void eval(const Function& u);
-      std::size_t num_components() {return value_size_loc;};
-      const std::vector<dolfin::la_index> get_vrt() {return vrt;};
-      std::vector<double> get_phi() {return phi;};
-      std::vector<std::vector<double> > get_grad_phi() {return grad_grad_phi;};
+      void eval(const Array<double>& x);
+      std::vector<double>       get_phi()      {return phi;};
+      std::vector<unsigned int> get_vrt()      {return vrt;};
+      std::vector<double>       get_grad_phi() {return grad_phi;};
 
     private:
+      const unsigned int cell_orientation = 0;
+      const unsigned int deriv_order = 1; 
+      const FunctionSpace* Q;
       std::vector<double> phi;
-      std::vector<std::vector<double> > grad_phi;
-      boost::shared_ptr<const FiniteElement> element;
-      Cell* cell;
+      std::vector<unsigned int> vrt;
+      std::vector<double> grad_phi;
+      std::shared_ptr<const FiniteElement> element;
+      std::unique_ptr<Cell> cell;
       unsigned int cell_id;
-      GenericDofMap* dofmap;
-      const std::vector<dolfin::la_index> &vrt;
-      std::size_t value_size_loc;
+      std::size_t gdim;
+      std::size_t sdim;
+      std::shared_ptr<const dolfin::Mesh> mesh;
+      std::vector<double> vertex_coordinates;
   };
 }
 #endif

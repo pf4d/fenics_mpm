@@ -40,7 +40,7 @@ class GridModel(object):
     self.mpm_module = compile_extension_module(**inst_params)
     
     # have the compiler generate code for evaluating basis derivatives :
-    #parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
+    parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
   
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
@@ -95,7 +95,7 @@ class GridModel(object):
     self.T       = TensorFunctionSpace(self.mesh, space, order)
 
     # create a Probe instance from mpm_model.cpp :
-    self.probe = self.mpm_model.Probe(self.Q)
+    self.probe = self.mpm_module.MPMModel(self.Q)
     
     s = "    - fundamental function spaces created - "
     print_text(s, cls=self.this)
@@ -240,10 +240,17 @@ class GridModel(object):
 
     ## get corresponding vertex indices, in dof indicies : 
     #vrt = self.dofmap.cell_dofs(cell.index())
-    self.probe(x);
+    self.probe.eval(x);
     vrt      = self.probe.get_vrt()
     phi      = self.probe.get_phi()
     grad_phi = self.probe.get_grad_phi()
+
+    # reshape such that rows are [d/dx, d/dy] :
+    grad_phi = grad_phi.reshape((-1, 2))
+
+    #print "vrt =", type(vrt), vrt
+    #print "phi =", type(phi), phi
+    #print "grad_phi = ", type(grad_phi), grad_phi
 
     return vrt, phi, grad_phi
 
