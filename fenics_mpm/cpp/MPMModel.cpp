@@ -14,7 +14,12 @@ MPMModel::MPMModel(const FunctionSpace& V)
   phi.resize(element->space_dimension());
   vrt.resize(element->space_dimension());
   grad_phi.resize(gdim*sdim);
-}                              
+}
+
+void MPMModel::add_material(const MPMMaterial& M)
+{
+  materials.push_back(&M);
+}
 
 void MPMModel::eval(const Array<double>& x)
 {
