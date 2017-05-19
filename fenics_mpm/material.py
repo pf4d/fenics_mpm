@@ -93,8 +93,10 @@ class Material(object):
                    'additional_system_headers' : [],
                    'include_dirs'              : include_dirs}
     self.mat_module = compile_extension_module(**inst_params)
-    self.cpp_mat    = self.mat_module.MPMModel(self.m, self.x, 
-                                               self.u, self.d, 1)
+    self.cpp_mat    = self.mat_module.MPMMaterial(self.m,
+                                                  self.x.flatten(), 
+                                                  self.u.flatten(),
+                                                  self.d, 1)
       
   def color(self):
     """
@@ -128,6 +130,8 @@ class Material(object):
       eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
       epsilon_n.append(eps)
     return np.array(epsilon_n, dtype=float)
+    #self.cpp_mat.update_strain_rate()
+    #return self.cpp_mat.get_epsilon()
 
   def calculate_stress(self):
     r"""

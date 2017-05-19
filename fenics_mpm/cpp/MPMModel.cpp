@@ -4,12 +4,12 @@ using namespace dolfin;
 
 MPMModel::MPMModel(const FunctionSpace& V)
 {
-  Q    = &V;
-  mesh = V.mesh();
+  Q       = &V;
+  mesh    = V.mesh();
   element = V.element();
   
-  gdim = mesh->geometry().dim();
-  sdim = element->space_dimension();
+  gdim    = mesh->geometry().dim();
+  sdim    = element->space_dimension();
       
   phi.resize(element->space_dimension());
   vrt.resize(element->space_dimension());

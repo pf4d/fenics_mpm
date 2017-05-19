@@ -1,14 +1,19 @@
 #ifndef __MPMMATERIAL_H
 #define __MPMMATERIAL_H
 
+#include <dolfin/common/Array.h>
+#include <vector>
+#include <omp.h>
+#include <math.h>
+
 namespace dolfin
 {
   class MPMMaterial
   {
     public:
-      MPMMaterial(Array<double>& m,
-                  Array<double>& x,
-                  Array<double>& u,
+      MPMMaterial(const Array<double>& m_a,
+                  const Array<double>& x_a,
+                  const Array<double>& u_a,
                   const unsigned int topological_dimension,
                   const unsigned int element_dimension);
       
@@ -28,27 +33,29 @@ namespace dolfin
       std::vector<std::vector<double>>       get_F()        {return F;};
       std::vector<std::vector<double>>       get_sigma()    {return sigma;};
       std::vector<std::vector<double>>       get_epsilon()  {return epsilon;};
+      void update_strain_rate();
+      void calc_pi();
 
     private:
       unsigned int                           n_p;      // number of particles
       const unsigned int                     tDim;     // topological dimension
       const unsigned int                     eDim;     // element dimension
-      std::vector<double>                    m         // mass vector
-      std::vector<double>                    rho       // density vector
-      std::vector<double>                    V0        // initial volume vector
-      std::vector<double>                    V         // volume vector
-      std::vector<double>                    I         // identity tensor
-      std::vector<std::vector<double>>       x         // position vector
-      std::vector<std::vector<double>>       u         // velocity vector
-      std::vector<std::vector<double>>       u_star    // grid vel. interp.
-      std::vector<std::vector<double>>       a         // acceleration vector
-      std::vector<std::vector<double>>       grad_u    // velocity grad. tensor
-      std::vector<std::vector<unsigned int>> vrt       // grid nodal indicies
-      std::vector<std::vector<double>>       phi       // grid basis val's
-      std::vector<std::vector<double>>       grad_phi  // grid basis grad. val's
-      std::vector<std::vector<double>>       F         // def. gradient tensor
-      std::vector<std::vector<double>>       sigma     // stress tensor
-      std::vector<std::vector<double>>       epsilon   // strain-rate tensor
+      std::vector<double>                    m;        // mass vector
+      std::vector<double>                    rho;      // density vector
+      std::vector<double>                    V0;       // initial volume vector
+      std::vector<double>                    V;        // volume vector
+      std::vector<double>                    I;        // identity tensor
+      std::vector<std::vector<double>>       x;        // position vector
+      std::vector<std::vector<double>>       u;        // velocity vector
+      std::vector<std::vector<double>>       u_star;   // grid vel. interp.
+      std::vector<std::vector<double>>       a;        // acceleration vector
+      std::vector<std::vector<double>>       grad_u;   // velocity grad. tensor
+      std::vector<std::vector<unsigned int>> vrt;      // grid nodal indicies
+      std::vector<std::vector<double>>       phi;      // grid basis val's
+      std::vector<std::vector<double>>       grad_phi; // grid basis grad. val's
+      std::vector<std::vector<double>>       F;        // def. gradient tensor
+      std::vector<std::vector<double>>       sigma;    // stress tensor
+      std::vector<std::vector<double>>       epsilon;  // strain-rate tensor
 
       // components of the strain-rate tensor :
       double  eps_xx;
