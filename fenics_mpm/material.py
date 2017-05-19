@@ -2,6 +2,9 @@
 
 import numpy             as np
 import matplotlib.pyplot as plt
+import os
+from   fenics            import compile_extension_module
+import instant
 from   fenics_mpm.helper import print_text, raiseNotDefined
 
 
@@ -67,6 +70,31 @@ class Material(object):
 
     # identity tensors :
     self.I        = np.array([np.identity(self.d)]*self.n)
+    
+    # open the cpp code for evaluating the basis functions :
+    cpp_src_dir = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
+    header_file = open(cpp_src_dir + "MPMMaterial.h", "r")
+    code        = header_file.read()
+    header_file.close()
+
+    cmake_packages = ['DOLFIN']
+    module_name    = "MPMMaterial"
+    sources        = ["MPMMaterial.cpp"]
+    source_dir     = cpp_src_dir
+    include_dirs   = [".", cpp_src_dir, 
+                      '/usr/lib/petscdir/3.7.3/x86_64-linux-gnu-real/include/']
+    module_name    = "MPMMaterial"
+
+    # compile this with Instant JIT compiler :
+    inst_params = {'code'                      : code,
+                   'module_name'               : module_name,
+                   'source_directory'          : cpp_src_dir,
+                   'sources'                   : sources,
+                   'additional_system_headers' : [],
+                   'include_dirs'              : include_dirs}
+    self.mat_module = compile_extension_module(**inst_params)
+    self.cpp_mat    = self.mat_module.MPMModel(self.m, self.x, 
+                                               self.u, self.d, 1)
       
   def color(self):
     """

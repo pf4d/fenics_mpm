@@ -10,9 +10,9 @@ MPMMaterial::MPMMaterial(Array<double>& m,
             : tDim(topological_dimension), eDim(element_dimension)
 {
   n_p = m.size();
-  printf("::: created material with n_p = %u \t
-                                    tDim = %u \t
-                                    eDim = %u :::\n", n_p, tDim, eDim);
+  printf("::: created material with n_p = %u \t" +
+                                    "tDim = %u \t" +
+                                    "eDim = %u :::\n", n_p, tDim, eDim);
 
   // one scalar or vector for each particle :
   m.resize(n_p);

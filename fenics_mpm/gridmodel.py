@@ -35,11 +35,13 @@ class GridModel(object):
                       'dolfin/geometry/BoundingBoxTree.h',
                       'dolfin/fem/GenericDofMap.h',
                       'dolfin/function/FunctionSpace.h']
-    swigargs       = ['-c++', '-fcompact', '-fopenmp', '-O', '-I.', '-small']
+    swigargs       = ['-c++', '-fcompact', '-O', '-I.', '-small']
     cmake_packages = ['DOLFIN']
+    module_name    = "MPMModel"
     sources        = ["MPMModel.cpp"]
     source_dir     = cpp_src_dir
-    include_dirs   = [".", cpp_src_dir]
+    include_dirs   = [".", cpp_src_dir, 
+                      '/usr/lib/petscdir/3.7.3/x86_64-linux-gnu-real/include/']
     module_name    = "MPMModel"
     additional_decl = """
     %init%{
@@ -67,28 +69,28 @@ class GridModel(object):
 
       %feature("autodoc", "1");
     """
-    compiled_module = instant.build_module(
-        modulename = module_name,
-        code=code,
-        source_directory=source_dir,
-        additional_declarations=additional_decl,
-        system_headers=system_headers,
-        include_dirs=include_dirs,
-        swigargs=swigargs,
-        sources=sources,
-        cmake_packages=cmake_packages)
+    #compiled_module = instant.build_module(
+    #    modulename = module_name,
+    #    code=code,
+    #    source_directory=source_dir,
+    #    additional_declarations=additional_decl,
+    #    system_headers=system_headers,
+    #    include_dirs=include_dirs,
+    #    swigargs=swigargs,
+    #    sources=sources,
+    #    cmake_packages=cmake_packages)
 
     # compile this with Instant JIT compiler :
-    #inst_params = {'code'                      : code,
-    #               'module_name'               : "MPMModel",
-    #               'source_directory'          : cpp_src_dir,
-    #               'sources'                   : ["MPMModel.cpp"],
-    #               'additional_system_headers' : ["petscsys.h"],
-    #               'include_dirs'              : [".", cpp_src_dir]}
-    #self.mpm_module = compile_extension_module(**inst_params)
+    inst_params = {'code'                      : code,
+                   'module_name'               : module_name,
+                   'source_directory'          : cpp_src_dir,
+                   'sources'                   : sources,
+                   'additional_system_headers' : [],
+                   'include_dirs'              : include_dirs}
+    self.mpm_module = compile_extension_module(**inst_params)
     
     # have the compiler generate code for evaluating basis derivatives :
-    #parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
+    parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
   
     s = "::: INITIALIZING BASE MODEL :::"
     print_text(s, cls=self.this)
