@@ -108,7 +108,7 @@ class Model(object):
     r"""
     Add :class:`~material.Material` ``M`` to the list of materials ``self.materials``.
     """
-    self.materials.append(M)
+    self.materials.append(M.cpp_mat)
 
   def formulate_material_basis_functions(self):
     r"""
