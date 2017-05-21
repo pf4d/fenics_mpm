@@ -1,9 +1,8 @@
 # -*- coding: iso-8859-15 -*-
 
-from   fenics import *
-import numpy  as np
-import os
-import instant
+from   fenics                 import *
+from   fenics_mpm             import mpm_module
+import numpy          as np
 
 
 class Model(object):
@@ -33,108 +32,42 @@ class Model(object):
     self.dt         = dt           # time step
     self.materials  = []           # list of Material objects, initially none
     
-    # open the cpp code :
-    cpp_src_dir = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
-
-    headers         = ["MPMMaterial.h", "MPMModel.h"]
-    code            = ''
-    for header_file in headers:
-      header_file   = open(cpp_src_dir + header_file, "r")
-      code         += header_file.read()
-      header_file.close()
-
-    system_headers  = ['numpy/arrayobject.h',
-                       'dolfin/geometry/BoundingBoxTree.h',
-                       'dolfin/fem/GenericDofMap.h',
-                       'dolfin/function/FunctionSpace.h']
-    swigargs        = ['-c++', '-fcompact', '-O', '-I.', '-small']
-    cmake_packages  = ['DOLFIN']
-    module_name     = "MPMModel"
-    sources         = ["MPMMaterial.cpp", "MPMModel.cpp"]
-    source_dir      = cpp_src_dir
-    include_dirs    = [".", cpp_src_dir, 
-                       '/usr/lib/petscdir/3.7.3/x86_64-linux-gnu-real/include/']
-    module_name     = "MPMModel"
-    additional_decl = """
-    %init%{
-      import_array();
-      %}
-
-      // Include global SWIG interface files:
-      // Typemaps, shared_ptr declarations, exceptions, version
-      %include <boost_shared_ptr.i>
-
-      // Global typemaps and forward declarations
-      %include "dolfin/swig/typemaps/includes.i"
-      %include "dolfin/swig/forwarddeclarations.i"
-
-      // Global exceptions
-      %include <exception.i>
-
-      // Local shared_ptr declarations
-      %shared_ptr(dolfin::Function)
-      %shared_ptr(dolfin::FunctionSpace)
-
-      // %import types from submodule function of SWIG module function
-      %import(module="dolfin.cpp.function") "dolfin/function/Function.h"
-      %import(module="dolfin.cpp.function") "dolfin/function/FunctionSpace.h"
-
-      %feature("autodoc", "1");
-    """
-    #compiled_module = instant.build_module(
-    #    modulename = module_name,
-    #    code=code,
-    #    source_directory=source_dir,
-    #    additional_declarations=additional_decl,
-    #    system_headers=system_headers,
-    #    include_dirs=include_dirs,
-    #    swigargs=swigargs,
-    #    sources=sources,
-    #    cmake_packages=cmake_packages)
-
-    # compile this with Instant JIT compiler :
-    inst_params = {'code'                      : code,
-                   'module_name'               : module_name,
-                   'source_directory'          : cpp_src_dir,
-                   'sources'                   : sources,
-                   'additional_system_headers' : [],
-                   'include_dirs'              : include_dirs}
-    self.mpm_module = compile_extension_module(**inst_params)
-
-    # create a Probe instance from mpm_model.cpp :
-    self.mpm_cpp = self.mpm_module.MPMModel(self.grid_model.Q)
+    # create an MPMMaterial instance from the module just created :
+    self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q)
 
   def add_material(self, M):
     r"""
     Add :class:`~material.Material` ``M`` to the list of materials ``self.materials``.
     """
-    self.materials.append(M.cpp_mat)
+    cpp_mat = M.get_cpp_material(self.grid_model.element)
+    M.set_cpp_material(cpp_mat)           # give the material a cpp class
+    self.mpm_cpp.add_material(cpp_mat)    # add it to MPMModel.cpp
+    self.materials.append(M)              # keep track in Python
 
   def formulate_material_basis_functions(self):
     r"""
     Iterate through each particle for each material ``M`` in :py:obj:`list` ``self.materials`` and calculate the particle interpolation function :math:`\phi_i(\mathbf{x}_p)` and gradient function :math:`\nabla \phi_i(\mathbf{x}_p)` values for each of the :math:`n_n` nodes of the corresponding grid cell.  This overwrites each :class:`~material.Material`\s ``M.vrt``, ``M.phi``, and ``M.grad_phi`` values.
     """
-    # iterate through all materials :
-    for M in self.materials:
+    self.mpm_cpp.formulate_material_basis_functions()
 
-      vrt      = []  # grid nodal indicies for points
-      phi      = []  # grid basis values at points
-      grad_phi = []  # grid basis gradient values at points
+    ## iterate through all materials :
+    #for M in self.materials:
 
-      # iterate through particle positions :
-      for x_p in M.x: 
-        # get the grid node indices, basis values, and basis gradient values :
-        out = self.get_particle_basis_functions(x_p)
-      
-        # append these to a list corresponding with particles : 
-        vrt.append(out[0])
-        phi.append(out[1])
-        grad_phi.append(out[2])
+    #  vrt      = []  # grid nodal indicies for points
+    #  phi      = []  # grid basis values at points
+    #  grad_phi = []  # grid basis gradient values at points
 
-      # save as array within each material :
-      M.vrt      = np.array(vrt)
-      M.phi      = np.array(phi, dtype=float)
-      M.grad_phi = np.array(grad_phi, dtype=float)
+    #  # iterate through particle positions :
+    #  for i in range(M.get_num_particles): 
+    #    # append these to a list corresponding with particles : 
+    #    vrt.append(M.cpp_mat.get_vrt(i))
+    #    phi.append(M.cpp_mat.get_phi(i))
+    #    grad_phi.append(M.cpp_mat.get_grad_phi(i))
+
+    #  # save as array within each material :
+    #  M.vrt      = np.array(vrt)
+    #  M.phi      = np.array(phi, dtype=float)
+    #  M.grad_phi = np.array(grad_phi, dtype=float)
 
   def get_particle_basis_functions(self, x):
     r"""
@@ -159,35 +92,9 @@ class Model(object):
 
     :rtype: :py:obj:`tuple` (:class:`~numpy.ndarray`, :class:`~numpy.ndarray`, :class:`~numpy.ndarray`)
     """
-    #mesh    = self.mesh
-    #element = self.element
-
-    ## find the cell with point :
-    #x_pt       = Point(x)
-    #cell_id    = mesh.bounding_box_tree().compute_first_entity_collision(x_pt)
-    #cell       = Cell(mesh, cell_id)
-    #coord_dofs = cell.get_vertex_coordinates()       # local coordinates
-    #
-    ## array for all basis functions of the cell :
-    #phi = np.zeros(element.space_dimension(), dtype=float)
-    #
-    ## array for values with derivatives of all 
-    ## basis functions, 2 * element dim :
-    #grad_phi = np.zeros(2*element.space_dimension(), dtype=float)
-    #
-    ## compute basis function values :
-    #element.evaluate_basis_all(phi, x, coord_dofs, cell.orientation())
-    #
-    ## compute 1st order derivatives :
-    #element.evaluate_basis_derivatives_all(1, grad_phi, x, 
-    #                                       coord_dofs, cell.orientation())
-
-    ## reshape such that rows are [d/dx, d/dy] :
-    #grad_phi = grad_phi.reshape((-1, 2))
-
     ## get corresponding vertex indices, in dof indicies : 
     #vrt = self.dofmap.cell_dofs(cell.index())
-    self.mpm_cpp.eval(x);
+    self.mpm_cpp.get_particle_basis_functions(x);
     vrt      = self.mpm_cpp.get_vrt()
     phi      = self.mpm_cpp.get_phi()
     grad_phi = self.mpm_cpp.get_grad_phi()

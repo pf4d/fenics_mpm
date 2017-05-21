@@ -12,19 +12,14 @@ namespace dolfin
   {
     public:
       MPMModel(const FunctionSpace& V);
-      void eval(const Array<double>& x);
-      std::vector<double>       get_phi()      {return phi;};
-      std::vector<unsigned int> get_vrt()      {return vrt;};
-      std::vector<double>       get_grad_phi() {return grad_phi;};
-      void add_material(const MPMMaterial& M);
+      void add_material(MPMMaterial& M);
+      void update_particle_basis_functions(MPMMaterial* M);
+      void formulate_material_basis_functions();
 
     private:
       const unsigned int cell_orientation = 0;
       const unsigned int deriv_order = 1; 
       const FunctionSpace* Q;
-      std::vector<double> phi;
-      std::vector<unsigned int> vrt;
-      std::vector<double> grad_phi;
       std::shared_ptr<const FiniteElement> element;
       std::unique_ptr<Cell> cell;
       unsigned int cell_id;
@@ -32,7 +27,7 @@ namespace dolfin
       std::size_t sdim;
       std::shared_ptr<const dolfin::Mesh> mesh;
       std::vector<double> vertex_coordinates;
-      std::vector<const MPMMaterial*> materials;
+      std::vector<MPMMaterial*> materials;
   };
 }
 #endif

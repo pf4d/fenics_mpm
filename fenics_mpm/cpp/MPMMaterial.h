@@ -2,6 +2,8 @@
 #define __MPMMATERIAL_H
 
 #include <dolfin/common/Array.h>
+#include <dolfin/geometry/Point.h>
+#include <dolfin/fem/FiniteElement.h>
 #include <vector>
 #include <omp.h>
 #include <math.h>
@@ -11,40 +13,54 @@ namespace dolfin
   class MPMMaterial
   {
     public:
+      virtual ~MPMMaterial() = 0;
       MPMMaterial(const Array<double>& m_a,
                   const Array<double>& x_a,
                   const Array<double>& u_a,
-                  const unsigned int topological_dimension,
-                  const unsigned int element_dimension);
+                  const FiniteElement& element);
       
-      std::vector<double>                    get_m()        {return m;};
-      std::vector<double>                    get_rho()      {return rho;};
-      std::vector<double>                    get_V0()       {return V0;};
-      std::vector<double>                    get_V()        {return V;};
-      std::vector<double>                    get_I()        {return I;};
-      std::vector<std::vector<double>>       get_x()        {return x;};
-      std::vector<std::vector<double>>       get_u()        {return u;};
-      std::vector<std::vector<double>>       get_u_star()   {return u_star;};
-      std::vector<std::vector<double>>       get_a()        {return a;};
-      std::vector<std::vector<double>>       get_grad_u()   {return grad_u;};
-      std::vector<std::vector<unsigned int>> get_vrt()      {return vrt;};
-      std::vector<std::vector<double>>       get_phi()      {return phi;};
-      std::vector<std::vector<double>>       get_grad_phi() {return grad_phi;};
-      std::vector<std::vector<double>>       get_F()        {return F;};
-      std::vector<std::vector<double>>       get_sigma()    {return sigma;};
-      std::vector<std::vector<double>>       get_epsilon()  {return epsilon;};
-      void update_strain_rate();
-      void calc_pi();
+      std::vector<double>*                   get_m()        {return &m;};
+      std::vector<double>*                   get_rho()      {return &rho;};
+      std::vector<double>*                   get_V0()       {return &V0;};
+      std::vector<double>*                   get_V()        {return &V;};
+      std::vector<double>*                   get_I()        {return &I;};
+      std::vector<std::vector<double>>*      get_u()        {return &u;};
+      std::vector<std::vector<double>>*      get_u_star()   {return &u_star;};
+      std::vector<std::vector<double>>*      get_a()        {return &a;};
+      std::vector<std::vector<double>>*      get_grad_u()   {return &grad_u;};
+      std::vector<std::vector<double>>*      get_F()        {return &F;};
+      std::vector<std::vector<double>>*      get_sigma()    {return &sigma;};
+      std::vector<std::vector<double>>*      get_epsilon()  {return &epsilon;};
 
-    private:
+      unsigned int get_num_particles() const {return n_p;};
+      void         update_strain_rate();
+      virtual void calculate_stress() = 0;
+      void         calc_pi();
+      
+      Point* get_x_pt(unsigned int index) const {return x_pt.at(index);};
+      
+      std::vector<double> get_x(unsigned int index) const;
+      void set_x(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_phi(unsigned int index) const;
+      void  set_phi(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_grad_phi(unsigned int index) const;
+      void  set_grad_phi(unsigned int index, std::vector<double>& value);
+      
+      std::vector<unsigned int> get_vrt(unsigned int index) const;
+      void  set_vrt(unsigned int index, std::vector<unsigned int>& value);
+
+    protected:
       unsigned int                           n_p;      // number of particles
-      const unsigned int                     tDim;     // topological dimension
-      const unsigned int                     eDim;     // element dimension
+      const unsigned int                     gdim;     // topological dimension
+      const unsigned int                     sdim;     // element dimension
       std::vector<double>                    m;        // mass vector
       std::vector<double>                    rho;      // density vector
       std::vector<double>                    V0;       // initial volume vector
       std::vector<double>                    V;        // volume vector
       std::vector<double>                    I;        // identity tensor
+      std::vector<Point*>                    x_pt;     // position Points
       std::vector<std::vector<double>>       x;        // position vector
       std::vector<std::vector<double>>       u;        // velocity vector
       std::vector<std::vector<double>>       u_star;   // grid vel. interp.
@@ -56,7 +72,7 @@ namespace dolfin
       std::vector<std::vector<double>>       F;        // def. gradient tensor
       std::vector<std::vector<double>>       sigma;    // stress tensor
       std::vector<std::vector<double>>       epsilon;  // strain-rate tensor
-
+      
       // components of the strain-rate tensor :
       double  eps_xx;
       double  eps_yy;

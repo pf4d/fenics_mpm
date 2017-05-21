@@ -1,11 +1,9 @@
 # -*- coding: iso-8859-15 -*-
 
-import numpy             as np
-import matplotlib.pyplot as plt
-import os
-from   fenics            import compile_extension_module
-import instant
-from   fenics_mpm.helper import print_text, raiseNotDefined
+import numpy                  as np
+import matplotlib.pyplot      as plt
+from   fenics_mpm.helper      import print_text, raiseNotDefined
+from   fenics_mpm             import mpm_module
 
 
 class Material(object):
@@ -71,35 +69,25 @@ class Material(object):
     # identity tensors :
     self.I        = np.array([np.identity(self.d)]*self.n)
     
-    # open the cpp code for evaluating the basis functions :
-    cpp_src_dir = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
-    header_file = open(cpp_src_dir + "MPMMaterial.h", "r")
-    code        = header_file.read()
-    header_file.close()
+  def get_cpp_material(self, element):
+    r"""
+    return the appropriate cpp module to instantiate this material.
 
-    cmake_packages = ['DOLFIN']
-    module_name    = "MPMMaterial"
-    sources        = ["MPMMaterial.cpp"]
-    source_dir     = cpp_src_dir
-    include_dirs   = [".", cpp_src_dir, 
-                      '/usr/lib/petscdir/3.7.3/x86_64-linux-gnu-real/include/']
-    module_name    = "MPMMaterial"
-
-    # compile this with Instant JIT compiler :
-    inst_params = {'code'                      : code,
-                   'module_name'               : module_name,
-                   'source_directory'          : cpp_src_dir,
-                   'sources'                   : sources,
-                   'additional_system_headers' : [],
-                   'include_dirs'              : include_dirs}
-    self.mat_module = compile_extension_module(**inst_params)
-    self.cpp_mat    = self.mat_module.MPMMaterial(self.m,
-                                                  self.x.flatten(), 
-                                                  self.u.flatten(),
-                                                  self.d, 1)
-      
-  def color(self):
+    This method must be implemented by child classes.
     """
+    raiseNotDefined()
+
+  def set_cpp_material(self, cpp_mat):
+    r"""
+    Instantiante the C++ code for this material with .
+    
+    :param element: The FEniCS element used.
+    :type element: :class:`~fenics.FiniteElement`
+    """
+    self.cpp_mat = cpp_mat 
+  
+  def color(self):
+    r"""
     The color used for printing messages to the screen.
 
     :rtype: string
@@ -180,6 +168,17 @@ class ElasticMaterial(Material):
     # Lamé parameters :
     self.mu       = E / (2.0*(1.0 + nu))
     self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
+  
+  def get_cpp_material(self, element):
+    r"""
+    return the appropriate cpp module to instantiate this material.
+
+    This method must be implemented by child classes.
+    """
+    return mpm_module.MPMElasticMaterial(self.m,
+                                         self.x.flatten(),
+                                         self.u.flatten(),
+                                         element)
 
   def color(self):
     return '150'

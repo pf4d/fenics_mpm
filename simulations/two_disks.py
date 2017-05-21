@@ -37,7 +37,7 @@ u_mag      = 0.1         # velocity magnitude (m/s)
 m_mag      = 0.15        # particle mass
 
 # create a material :
-n          = 100         # number of particles
+n          = 2         # number of particles
 r_max      = 0.15        # disk radius
 
 # upper-right disk :

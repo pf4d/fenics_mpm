@@ -2,16 +2,20 @@
 
 using namespace dolfin;
 
+// no destructor yet :
+MPMMaterial::~MPMMaterial() { }
+
+// initialize the MPMMaterial variables :
 MPMMaterial::MPMMaterial(const Array<double>& m_a,
                          const Array<double>& x_a,
                          const Array<double>& u_a,
-                         const unsigned int topological_dimension,
-                         const unsigned int element_dimension)
-            : tDim(topological_dimension), eDim(element_dimension)
+                         const FiniteElement& element) :
+                           gdim(element.geometric_dimension()),
+                           sdim(element.space_dimension())
 {
   n_p = m_a.size();
-  printf("::: MPMMaterialcpp with n_p = %u \t tDim = %u \t eDim = %u :::\n", 
-         n_p, tDim, eDim);
+  printf("::: MPMMaterialcpp with n_p = %u \t gdim = %u \t sdim = %u :::\n", 
+         n_p, gdim, sdim);
 
   // one scalar or vector for each particle :
   m.resize(n_p);
@@ -19,6 +23,7 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   V0.resize(n_p);
   V.resize(n_p);
   x.resize(n_p);
+  x_pt.resize(n_p);
   u.resize(n_p);
   u_star.resize(n_p);
   a.resize(n_p);
@@ -31,43 +36,83 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   epsilon.resize(n_p);
  
   // the flattened identity tensor :
-  I.resize(tDim*eDim);
+  I.resize(gdim*sdim);
   
-  # pragma omp parallel
+  // resize each of the vectors :
+  for (unsigned int i = 0; i < n_p; i++)
   {
-    // resize each of the vectors :
-    # pragma omp for
-    for (unsigned int i = 0; i < n_p; i++)
-    {
-      // these are vectors in topological dimension :
-      x[i].resize(tDim);
-      u[i].resize(tDim);
-      u_star[i].resize(tDim);
-      a[i].resize(tDim);
-      
-      // these are vectors in element dimension :
-      vrt[i].resize(eDim);
-      phi[i].resize(eDim);
+    // these are vectors in topological dimension :
+    x[i].resize(gdim);
+    u[i].resize(gdim);
+    u_star[i].resize(gdim);
+    a[i].resize(gdim);
     
-      // these are flattened tensors defined with columns over each 
-      //   topological dim. and rows over each element dimension :
-      grad_u[i].resize(tDim*eDim);
-      grad_phi[i].resize(tDim*eDim);
-      F[i].resize(tDim*eDim);
-      sigma[i].resize(tDim*eDim);
-      epsilon[i].resize(tDim*eDim);
-      
-      m[i] = m_a.data()[i];  // initalize the mass
-      unsigned int idx = 0;  // index variable
-      for (unsigned int j = 0; j < tDim; j++)
-      {
-        idx          = i*tDim + j;
-        x[i][j]      = x_a.data()[idx];
-        u[i][j]      = u_a.data()[idx];
-        u_star[i][j] = u[i][j];
-      }
+    // these are vectors in element dimension :
+    vrt[i].resize(sdim);
+    phi[i].resize(sdim);
+  
+    // these are flattened tensors defined with columns over each 
+    //   topological dim. and rows over each element dimension :
+    grad_u[i].resize(gdim*sdim);
+    grad_phi[i].resize(gdim*sdim);
+    F[i].resize(gdim*sdim);
+    sigma[i].resize(gdim*sdim);
+    epsilon[i].resize(gdim*sdim);
+    
+    m[i] = m_a[i];                               // initalize the mass
+    unsigned int idx = 0;                        // index variable
+    std::vector<double> x_t = {0.0, 0.0, 0.0};   // the vector to make a Point
+    for (unsigned int j = 0; j < gdim; j++)
+    {
+      idx          = i*gdim + j;
+      x_t[j]       = x_a[idx];
+      x[i][j]      = x_a[idx];
+      u[i][j]      = u_a[idx];
+      u_star[i][j] = u[i][j];
     }
+    Point* x_point = new Point(x_t[0], x_t[1], x_t[2]);  // create a new Point
+    x_pt[i]        = x_point;                            // put it in the vector
   }
+}
+
+std::vector<double>  MPMMaterial::get_x(unsigned int index) const
+{
+  return x.at(index);
+}
+
+void  MPMMaterial::set_x(unsigned int index, std::vector<double>& value)
+{
+  x.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_phi(unsigned int index) const
+{
+  return phi.at(index);
+}
+
+void  MPMMaterial::set_phi(unsigned int index, std::vector<double>& value)
+{
+  phi.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_grad_phi(unsigned int index) const
+{
+  return grad_phi.at(index);
+}
+
+void  MPMMaterial::set_grad_phi(unsigned int index, std::vector<double>& value)
+{
+  grad_phi.at(index) = value;
+}
+
+std::vector<unsigned int>  MPMMaterial::get_vrt(unsigned int index) const
+{
+  return vrt.at(index);
+}
+
+void  MPMMaterial::set_vrt(unsigned int index, std::vector<unsigned int>& value)
+{
+  vrt.at(index) = value;
 }
 
 void MPMMaterial::update_strain_rate()
@@ -75,7 +120,7 @@ void MPMMaterial::update_strain_rate()
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    for (unsigned int j = 0; j < tDim; j++)
+    for (unsigned int j = 0; j < gdim; j++)
     {
       if (i == j)
         epsilon[i][j] = grad_u[i][j];
