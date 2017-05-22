@@ -20,7 +20,7 @@ namespace dolfin
                   const FiniteElement& element);
       
       std::vector<double>*                   get_m()        {return &m;};
-      std::vector<double>*                   get_rho()      {return &rho;};
+      std::vector<double>                    get_rho()      {return rho;};
       std::vector<double>*                   get_V0()       {return &V0;};
       std::vector<double>*                   get_V()        {return &V;};
       std::vector<double>*                   get_I()        {return &I;};
@@ -40,6 +40,15 @@ namespace dolfin
       
       double                    get_m(unsigned int index) const;
       void set_m(unsigned int index, double& value);
+      
+      double                    get_rho(unsigned int index) const;
+      void set_rho(unsigned int index, double& value);
+      
+      double                    get_V0(unsigned int index) const;
+      void set_V0(unsigned int index, double& value);
+      
+      double                    get_V(unsigned int index) const;
+      void set_V(unsigned int index, double& value);
       
       std::vector<double>       get_x(unsigned int index) const;
       void set_x(unsigned int index, std::vector<double>& value);

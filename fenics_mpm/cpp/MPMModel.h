@@ -6,6 +6,7 @@
 #include <dolfin/common/Array.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include "MPMMaterial.h"
+#include <math.h>
 
 namespace dolfin
 {
@@ -20,7 +21,13 @@ namespace dolfin
       void formulate_material_basis_functions();
       void interpolate_material_velocity_to_grid(); 
       void interpolate_material_mass_to_grid();
+      void calculate_grid_volume();
+      void calculate_material_density();
+      void calculate_material_initial_volume();
+      void calculate_material_velocity_gradient();
       
+      void set_h(const Array<double>& h);
+
       std::vector<double>       get_m() {return m_grid;};
       
       std::vector<double>       get_U3(unsigned int index) const;
@@ -42,7 +49,9 @@ namespace dolfin
 
       // grid variables :
       std::vector<unsigned int> coord_arr = {0,0,0};
+      std::vector<double> h_grid;
       std::vector<double> m_grid;
+      std::vector<double> V_grid;
       std::vector<std::vector<double>> U3_grid;
       std::vector<std::vector<double>> a3_grid;
       std::vector<std::vector<double>> f_int_grid;

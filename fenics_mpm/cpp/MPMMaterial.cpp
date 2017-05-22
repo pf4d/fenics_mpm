@@ -85,6 +85,36 @@ void  MPMMaterial::set_m(unsigned int index, double& value)
   m.at(index) = value;
 }
 
+double               MPMMaterial::get_rho(unsigned int index) const
+{
+  return rho.at(index);
+}
+
+void  MPMMaterial::set_rho(unsigned int index, double& value)
+{
+  rho.at(index) = value;
+}
+
+double               MPMMaterial::get_V0(unsigned int index) const
+{
+  return V0.at(index);
+}
+
+void  MPMMaterial::set_V0(unsigned int index, double& value)
+{
+  V0.at(index) = value;
+}
+
+double               MPMMaterial::get_V(unsigned int index) const
+{
+  return V.at(index);
+}
+
+void  MPMMaterial::set_V(unsigned int index, double& value)
+{
+  V.at(index) = value;
+}
+
 std::vector<double>  MPMMaterial::get_x(unsigned int index) const
 {
   return x.at(index);

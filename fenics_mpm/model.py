@@ -36,6 +36,8 @@ class Model(object):
     # create an MPMMaterial instance from the module just created :
     self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q, self.grid_model.dofs,
                                        np.array([1,1,0], dtype='intc'))
+    # intialize the cell diameter :
+    self.mpm_cpp.set_h(self.grid_model.h.vector().array())
 
   def add_material(self, M):
     r"""
@@ -78,6 +80,7 @@ class Model(object):
     .. math::
       m_i = \sum_{p=1}^{n_p} \phi_p(\mathbf{x}_p) m_p
     """
+    #FIXME: figure out a way to directly update grid_model.m :
     m = Function(self.grid_model.Q)
     self.mpm_cpp.interpolate_material_mass_to_grid()
     self.grid_model.assign_variable(m, self.mpm_cpp.get_m())
@@ -116,22 +119,13 @@ class Model(object):
     
     Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.
     """
-    h   = self.grid_model.h.vector().array()    # cell diameter
-    m   = self.grid_model.m.vector().array()
-
-    # iterate through all materials :
-    for M in self.materials:
-
-      rho = []
-
-      # calculate particle densities :
-      for i, phi_i in zip(M.vrt, M.phi):
-        v_i   = 4.0/3.0 * pi * (h[i]/2.0)**3
-        rho_p = np.sum( m[i] * phi_i / v_i )
-        rho.append(rho_p)
+    # calculate particle densities :
+    self.mpm_cpp.calculate_grid_volume()
+    self.mpm_cpp.calculate_material_density()
       
+    for M in self.materials:
       # update material density :
-      M.rho = np.array(rho, dtype=float)
+      M.rho = np.array(M.cpp_mat.get_rho(), dtype=float)
 
   def calculate_material_initial_volume(self):
     r"""
@@ -142,12 +136,13 @@ class Model(object):
     
     Note that this is useful only for the initial particle volume :math:`V_p^0` calculation and aftwards should evolve with :math:`V_p = V_p^0 \mathrm{det}(F_p)`.  Also, this requires that the particle density be initialized by calling :meth:`~model.Model.calculate_material_density`.
     """
-    # iterate through all materials :
+    # calculate particle densities :
+    self.mpm_cpp.calculate_material_initial_volume()
+      
     for M in self.materials:
-
-      # calculate inital volume from particle mass and density :
-      M.V0 = np.array(M.m / M.rho, dtype=float)
-      M.V  = M.V0
+      # update material density :
+      M.V0 = np.array(M.cpp_mat.get_V(),  dtype=float)
+      M.V  = np.array(M.cpp_mat.get_V0(), dtype=float)
 
   def calculate_material_velocity_gradient(self):
     r"""
@@ -157,7 +152,7 @@ class Model(object):
       \nabla \mathbf{u}_p = \sum_{i=1}^{n_n} \nabla \phi_i(\mathbf{x}_p) \mathbf{u}_i.
     """
     # recover the grid nodal velocities :
-    u,v = self.grid_model.U3.split(True)
+    u,v,w = self.grid_model.U3.split(True)
 
     # iterate through all materials :
     for M in self.materials:
