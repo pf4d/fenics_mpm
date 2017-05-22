@@ -228,12 +228,12 @@ void MPMModel::calculate_material_velocity_gradient()
         if (coord_arr[k] == 1)
         {
           /*
-          u_i    = u.vector()[i]
-          v_i    = v.vector()[i]
           dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
           dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
+
           dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
           dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
+
           grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
           */
           ctr++;  // increment counter because num(u_p) may != num(u_grid)

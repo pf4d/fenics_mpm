@@ -19,17 +19,17 @@ namespace dolfin
                   const Array<double>& u_a,
                   const FiniteElement& element);
       
-      std::vector<double>*                   get_m()        {return &m;};
+      std::vector<double>                    get_m()        {return m;};
       std::vector<double>                    get_rho()      {return rho;};
-      std::vector<double>*                   get_V0()       {return &V0;};
-      std::vector<double>*                   get_V()        {return &V;};
-      std::vector<double>*                   get_I()        {return &I;};
-      std::vector<std::vector<double>>*      get_u_star()   {return &u_star;};
-      std::vector<std::vector<double>>*      get_a()        {return &a;};
-      std::vector<std::vector<double>>*      get_grad_u()   {return &grad_u;};
-      std::vector<std::vector<double>>*      get_F()        {return &F;};
-      std::vector<std::vector<double>>*      get_sigma()    {return &sigma;};
-      std::vector<std::vector<double>>*      get_epsilon()  {return &epsilon;};
+      std::vector<double>                    get_V0()       {return V0;};
+      std::vector<double>                    get_V()        {return V;};
+      std::vector<double>                    get_I()        {return I;};
+      std::vector<std::vector<double>>       get_u_star()   {return u_star;};
+      std::vector<std::vector<double>>       get_a()        {return a;};
+      std::vector<std::vector<double>>       get_grad_u()   {return grad_u;};
+      std::vector<std::vector<double>>       get_F()        {return F;};
+      std::vector<std::vector<double>>       get_sigma()    {return sigma;};
+      std::vector<std::vector<double>>       get_epsilon()  {return epsilon;};
 
       unsigned int get_num_particles() const {return n_p;};
       void         update_strain_rate();

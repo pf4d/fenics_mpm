@@ -163,10 +163,10 @@ class Model(object):
       for i, grad_phi_i in zip(M.vrt, M.grad_phi):
         u_i    = u.vector()[i]
         v_i    = v.vector()[i]
-        dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
-        dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
-        dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
-        dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
+        dudx_p = np.sum(grad_phi_i[np.array([0,2,4])] * u.vector()[i])
+        dudy_p = np.sum(grad_phi_i[np.array([1,3,5])] * u.vector()[i])
+        dvdx_p = np.sum(grad_phi_i[np.array([0,2,4])] * v.vector()[i])
+        dvdy_p = np.sum(grad_phi_i[np.array([1,3,5])] * v.vector()[i])
         grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
       
       # update the particle velocity gradients :
