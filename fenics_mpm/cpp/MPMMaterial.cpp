@@ -75,6 +75,16 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   }
 }
 
+double               MPMMaterial::get_m(unsigned int index) const
+{
+  return m.at(index);
+}
+
+void  MPMMaterial::set_m(unsigned int index, double& value)
+{
+  m.at(index) = value;
+}
+
 std::vector<double>  MPMMaterial::get_x(unsigned int index) const
 {
   return x.at(index);
@@ -83,6 +93,16 @@ std::vector<double>  MPMMaterial::get_x(unsigned int index) const
 void  MPMMaterial::set_x(unsigned int index, std::vector<double>& value)
 {
   x.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_u(unsigned int index) const
+{
+  return u.at(index);
+}
+
+void  MPMMaterial::set_u(unsigned int index, std::vector<double>& value)
+{
+  u.at(index) = value;
 }
 
 std::vector<double>  MPMMaterial::get_phi(unsigned int index) const

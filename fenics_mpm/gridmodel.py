@@ -59,9 +59,10 @@ class GridModel(object):
 
     The element shape-functions available from this method are :
 
-    * ``self.Q`` -- :math:`\mathcal{H}^k(\Omega)`
-    * ``self.V`` -- :math:`[\mathcal{H}^k(\Omega)]^d`  formed using :class:`~fenics.VectorFunctionSpace`
-    * ``self.T`` -- :math:`[\mathcal{H}^k(\Omega)]^{d \times d}` formed using :class:`~fenics.TensorFunctionSpace`
+    * ``self.Q``  -- :math:`\mathcal{H}^k(\Omega)`
+    * ``self.Q3`` -- :math:`[\mathcal{H}^k(\Omega)]^3`
+    * ``self.V``  -- :math:`[\mathcal{H}^k(\Omega)]^d`  formed using :class:`~fenics.VectorFunctionSpace`
+    * ``self.T``  -- :math:`[\mathcal{H}^k(\Omega)]^{d \times d}` formed using :class:`~fenics.TensorFunctionSpace`
     """
     s = "::: generating fundamental function spaces of order %i :::" % order
     print_text(s, cls=self.this)
@@ -73,6 +74,8 @@ class GridModel(object):
 
     order        = 1
     space        = 'CG'
+    Qe           = FiniteElement("CG", self.mesh.ufl_cell(), order)
+    self.Q3      = FunctionSpace(self.mesh, MixedElement([Qe]*3))
     self.Q       = FunctionSpace(self.mesh, space, order)
     self.V       = VectorFunctionSpace(self.mesh, space, order)
     self.T       = TensorFunctionSpace(self.mesh, space, order)
@@ -134,25 +137,37 @@ class GridModel(object):
     self.h       = project(CellSize(self.mesh), self.Q)  # cell diameter vector
     
     # grid velocity :
-    self.U_mag          = Function(self.Q, name='U_mag')
-    self.U3             = Function(self.V, name='U3')
-    self.u, self.v      = self.U3.split()
-    self.u.rename('u', '')
-    self.v.rename('v', '')
+    self.U_mag                = Function(self.Q,  name='U_mag')
+    self.U3                   = Function(self.Q3, name='U3')
+    u, v, w                   = self.U3.split()
+    u.rename('u', '')
+    v.rename('v', '')
+    w.rename('w', '')
+    self.u                    = u
+    self.v                    = v
+    self.w                    = w
     
     # grid acceleration :
-    self.a_mag          = Function(self.Q, name='a_mag')
-    self.a3             = Function(self.V, name='a3')
-    self.a_x, self.a_y  = self.a3.split()
-    self.a_x.rename('a_x', '')
-    self.a_y.rename('a_y', '')
+    self.a_mag                = Function(self.Q,  name='a_mag')
+    self.a3                   = Function(self.Q3, name='a3')
+    a_x, a_y, a_z             = self.a3.split()
+    a_x.rename('a_x', '')
+    a_y.rename('a_y', '')
+    a_z.rename('a_z', '')
+    self.a_x                  = a_x
+    self.a_y                  = a_y
+    self.a_z                  = a_z
 
     # grid internal force vector :
-    self.f_int_mag      = Function(self.Q, name='f_int_mag')
-    self.f_int          = Function(self.V, name='f_int')
-    self.f_int_x, self.f_int_y  = self.f_int.split()
-    self.f_int_x.rename('f_int_x', '')
-    self.f_int_y.rename('f_int_y', '')
+    self.f_int_mag            = Function(self.Q,  name='f_int_mag')
+    self.f_int                = Function(self.Q3, name='f_int')
+    f_int_x, f_int_y, f_int_z = self.f_int.split()
+    f_int_x.rename('f_int_x', '')
+    f_int_y.rename('f_int_y', '')
+    f_int_z.rename('f_int_z', '')
+    self.f_int_x              = f_int_x
+    self.f_int_y              = f_int_y
+    self.f_int_z              = f_int_z
 
     # grid mass :
     self.m             = Function(self.Q, name='m')
@@ -160,14 +175,18 @@ class GridModel(object):
 
     # function assigners speed assigning up :
     self.assu       = FunctionAssigner(self.u.function_space(),       self.Q)
-    #                                   self.V.sub(0))                
     self.assv       = FunctionAssigner(self.v.function_space(),       self.Q)
-    #                                   self.V.sub(1))                
+    self.assw       = FunctionAssigner(self.w.function_space(),       self.Q)
     self.assa_x     = FunctionAssigner(self.a_x.function_space(),     self.Q)
     self.assa_y     = FunctionAssigner(self.a_y.function_space(),     self.Q)
+    self.assa_z     = FunctionAssigner(self.a_z.function_space(),     self.Q)
     self.assf_int_x = FunctionAssigner(self.f_int_x.function_space(), self.Q)
     self.assf_int_y = FunctionAssigner(self.f_int_y.function_space(), self.Q)
+    self.assf_int_z = FunctionAssigner(self.f_int_z.function_space(), self.Q)
     self.assm       = FunctionAssigner(self.m.function_space(),       self.Q)
+
+    # save the number of degrees of freedom :
+    self.dofs       = self.m.vector().size()
 
   def update_mass(self, m):
     r"""
@@ -187,8 +206,8 @@ class GridModel(object):
     :type U: list of :class:`~fenics.Function`\s
     """
     # assign the variables to the functions :
-    self.assu.assign(self.u, U[0])
-    self.assv.assign(self.v, U[1])
+    assign(self.u, U[0])
+    assign(self.v, U[1])
 
   def update_acceleration(self, a):
     r"""

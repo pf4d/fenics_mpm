@@ -14,7 +14,7 @@ namespace dolfin
                          const FiniteElement& element) :
       MPMMaterial(m_a, x_a, u_a, element) { };
 
-      ~MPMElasticMaterial() {};
+     ~MPMElasticMaterial() {};
 
       void calculate_stress();
 

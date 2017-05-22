@@ -2,6 +2,7 @@
 
 from   fenics                 import *
 from   fenics_mpm             import mpm_module
+from   fenics_mpm.helper      import print_text, print_min_max
 import numpy          as np
 
 
@@ -33,7 +34,8 @@ class Model(object):
     self.materials  = []           # list of Material objects, initially none
     
     # create an MPMMaterial instance from the module just created :
-    self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q)
+    self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q, self.grid_model.dofs,
+                                       np.array([1,1,0], dtype='intc'))
 
   def add_material(self, M):
     r"""
@@ -50,63 +52,24 @@ class Model(object):
     """
     self.mpm_cpp.formulate_material_basis_functions()
 
-    ## iterate through all materials :
-    #for M in self.materials:
+    # iterate through all materials :
+    for M in self.materials:
 
-    #  vrt      = []  # grid nodal indicies for points
-    #  phi      = []  # grid basis values at points
-    #  grad_phi = []  # grid basis gradient values at points
+      vrt      = []  # grid nodal indicies for points
+      phi      = []  # grid basis values at points
+      grad_phi = []  # grid basis gradient values at points
 
-    #  # iterate through particle positions :
-    #  for i in range(M.get_num_particles): 
-    #    # append these to a list corresponding with particles : 
-    #    vrt.append(M.cpp_mat.get_vrt(i))
-    #    phi.append(M.cpp_mat.get_phi(i))
-    #    grad_phi.append(M.cpp_mat.get_grad_phi(i))
+      # iterate through particle positions :
+      for i in range(M.cpp_mat.get_num_particles()): 
+        # append these to a list corresponding with particles : 
+        vrt.append(M.cpp_mat.get_vrt(i))
+        phi.append(M.cpp_mat.get_phi(i))
+        grad_phi.append(M.cpp_mat.get_grad_phi(i))
 
-    #  # save as array within each material :
-    #  M.vrt      = np.array(vrt)
-    #  M.phi      = np.array(phi, dtype=float)
-    #  M.grad_phi = np.array(grad_phi, dtype=float)
-
-  def get_particle_basis_functions(self, x):
-    r"""
-    Create particle basis functions for the single particle coordinate vector :math:`\mathbf{x}_p`.  In what follows, the topological dimension of the mesh is :math:`d` and the number of nodes per element is :math:`n_n`.
-
-    Returns a :py:obj:`tuple` of :class:`~numpy.ndarray`\s, respectively :
-
-    * ``vrt`` -- set of :math:`n_n` node indices :math:`i` for this particle's cell.  Shape is :math:`1 \times n_n`.
-    * ``phi`` -- interpolation function values :math:`\phi_i(\mathbf{x}_p)` corresponding to each node :math:`i` in ``vrt``.  Shape is :math:`1 \times n_n`.
-    * ``grad_phi`` -- gradient of interpolation function values :math:`\nabla \phi_i(\mathbf{x}_p)` corresponding to each node :math:`i` in ``vrt``.  Shape is :math:`d \times n_n`.  For example, in three dimensions :math:`\mathbf{x}_p = [x\ y\ z]^{\intercal}`, and with nodal indicies :math:`1,2,\ldots,n` ``grad_phi`` is
-
-    .. math:: \nabla \phi_i(\mathbf{x}_p) = 
-                                   \begin{bmatrix}
-                                      \frac{\partial \phi_1}{\partial x} & \frac{\partial \phi_1}{\partial y} & \frac{\partial \phi_1}{\partial z} \\
-                                      \frac{\partial \phi_2}{\partial x} & \frac{\partial \phi_2}{\partial y} & \frac{\partial \phi_2}{\partial z} \\
-                                      \vdots & \vdots & \vdots \\
-                                      \frac{\partial \phi_n}{\partial x} & \frac{\partial \phi_n}{\partial y} & \frac{\partial \phi_3}{\partial z}
-                                    \end{bmatrix}
-
-    :param x: global coordinate to evaluate.
-    :type x:  :py:obj:`int` or :py:obj:`float` or :class:`~numpy.ndarray`
-
-    :rtype: :py:obj:`tuple` (:class:`~numpy.ndarray`, :class:`~numpy.ndarray`, :class:`~numpy.ndarray`)
-    """
-    ## get corresponding vertex indices, in dof indicies : 
-    #vrt = self.dofmap.cell_dofs(cell.index())
-    self.mpm_cpp.get_particle_basis_functions(x);
-    vrt      = self.mpm_cpp.get_vrt()
-    phi      = self.mpm_cpp.get_phi()
-    grad_phi = self.mpm_cpp.get_grad_phi()
-
-    # reshape such that rows are [d/dx, d/dy] :
-    grad_phi = grad_phi.reshape((-1, 2))
-
-    #print "vrt =", type(vrt), vrt
-    #print "phi =", type(phi), phi
-    #print "grad_phi = ", type(grad_phi), grad_phi
-
-    return vrt, phi, grad_phi
+      # save as array within each material :
+      M.vrt      = np.array(vrt)
+      M.phi      = np.array(phi, dtype=float)
+      M.grad_phi = np.array(grad_phi, dtype=float)
 
   def interpolate_material_mass_to_grid(self):
     r"""
@@ -115,15 +78,9 @@ class Model(object):
     .. math::
       m_i = \sum_{p=1}^{n_p} \phi_p(\mathbf{x}_p) m_p
     """
-    # new mass must start at zero :
-    m    = Function(self.grid_model.Q)
-
-    # iterate through all materials :
-    for M in self.materials:
-
-      # interpolation of mass to the grid :
-      for p, phi_p, m_p in zip(M.vrt, M.phi, M.m):
-        m.vector()[p] += phi_p * m_p
+    m = Function(self.grid_model.Q)
+    self.mpm_cpp.interpolate_material_mass_to_grid()
+    self.grid_model.assign_variable(m, self.mpm_cpp.get_m())
       
     # assign the new mass to the grid model variable :
     self.grid_model.update_mass(m)
@@ -137,23 +94,18 @@ class Model(object):
 
     Note that this requires that :math:`m_i` be calculated by calling :meth:`~model.Model.interpolate_material_mass_to_grid`.
     """
-    # new velocity must start at zero :
-    #model.assign_variable(self.U3, DOLFIN_EPS)
-    #u,v = self.U3.split(True)
-    u    = Function(self.grid_model.Q)
-    v    = Function(self.grid_model.Q)
-    
-    # iterate through all materials :
-    for M in self.materials:
-
-      # interpolation of mass-conserving velocity to the grid :
-      for p, phi_p, m_p, u_p in zip(M.vrt, M.phi, M.m, M.u):
-        m_i = self.grid_model.m.vector()[p]
-        u.vector()[p] += u_p[0] * phi_p * m_p / m_i
-        v.vector()[p] += u_p[1] * phi_p * m_p / m_i
+    #FIXME: figure out a way to directly update grid_model.U3 :
+    u = Function(self.grid_model.Q)
+    v = Function(self.grid_model.Q)
+    self.mpm_cpp.interpolate_material_velocity_to_grid()
+    self.grid_model.assign_variable(u, self.mpm_cpp.get_U3(0))
+    self.grid_model.assign_variable(v, self.mpm_cpp.get_U3(1))
 
     # assign the variables to the functions
-    self.grid_model.update_velocity([u,v])
+    self.grid_model.assu.assign(self.grid_model.u, u)
+    self.grid_model.assv.assign(self.grid_model.v, v)
+    print_min_max(self.grid_model.U3, 'U3')
+
 
   def calculate_material_density(self):
     r"""

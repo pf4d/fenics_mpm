@@ -2,7 +2,10 @@
 
 using namespace dolfin;
 
-MPMModel::MPMModel(const FunctionSpace& V)
+MPMModel::MPMModel(const FunctionSpace& V,
+                   const unsigned int num_dofs,
+                   const Array<int>& coords) :
+                   dofs(num_dofs)
 {
   Q       = &V;
   mesh    = V.mesh();
@@ -12,6 +15,28 @@ MPMModel::MPMModel(const FunctionSpace& V)
   sdim    = element->space_dimension();
   
   printf("::: MPMModelcpp with gDim = %zu \t sDim = %zu :::\n", gdim, sdim);
+
+  m_grid.resize(dofs);
+  U3_grid.resize(3);
+  a3_grid.resize(3);
+  f_int_grid.resize(3);
+  for (unsigned int i = 0; i < 3; i++)
+  {
+    coord_arr[i] = coords[i];
+    U3_grid[i].resize(coords[i]*dofs);
+    a3_grid[i].resize(coords[i]*dofs);
+    f_int_grid[i].resize(coords[i]*dofs);
+  }
+}
+
+std::vector<double>  MPMModel::get_U3(unsigned int index) const
+{
+  return U3_grid.at(index);
+}
+
+void  MPMModel::set_U3(unsigned int index, std::vector<double>& value)
+{
+  U3_grid.at(index) = value;
 }
 
 void MPMModel::add_material(MPMMaterial& M)
@@ -51,7 +76,11 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
       vrt_i[j] = Q->dofmap()->cell_dofs(cell->index())[j];
     }
 
-    printf("x[%u] = [%f,%f], \n phi[%u] = [%f,%f,%f], \n vrt[%u] = [%u,%u,%u]\n\n", i, x_i[0], x_i[1], i, phi_i[0], phi_i[1], phi_i[2], i, vrt_i[0], vrt_i[1], vrt_i[2]);
+    printf("x[%u] = [%f,%f], \n phi[%u] = [%f,%f,%f], \n grad_phi[%u] = [%f,%f,%f,%f,%f,%f], \n vrt[%u] = [%u,%u,%u]\n\n",
+           i, x_i[0], x_i[1],
+           i, phi_i[0], phi_i[1], phi_i[2],
+           i, grad_phi_i[0], grad_phi_i[1], grad_phi_i[2], grad_phi_i[3], grad_phi_i[4], grad_phi_i[5],
+           i, vrt_i[0], vrt_i[1], vrt_i[2]);
 
     M->set_x(i, x_i);
     M->set_phi(i, phi_i);
@@ -60,7 +89,6 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
 
   }
 }
-
 
 void MPMModel::formulate_material_basis_functions()
 {
@@ -71,5 +99,60 @@ void MPMModel::formulate_material_basis_functions()
   }
 }
 
+void MPMModel::interpolate_material_mass_to_grid()
+{
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
+      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
+      double m_p                    = materials[i]->get_m(j);    // mass
+
+      // interpolate the particle mass to each node of its cell :
+      for (unsigned int q = 0; q < sdim; q++)
+      {
+        printf("\tphi_p[%u] = %f,\t m_p[%u] = %f\n", q, phi_p[q], j, m_p);
+        m_grid[idx[q]] += phi_p[q] * m_p;
+      }
+    }
+  }
+}
+
+void MPMModel::interpolate_material_velocity_to_grid() 
+{
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
+      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
+      std::vector<double> u_p       = materials[i]->get_u(j);    // velocity
+      double m_p                    = materials[i]->get_m(j);    // mass
+      unsigned int ctr = 0;                                      // vel. count
+
+      // iterate through each dimension :
+      for (unsigned int k = 0; k < 3; k++)
+      {
+        // if this dimension has a velocity :
+        if (coord_arr[k] == 1)
+        {
+          // calculate mass-conserving grid velocity at the node :
+          for (unsigned int q = 0; q < sdim; q++)
+          {
+            printf("\tU3[%u][%u] ::   u_p[%u] = %f,\t phi_p[%u] = %f,\t m_p[%u] = %f,\t m_grid[%u] = %f\n",
+                   k, idx[q], ctr, u_p[ctr], q, phi_p[q], j, m_p, idx[q], m_grid[idx[q]]);
+            U3_grid[k][idx[q]] += u_p[ctr] * phi_p[q] * m_p / m_grid[idx[q]];
+          }
+          ctr++;  // increment counter because num(u_p) may != num(u_grid)
+        }
+      }
+    }
+  }
+}
 
 

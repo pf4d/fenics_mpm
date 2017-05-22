@@ -24,7 +24,6 @@ namespace dolfin
       std::vector<double>*                   get_V0()       {return &V0;};
       std::vector<double>*                   get_V()        {return &V;};
       std::vector<double>*                   get_I()        {return &I;};
-      std::vector<std::vector<double>>*      get_u()        {return &u;};
       std::vector<std::vector<double>>*      get_u_star()   {return &u_star;};
       std::vector<std::vector<double>>*      get_a()        {return &a;};
       std::vector<std::vector<double>>*      get_grad_u()   {return &grad_u;};
@@ -39,8 +38,14 @@ namespace dolfin
       
       Point* get_x_pt(unsigned int index) const {return x_pt.at(index);};
       
-      std::vector<double> get_x(unsigned int index) const;
+      double                    get_m(unsigned int index) const;
+      void set_m(unsigned int index, double& value);
+      
+      std::vector<double>       get_x(unsigned int index) const;
       void set_x(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_u(unsigned int index) const;
+      void set_u(unsigned int index, std::vector<double>& value);
       
       std::vector<double>       get_phi(unsigned int index) const;
       void  set_phi(unsigned int index, std::vector<double>& value);
