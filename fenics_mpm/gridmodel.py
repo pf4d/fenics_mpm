@@ -25,7 +25,7 @@ class GridModel(object):
     # have the compiler generate code for evaluating basis derivatives :
     parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
   
-    s = "::: INITIALIZING BASE MODEL :::"
+    s = "::: INITIALIZING GRID MODEL :::"
     print_text(s, cls=self.this)
     
     parameters['form_compiler']['quadrature_degree']  = 2
@@ -197,6 +197,7 @@ class GridModel(object):
     """
     # assign the mass to the model variable :
     self.assm.assign(self.m, m)
+    print_min_max(self.m, 'GridModel.m')
 
   def update_velocity(self, U):
     r"""
@@ -208,6 +209,8 @@ class GridModel(object):
     # assign the variables to the functions :
     assign(self.u, U[0])
     assign(self.v, U[1])
+    print_min_max(U[0], 'GridModel.u')
+    print_min_max(U[1], 'GridModel.v')
 
   def update_acceleration(self, a):
     r"""
@@ -219,6 +222,8 @@ class GridModel(object):
     # assign the variables to the functions :
     self.assa_x.assign(self.a_x, a[0])
     self.assa_y.assign(self.a_y, a[1])
+    print_min_max(a[0], 'GridModel.a_x')
+    print_min_max(a[1], 'GridModel.a_y')
 
   def update_internal_force_vector(self, f_int):
     r"""
@@ -230,6 +235,8 @@ class GridModel(object):
     # assign the variables to the functions :
     self.assf_int_x.assign(self.f_int_x, f_int[0])
     self.assf_int_y.assign(self.f_int_y, f_int[1])
+    print_min_max(f_int[0], 'GridModel.f_int_x')
+    print_min_max(f_int[1], 'GridModel.f_int_y')
 
   def assign_variable(self, u, var):
     r"""

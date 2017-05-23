@@ -85,11 +85,11 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
       vrt_i[j] = Q->dofmap()->cell_dofs(cell->index())[j];
     }
 
-    printf("x[%u] = [%f,%f], \n phi[%u] = [%f,%f,%f], \n grad_phi[%u] = [%f,%f,%f,%f,%f,%f], \n vrt[%u] = [%u,%u,%u]\n\n",
-           i, x_i[0], x_i[1],
-           i, phi_i[0], phi_i[1], phi_i[2],
-           i, grad_phi_i[0], grad_phi_i[1], grad_phi_i[2], grad_phi_i[3], grad_phi_i[4], grad_phi_i[5],
-           i, vrt_i[0], vrt_i[1], vrt_i[2]);
+    //printf("x[%u] = [%f,%f], \n phi[%u] = [%f,%f,%f], \n grad_phi[%u] = [%f,%f,%f,%f,%f,%f], \n vrt[%u] = [%u,%u,%u]\n\n",
+    //       i, x_i[0], x_i[1],
+    //       i, phi_i[0], phi_i[1], phi_i[2],
+    //       i, grad_phi_i[0], grad_phi_i[1], grad_phi_i[2], grad_phi_i[3], grad_phi_i[4], grad_phi_i[5],
+    //       i, vrt_i[0], vrt_i[1], vrt_i[2]);
 
     M->set_x(i, x_i);
     M->set_phi(i, phi_i);
@@ -110,6 +110,9 @@ void MPMModel::formulate_material_basis_functions()
 
 void MPMModel::interpolate_material_mass_to_grid()
 {
+  // first reset the mass to zero :
+  std::fill(m_grid.begin(), m_grid.end(), 0.0);
+
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
@@ -123,7 +126,7 @@ void MPMModel::interpolate_material_mass_to_grid()
       // interpolate the particle mass to each node of its cell :
       for (unsigned int q = 0; q < sdim; q++)
       {
-        printf("\tphi_p[%u] = %f,\t m_p[%u] = %f\n", q, phi_p[q], j, m_p);
+        //printf("\tphi_p[%u] = %f,\t m_p[%u] = %f\n", q, phi_p[q], j, m_p);
         m_grid[idx[q]] += phi_p[q] * m_p;
       }
     }
@@ -132,6 +135,13 @@ void MPMModel::interpolate_material_mass_to_grid()
 
 void MPMModel::interpolate_material_velocity_to_grid() 
 {
+  // first reset the velocity to zero :
+  for (unsigned int i = 0; i < 3; i++)
+  {
+    if (coord_arr[i] == 1)
+      std::fill(U3_grid[i].begin(), U3_grid[i].end(), 0.0);
+  }
+
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
@@ -153,8 +163,8 @@ void MPMModel::interpolate_material_velocity_to_grid()
           // calculate mass-conserving grid velocity at the node :
           for (unsigned int q = 0; q < sdim; q++)
           {
-            printf("\tU3[%u][%u] ::   u_p[%u] = %f,\t phi_p[%u] = %f,\t m_p[%u] = %f,\t m_grid[%u] = %f\n",
-                   k, idx[q], ctr, u_p[ctr], q, phi_p[q], j, m_p, idx[q], m_grid[idx[q]]);
+            //printf("\tU3[%u][%u] ::   u_p[%u] = %f,\t phi_p[%u] = %f,\t m_p[%u] = %f,\t m_grid[%u] = %f\n",
+            //       k, idx[q], ctr, u_p[ctr], q, phi_p[q], j, m_p, idx[q], m_grid[idx[q]]);
             U3_grid[k][idx[q]] += u_p[ctr] * phi_p[q] * m_p / m_grid[idx[q]];
           }
           ctr++;  // increment counter because num(u_p) may != num(u_grid)
@@ -236,8 +246,8 @@ void MPMModel::calculate_material_velocity_gradient()
             // calculate velocity gradient at each node :
             for (unsigned int q = 0; q < sdim; q++)
             {
-              printf("\tU3[%u][%u] = %f,\t grad_phi_p[%u] = %f\n",
-                     k, idx[q], U3_grid[k][idx[q]], q, grad_phi_p[q]);
+              //printf("\tU3[%u][%u] = %f,\t grad_phi_p[%u] = %f\n",
+              //       k, idx[q], U3_grid[k][idx[q]], q, grad_phi_p[q]);
               dudk_p[dudk_ctr] += grad_phi_p[q*gdim_ctr] * U3_grid[k][idx[q]];
             }
             gdim_ctr++;
