@@ -11,13 +11,19 @@ namespace dolfin
       MPMElasticMaterial(const Array<double>& m_a,
                          const Array<double>& x_a,
                          const Array<double>& u_a,
-                         const FiniteElement& element) :
-      MPMMaterial(m_a, x_a, u_a, element) { };
-
+                         const FiniteElement& element,
+                         double young_modulus,
+                         double poisson_ratio);
      ~MPMElasticMaterial() {};
 
       void calculate_stress();
 
+    private:
+      double E;
+      double nu;
+
+      double mu;
+      double lmbda;
   };
 }
 #endif

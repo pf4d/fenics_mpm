@@ -4,8 +4,9 @@ using namespace dolfin;
 
 MPMModel::MPMModel(const FunctionSpace& V,
                    const unsigned int num_dofs,
-                   const Array<int>& coords) :
-                   dofs(num_dofs)
+                   const Array<int>& coords,
+                   double time_step) :
+                   dofs(num_dofs), dt(time_step)
 {
   Q       = &V;
   mesh    = V.mesh();
@@ -217,30 +218,68 @@ void MPMModel::calculate_material_velocity_gradient()
     // iterate through particles :
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
-      std::vector<unsigned int> idx  = materials[i]->get_vrt(j);  // node index
-      std::vector<double> grad_phi_p = materials[i]->get_phi(j);  // basis grad.
-      unsigned int ctr = 0;                                       // vel. count
+      std::vector<unsigned int> idx  = materials[i]->get_vrt(j);
+      std::vector<double> grad_phi_p = materials[i]->get_grad_phi(j);
+      std::vector<double> dudk_p (gdim*gdim, 0.0);
+      unsigned int dudk_ctr = 0;
 
       // iterate through each dimension :
       for (unsigned int k = 0; k < 3; k++)
       {
-        // if this dimension has a velocity :
-        if (coord_arr[k] == 1)
+        // iterate through each dimension :
+        for (unsigned int p = 0; p < 3; p++)
         {
-          /*
-          dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
-          dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
-
-          dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
-          dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
-
-          grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
-          */
-          ctr++;  // increment counter because num(u_p) may != num(u_grid)
+          unsigned int gdim_ctr = 0;
+          // if this dimension has a velocity :
+          if (coord_arr[k] == 1 && coord_arr[p] == 1)
+          {
+            // calculate velocity gradient at each node :
+            for (unsigned int q = 0; q < sdim; q++)
+            {
+              printf("\tU3[%u][%u] = %f,\t grad_phi_p[%u] = %f\n",
+                     k, idx[q], U3_grid[k][idx[q]], q, grad_phi_p[q]);
+              dudk_p[dudk_ctr] += grad_phi_p[q*gdim_ctr] * U3_grid[k][idx[q]];
+            }
+            gdim_ctr++;
+            /*
+            dudx_p = np.sum(grad_phi_i[np.array([0,2,4])] * u.vector()[i])
+            dudy_p = np.sum(grad_phi_i[np.array([1,3,5])] * u.vector()[i])
+            
+            dvdx_p = np.sum(grad_phi_i[np.array([0,2,4])] * v.vector()[i])
+            dvdy_p = np.sum(grad_phi_i[np.array([1,3,5])] * v.vector()[i])
+            
+            grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
+            */
+            dudk_ctr++;  // increment counter because num(u_p) may != num(u_grid)
+          }
         }
       }
+      materials[i]->set_grad_u(j, dudk_p);
     }
   } 
+}
+
+void MPMModel::initialize_material_tensors()
+{
+  std::vector<double> I = materials[0]->get_I();
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<double> dF_j     = materials[i]->get_dF(j);
+      std::vector<double> grad_u_j = materials[i]->get_grad_u(j);
+
+      for (unsigned int k = 0; k < gdim*gdim; k++)
+        dF_j[k] = I[k] + grad_u_j[k] * dt;
+      materials[i]->set_dF(j, dF_j);
+      materials[i]->set_F(j,  dF_j);
+      materials[i]->update_strain_rate();
+      materials[i]->calculate_stress();
+    }
+  }
 }
 
 

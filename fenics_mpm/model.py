@@ -35,7 +35,7 @@ class Model(object):
     
     # create an MPMMaterial instance from the module just created :
     self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q, self.grid_model.dofs,
-                                       np.array([1,1,0], dtype='intc'))
+                                       np.array([1,1,0], dtype='intc'), dt)
     # intialize the cell diameter :
     self.mpm_cpp.set_h(self.grid_model.h.vector().array())
 
@@ -62,7 +62,7 @@ class Model(object):
       grad_phi = []  # grid basis gradient values at points
 
       # iterate through particle positions :
-      for i in range(M.cpp_mat.get_num_particles()): 
+      for i in range(M.cpp_mat.get_num_particles()):
         # append these to a list corresponding with particles : 
         vrt.append(M.cpp_mat.get_vrt(i))
         phi.append(M.cpp_mat.get_phi(i))
@@ -151,24 +151,19 @@ class Model(object):
     .. math::
       \nabla \mathbf{u}_p = \sum_{i=1}^{n_n} \nabla \phi_i(\mathbf{x}_p) \mathbf{u}_i.
     """
-    # recover the grid nodal velocities :
-    u,v,w = self.grid_model.U3.split(True)
+    # calculate particle velocity gradients :
+    self.mpm_cpp.calculate_material_velocity_gradient()
 
     # iterate through all materials :
     for M in self.materials:
 
       grad_U_p_v = []
-      
-      # calculate particle velocity gradients :
-      for i, grad_phi_i in zip(M.vrt, M.grad_phi):
-        u_i    = u.vector()[i]
-        v_i    = v.vector()[i]
-        dudx_p = np.sum(grad_phi_i[np.array([0,2,4])] * u.vector()[i])
-        dudy_p = np.sum(grad_phi_i[np.array([1,3,5])] * u.vector()[i])
-        dvdx_p = np.sum(grad_phi_i[np.array([0,2,4])] * v.vector()[i])
-        dvdy_p = np.sum(grad_phi_i[np.array([1,3,5])] * v.vector()[i])
-        grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
-      
+
+      # iterate through particle positions :
+      for i in range(M.cpp_mat.get_num_particles()):
+        # append these to a list corresponding with particles : 
+        grad_U_p_v.append(M.cpp_mat.get_grad_u(i))
+
       # update the particle velocity gradients :
       M.grad_u = np.array(grad_U_p_v, dtype=float)
 
@@ -181,7 +176,7 @@ class Model(object):
     
     Note that this is an intermediate step used by :meth:`~model.Model.advect_material_particles`.
     """
-    u, v  = self.grid_model.U3.split(True)
+    u, v, w  = self.grid_model.U3.split(True)
 
     # iterate through all materials :
     for M in self.materials:
@@ -206,7 +201,7 @@ class Model(object):
     
     These particle accelerations are used to calculate the new particle velocities by :meth:`~model.Model.advect_material_particles`.
     """
-    a_x, a_y = self.grid_model.a3.split(True)
+    a_x, a_y, a_z = self.grid_model.a3.split(True)
 
     # iterate through all materials :
     for M in self.materials:
@@ -236,13 +231,28 @@ class Model(object):
     set to ``M.F``; strain-rate tensor :math:`\dot{\epsilon}_p` given by :func:`~material.Material.calculate_strain_rate` set to ``M.epsilon``; and Cauchy-stress tensor :math:`\sigma_p` given by :func:`~material.Material.calculate_stress` set to ``M.sigma``.
     """
     self.calculate_material_velocity_gradient()
+    self.mpm_cpp.initialize_material_tensors()
 
     # iterate through all materials :
     for M in self.materials:
-      M.dF      = M.I + M.grad_u * self.dt
-      M.F       = M.dF
-      M.epsilon = M.calculate_strain_rate()
-      M.sigma   = M.calculate_stress()
+      
+      dF_p_v      = []
+      F_p_v       = []
+      epsilon_p_v = []
+      sigma_p_v   = []
+
+      # iterate through particle positions :
+      for i in range(M.cpp_mat.get_num_particles()):
+        # append these to a list corresponding with particles : 
+        dF_p_v.append(M.cpp_mat.get_dF(i))
+        F_p_v.append(M.cpp_mat.get_F(i))
+        epsilon_p_v.append(M.cpp_mat.get_epsilon(i))
+        sigma_p_v.append(M.cpp_mat.get_sigma(i))
+      
+      M.dF      = np.array(dF_p_v,       dtype=float)
+      M.F       = np.array(F_p_v,        dtype=float)
+      M.epsilon = np.array(epsilon_p_v,  dtype=float)
+      M.sigma   = np.array(sigma_p_v,    dtype=float)
 
   def update_material_volume(self):
     r"""
@@ -262,7 +272,7 @@ class Model(object):
     # NOTE: the new volume can be calculated using either the differential 
     #       deformation gradient or current deformation gradient :
     for M in self.materials:
-      M.V = (M.dF[:,0,0] * M.dF[:,1,1] + M.dF[:,1,0] * M.dF[:,0,1]) * M.V
+      M.V = (M.dF[:,0] * M.dF[:,3] - M.dF[:,2] * M.dF[:,1]) * M.V
       #M.V = (M.F[:,0,0] * M.F[:,1,1] + M.F[:,1,0] * M.F[:,0,1]) * M.V0
 
   def update_material_deformation_gradient(self):
@@ -320,9 +330,13 @@ class Model(object):
                                                 M.F, M.sigma,
                                                 M.V):
         f_int = []
-        for grad_phi_i in grad_phi_p:
-          f_int.append(- np.dot(sig_p, grad_phi_i) * V_p)
-        f_int = np.array(f_int, dtype=float)
+        f_int.append( np.array([ np.dot(sig_p[0:2], grad_phi_p[0:2]),
+                                 np.dot(sig_p[2:4], grad_phi_p[0:2])  ]) )
+        f_int.append( np.array([ np.dot(sig_p[0:2], grad_phi_p[2:4]),
+                                 np.dot(sig_p[2:4], grad_phi_p[2:4])  ]) )
+        f_int.append( np.array([ np.dot(sig_p[0:2], grad_phi_p[4:6]),
+                                 np.dot(sig_p[2:4], grad_phi_p[4:6])  ]) )
+        f_int = - np.array(f_int, dtype=float) * V_p
         
         f_int_x.vector()[p] += f_int[:,0].astype(float)
         f_int_y.vector()[p] += f_int[:,1].astype(float)
@@ -354,7 +368,7 @@ class Model(object):
 
     where the grid mass :math:`m_i` has been limited to be :math:`\geq \varepsilon = 1 \times 10^{-2}`, and external forces are currently only :math:`\mathbf{f}_i^{\mathrm{ext}} = \mathbf{0}`.
     """
-    f_int_x, f_int_y = self.grid_model.f_int.split(True)
+    f_int_x, f_int_y, f_int_z = self.grid_model.f_int.split(True)
     f_int_x_a = f_int_x.vector().array()
     f_int_y_a = f_int_y.vector().array()
     m_a       = self.grid_model.m.vector().array()

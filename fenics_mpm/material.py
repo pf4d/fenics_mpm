@@ -67,7 +67,7 @@ class Material(object):
     self.epsilon  = None               # strain-rate tensor
 
     # identity tensors :
-    self.I        = np.array([np.identity(self.d)]*self.n)
+    self.I        = np.array([np.identity(self.d).flatten()]*self.n)
     
   def get_cpp_material(self, element):
     r"""
@@ -108,14 +108,14 @@ class Material(object):
 
     # calculate particle strain-rate tensors :
     for grad_u_p in self.grad_u:
-      dudx   = grad_u_p[0,0]
-      dudy   = grad_u_p[0,1]
-      dvdx   = grad_u_p[1,0]
-      dvdy   = grad_u_p[1,1]
+      dudx   = grad_u_p[0]
+      dudy   = grad_u_p[1]
+      dvdx   = grad_u_p[2]
+      dvdy   = grad_u_p[3]
       eps_xx = dudx
       eps_xy = 0.5*(dudy + dvdx)
       eps_yy = dvdy
-      eps    = np.array( [[eps_xx, eps_xy], [eps_xy, eps_yy]], dtype=float )
+      eps    = np.array( [eps_xx, eps_xy, eps_xy, eps_yy], dtype=float )
       epsilon_n.append(eps)
     return np.array(epsilon_n, dtype=float)
     #self.cpp_mat.update_strain_rate()
@@ -178,7 +178,8 @@ class ElasticMaterial(Material):
     return mpm_module.MPMElasticMaterial(self.m,
                                          self.x.flatten(),
                                          self.u.flatten(),
-                                         element)
+                                         element,
+                                         self.E, self.nu)
 
   def color(self):
     return '150'
@@ -198,13 +199,13 @@ class ElasticMaterial(Material):
     # calculate particle stress :
     for epsilon_p in self.epsilon:
       #sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)
-      trace_eps  = epsilon_p[0,0] + epsilon_p[1,1]
+      trace_eps  = epsilon_p[0] + epsilon_p[3]
       c1         = 2.0 * self.mu
       c2         = self.lmbda * trace_eps
-      sig_xx     = c1 * epsilon_p[0,0] + c2
-      sig_xy     = c1 * epsilon_p[0,1] 
-      sig_yy     = c1 * epsilon_p[1,1] + c2
-      sigma_p    = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]], dtype=float )
+      sig_xx     = c1 * epsilon_p[0] + c2
+      sig_xy     = c1 * epsilon_p[1] 
+      sig_yy     = c1 * epsilon_p[3] + c2
+      sigma_p    = np.array( [sig_xx, sig_xy, sig_xy, sig_yy], dtype=float )
       sigma.append(sigma_p)
     
     # return particle Cauchy stress tensors :

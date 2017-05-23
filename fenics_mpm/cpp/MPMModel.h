@@ -15,7 +15,8 @@ namespace dolfin
     public:
       MPMModel(const FunctionSpace& V, 
                const unsigned int num_dofs,
-               const Array<int>& coords);
+               const Array<int>& coords,
+               double time_step);
       void add_material(MPMMaterial& M);
       void update_particle_basis_functions(MPMMaterial* M);
       void formulate_material_basis_functions();
@@ -25,6 +26,7 @@ namespace dolfin
       void calculate_material_density();
       void calculate_material_initial_volume();
       void calculate_material_velocity_gradient();
+      void initialize_material_tensors();
       
       void set_h(const Array<double>& h);
 
@@ -34,6 +36,7 @@ namespace dolfin
       void set_U3(unsigned int index, std::vector<double>& value);
 
     private:
+      double dt = 0;
       const unsigned int dofs = 0;
       const unsigned int cell_orientation = 0;
       const unsigned int deriv_order = 1; 

@@ -64,6 +64,21 @@ namespace dolfin
       
       std::vector<unsigned int> get_vrt(unsigned int index) const;
       void  set_vrt(unsigned int index, std::vector<unsigned int>& value);
+      
+      std::vector<double>       get_grad_u(unsigned int index) const;
+      void  set_grad_u(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_dF(unsigned int index) const;
+      void  set_dF(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_F(unsigned int index) const;
+      void  set_F(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_sigma(unsigned int index) const;
+      void  set_sigma(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_epsilon(unsigned int index) const;
+      void  set_epsilon(unsigned int index, std::vector<double>& value);
 
     protected:
       unsigned int                           n_p;      // number of particles
@@ -83,6 +98,7 @@ namespace dolfin
       std::vector<std::vector<unsigned int>> vrt;      // grid nodal indicies
       std::vector<std::vector<double>>       phi;      // grid basis val's
       std::vector<std::vector<double>>       grad_phi; // grid basis grad. val's
+      std::vector<std::vector<double>>       dF;       // inc. def. grad. ten.
       std::vector<std::vector<double>>       F;        // def. gradient tensor
       std::vector<std::vector<double>>       sigma;    // stress tensor
       std::vector<std::vector<double>>       epsilon;  // strain-rate tensor

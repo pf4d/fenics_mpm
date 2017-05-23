@@ -2,20 +2,63 @@
 
 using namespace dolfin;
 
+/*
+trace_eps  = epsilon_p[0,0] + epsilon_p[1,1]
+c1         = 2.0 * self.mu
+c2         = self.lmbda * trace_eps
+sig_xx     = c1 * epsilon_p[0,0] + c2
+sig_xy     = c1 * epsilon_p[0,1] 
+sig_yy     = c1 * epsilon_p[1,1] + c2
+sigma_p    = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]], dtype=float )
+sigma.append(sigma_p)
+*/
+
+MPMElasticMaterial::MPMElasticMaterial(const Array<double>& m_a,
+                                       const Array<double>& x_a,
+                                       const Array<double>& u_a,
+                                       const FiniteElement& element,
+                                       const double young_modulus,
+                                       const double poisson_ratio) :
+                    MPMMaterial(m_a, x_a, u_a, element),
+                    E(young_modulus),
+                    nu(poisson_ratio)
+{
+  // Lamé parameters :
+  mu       = E / (2.0*(1.0 + nu));
+  lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu));
+}
+
 void MPMElasticMaterial::calculate_stress()
 {
+  unsigned int idx, idx_T;
+  double       c1, c2, trace_eps, sig_temp;
+
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
   {
+    // calculate the trace of epsilon :
+    trace_eps = 0;
+    for (unsigned int j = 0; j < gdim; j++)
+      trace_eps += epsilon[i][j*gdim];
+    c1 = 2.0 * mu;
+    c2 = lmbda * trace_eps;
+
+    // update the stress tensor :
     for (unsigned int j = 0; j < gdim; j++)
     {
-      if (i == j)
-        epsilon[i][j] = grad_u[i][j];
-      else if (j > i)
+      for (unsigned int k = 0; k < gdim; k++)
       {
-        eps_temp      = 0.5 * (grad_u[i][j] + grad_u[j][i]);
-        epsilon[i][j] = eps_temp;
-        epsilon[j][i] = eps_temp;
+        idx   = j*gdim + k;
+        idx_T = k*gdim + j;
+        if (k == j)
+          sigma[i][idx] = c1 * epsilon[i][idx] + c2;
+        else if (k > j)
+        {
+          sig_temp        = c1 * epsilon[i][idx];
+          sigma[i][idx]   = sig_temp;
+          sigma[i][idx_T] = sig_temp;
+        }
+        else continue;
       }
     }
   }

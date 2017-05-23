@@ -31,6 +31,7 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   vrt.resize(n_p);
   phi.resize(n_p);
   grad_phi.resize(n_p);
+  dF.resize(n_p);
   F.resize(n_p);
   sigma.resize(n_p);
   epsilon.resize(n_p);
@@ -51,13 +52,17 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
     vrt[i].resize(sdim);
     phi[i].resize(sdim);
   
-    // these are flattened tensors defined with columns over each 
+    // this is a flattened tensor defined with columns over each 
     //   topological dim. and rows over each element dimension :
-    grad_u[i].resize(gdim*sdim);
     grad_phi[i].resize(gdim*sdim);
-    F[i].resize(gdim*sdim);
-    sigma[i].resize(gdim*sdim);
-    epsilon[i].resize(gdim*sdim);
+    
+    // these are rank-two flattened tensors defined over each 
+    //   topological dimension :
+    grad_u[i].resize(gdim*gdim);
+    dF[i].resize(gdim*gdim);
+    F[i].resize(gdim*gdim);
+    sigma[i].resize(gdim*gdim);
+    epsilon[i].resize(gdim*gdim);
     
     m[i] = m_a[i];                               // initalize the mass
     unsigned int idx = 0;                        // index variable
@@ -165,20 +170,80 @@ void  MPMMaterial::set_vrt(unsigned int index, std::vector<unsigned int>& value)
   vrt.at(index) = value;
 }
 
+std::vector<double>  MPMMaterial::get_grad_u(unsigned int index) const
+{
+  return grad_u.at(index);
+}
+
+void  MPMMaterial::set_grad_u(unsigned int index, std::vector<double>& value)
+{
+  grad_u.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_dF(unsigned int index) const
+{
+  return dF.at(index);
+}
+
+void  MPMMaterial::set_dF(unsigned int index, std::vector<double>& value)
+{
+  dF.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_F(unsigned int index) const
+{
+  return F.at(index);
+}
+
+void  MPMMaterial::set_F(unsigned int index, std::vector<double>& value)
+{
+  F.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_sigma(unsigned int index) const
+{
+  return sigma.at(index);
+}
+
+void  MPMMaterial::set_sigma(unsigned int index, std::vector<double>& value)
+{
+  sigma.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_epsilon(unsigned int index) const
+{
+  return epsilon.at(index);
+}
+
+void  MPMMaterial::set_epsilon(unsigned int index, std::vector<double>& value)
+{
+  epsilon.at(index) = value;
+}
+
 void MPMMaterial::update_strain_rate()
 {
+  unsigned int idx;
+  unsigned int idx_T;
+  double       eps_temp;
+
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
   {
     for (unsigned int j = 0; j < gdim; j++)
     {
-      if (i == j)
-        epsilon[i][j] = grad_u[i][j];
-      else if (j > i)
+      for (unsigned int k = 0; k < gdim; k++)
       {
-        eps_temp      = 0.5 * (grad_u[i][j] + grad_u[j][i]);
-        epsilon[i][j] = eps_temp;
-        epsilon[j][i] = eps_temp;
+        idx   = j*gdim + k;
+        idx_T = k*gdim + j;
+        if (k == j)
+          epsilon[i][idx] = grad_u[i][idx];
+        else if (k > j)
+        {
+          eps_temp          = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
+          epsilon[i][idx]   = eps_temp;
+          epsilon[i][idx_T] = eps_temp;
+        }
+        else continue;
       }
     }
   }
