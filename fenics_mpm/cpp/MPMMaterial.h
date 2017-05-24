@@ -26,13 +26,15 @@ namespace dolfin
       std::vector<double>                    get_I()        {return I;};
       std::vector<std::vector<double>>       get_u_star()   {return u_star;};
       std::vector<std::vector<double>>       get_a()        {return a;};
+      std::vector<std::vector<double>>       get_u()        {return u;};
       std::vector<std::vector<double>>       get_grad_u()   {return grad_u;};
       std::vector<std::vector<double>>       get_F()        {return F;};
       std::vector<std::vector<double>>       get_sigma()    {return sigma;};
       std::vector<std::vector<double>>       get_epsilon()  {return epsilon;};
 
       unsigned int get_num_particles() const {return n_p;};
-      void         update_strain_rate();
+      void         calculate_strain_rate(std::vector<std::vector<double>> eps);
+      void         calculate_incremental_strain_rate();
       virtual void calculate_stress() = 0;
       void         calc_pi();
       
@@ -55,6 +57,12 @@ namespace dolfin
       
       std::vector<double>       get_u(unsigned int index) const;
       void set_u(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_a(unsigned int index) const;
+      void set_a(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_u_star(unsigned int index) const;
+      void set_u_star(unsigned int index, std::vector<double>& value);
       
       std::vector<double>       get_phi(unsigned int index) const;
       void  set_phi(unsigned int index, std::vector<double>& value);
@@ -79,6 +87,9 @@ namespace dolfin
       
       std::vector<double>       get_epsilon(unsigned int index) const;
       void  set_epsilon(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_depsilon(unsigned int index) const;
+      void  set_depsilon(unsigned int index, std::vector<double>& value);
 
     protected:
       unsigned int                           n_p;      // number of particles
@@ -102,6 +113,7 @@ namespace dolfin
       std::vector<std::vector<double>>       F;        // def. gradient tensor
       std::vector<std::vector<double>>       sigma;    // stress tensor
       std::vector<std::vector<double>>       epsilon;  // strain-rate tensor
+      std::vector<std::vector<double>>       depsilon; // inc. st.-rate tensor
       
       // components of the strain-rate tensor :
       double  eps_xx;

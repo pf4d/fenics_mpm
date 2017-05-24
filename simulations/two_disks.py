@@ -66,7 +66,7 @@ model.add_material(M1)
 model.add_material(M2)
 
 # perform the material point method algorithm :
-model.mpm(0, 5)
+model.mpm(0, dt)
 
 
 

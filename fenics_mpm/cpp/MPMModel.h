@@ -17,7 +17,9 @@ namespace dolfin
                const unsigned int num_dofs,
                const Array<int>& coords,
                double time_step);
+      double calculate_determinant(std::vector<double>& u);
       void add_material(MPMMaterial& M);
+      void update_points();
       void update_particle_basis_functions(MPMMaterial* M);
       void formulate_material_basis_functions();
       void interpolate_material_velocity_to_grid(); 
@@ -27,6 +29,15 @@ namespace dolfin
       void calculate_material_initial_volume();
       void calculate_material_velocity_gradient();
       void initialize_material_tensors();
+      void interpolate_grid_velocity_to_material();
+      void interpolate_grid_acceleration_to_material();
+      void update_material_volume();
+      void update_material_deformation_gradient();
+      void update_material_stress();
+      void calculate_grid_internal_forces();
+      void update_grid_velocity();
+      void calculate_grid_acceleration(double m_min = 1e-2);
+      void advect_material_particles();
       
       void set_h(const Array<double>& h);
 
@@ -34,6 +45,12 @@ namespace dolfin
       
       std::vector<double>       get_U3(unsigned int index) const;
       void set_U3(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_a3(unsigned int index) const;
+      void set_a3(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_f_int(unsigned int index) const;
+      void set_f_int(unsigned int index, std::vector<double>& value);
 
     private:
       double dt = 0;
