@@ -269,11 +269,9 @@ void  MPMMaterial::set_depsilon(unsigned int index, std::vector<double>& value)
   depsilon.at(index) = value;
 }
 
-void MPMMaterial::calculate_strain_rate(std::vector<std::vector<double>> eps)
+void MPMMaterial::calculate_strain_rate()
 {
-  unsigned int idx;
-  unsigned int idx_T;
-  double       eps_temp;
+  unsigned int idx, idx_T;
 
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
@@ -285,39 +283,36 @@ void MPMMaterial::calculate_strain_rate(std::vector<std::vector<double>> eps)
         idx   = j + k*gdim;
         idx_T = k + j*gdim;
         if (k == j)
-          eps[i][idx] = grad_u[i][idx];
+          epsilon[i][idx] = grad_u[i][idx];
         else
         {
-          eps_temp      = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
-          eps[i][idx]   = eps_temp;
-          eps[i][idx_T] = eps_temp;
+          epsilon[i][idx] = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
         }
       }
     }
   }
-/*  
-  // create the identity tensor
-  // FIXME: rewrite any code that uses "I" to skip multiplication by zero.
-  for (unsigned int i = 0; i < gdim; i++)
-  {
-    for (unsigned int j = 0; j < gdim; j++)
-    {
-      if (i == j)
-      {
-        I[i + j*gdim] = 1.0;
-      }
-      else
-      {
-        I[i + j*gdim] = 0.0;
-      }
-    }
-  }
-*/
 }
 
 void MPMMaterial::calculate_incremental_strain_rate()
 {
-  calculate_strain_rate(depsilon); 
+  unsigned int idx, idx_T;
+
+  // calculate particle strain-rate tensors :
+  for (unsigned int i = 0; i < n_p; i++)
+  {
+    for (unsigned int j = 0; j < gdim; j++)
+    {
+      for (unsigned int k = 0; k < gdim; k++)
+      {
+        idx   = j + k*gdim;
+        idx_T = k + j*gdim;
+        if (k == j)
+          depsilon[i][idx] = grad_u[i][idx];
+        else
+          depsilon[i][idx] = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
+      }
+    }
+  }
 }
 
 static long n_stp     = (int) 1e10;  // number of discretizations

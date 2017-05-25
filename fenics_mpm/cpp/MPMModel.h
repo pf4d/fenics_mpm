@@ -68,7 +68,7 @@ namespace dolfin
       std::vector<MPMMaterial*> materials;
 
       // grid variables :
-      std::vector<unsigned int> coord_arr = {0,0,0};
+      std::vector<unsigned int> coord_arr;
       std::vector<double> h_grid;
       std::vector<double> m_grid;
       std::vector<double> V_grid;

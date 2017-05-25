@@ -564,6 +564,10 @@ class Model(object):
       self.grid_model.save_pvd(self.grid_model.U3,    'U3',    f=u_file, t=t)
       self.grid_model.save_pvd(self.grid_model.a3,    'a3',    f=a_file, t=t)
       self.grid_model.save_pvd(self.grid_model.f_int, 'f_int', f=f_file, t=t)
+
+      print "grad_u", self.materials[0].grad_u[100]
+      print "epsilon", self.materials[0].epsilon[100]
+      print "sigma", self.materials[0].sigma[100]
       
       # move the model forward in time :
       self.advect_material_particles()
