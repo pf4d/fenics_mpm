@@ -26,12 +26,13 @@ MPMElasticMaterial::MPMElasticMaterial(const Array<double>& m_a,
   // Lamé parameters :
   mu       = E / (2.0*(1.0 + nu));
   lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu));
+  c1       = 2.0 * mu;
 }
 
 void MPMElasticMaterial::calculate_stress()
 {
-  unsigned int idx, idx_T;
-  double       c1, c2, trace_eps;
+  unsigned int idx;
+  double       c2, trace_eps;
 
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
@@ -39,8 +40,7 @@ void MPMElasticMaterial::calculate_stress()
     // calculate the trace of epsilon :
     trace_eps = 0;
     for (unsigned int p = 0; p < gdim; p++)
-      trace_eps += epsilon[i][p*gdim];
-    c1 = 2.0 * mu;
+      trace_eps += epsilon[i][p*gdim + p];
     c2 = lmbda * trace_eps;
 
     // update the stress tensor :
@@ -48,8 +48,7 @@ void MPMElasticMaterial::calculate_stress()
     {
       for (unsigned int k = 0; k < gdim; k++)
       {
-        idx   = j + k*gdim;
-        idx_T = k + j*gdim;
+        idx   = j*gdim + k;
         if (k == j)
           sigma[i][idx] = c1 * epsilon[i][idx] + c2;
         else

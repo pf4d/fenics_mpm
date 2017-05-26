@@ -500,7 +500,7 @@ void MPMModel::calculate_grid_internal_forces()
       std::vector<double> grad_phi_p = materials[i]->get_grad_phi(j);
       std::vector<double> sigma_p    = materials[i]->get_sigma(j);
       double V_p                     = materials[i]->get_V(j);
-      stx                            = 0;
+      stx = 0;
 
       // iterate through the nodes :
       for (unsigned int s = 0; s < sdim; s++)
@@ -508,12 +508,12 @@ void MPMModel::calculate_grid_internal_forces()
         // iterate through each component of force :
         for (unsigned int p = 0; p < gdim; p++)
         {
+          vtx = p*gdim;
           // iterate through each geometric coordinate :
           for (unsigned int q = 0; q < gdim; q++)
           {
-            vtx = p*gdim + q;
-            f_int_grid[coord_arr[p]][idx[s]] -= sigma_p[vtx] * 
-                                                grad_phi_p[stx] * V_p;
+            f_int_grid[coord_arr[p]][idx[s]] -= sigma_p[vtx + q] * 
+                                                grad_phi_p[stx + q] * V_p;
           }
         }
         stx += gdim;

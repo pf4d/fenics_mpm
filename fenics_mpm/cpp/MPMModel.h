@@ -2,6 +2,7 @@
 #define __MPMMODEL_H
 
 #include <dolfin/function/FunctionSpace.h>
+#include <numpy/arrayobject.h>
 #include <dolfin/geometry/BoundingBoxTree.h>
 #include <dolfin/common/Array.h>
 #include <dolfin/fem/GenericDofMap.h>

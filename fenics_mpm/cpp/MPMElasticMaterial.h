@@ -24,6 +24,7 @@ namespace dolfin
 
       double mu;
       double lmbda;
+      double c1;
   };
 }
 #endif

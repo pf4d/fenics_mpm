@@ -34,10 +34,10 @@ dt         = 0.002       # time-step (seconds)
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 u_mag      = 0.1         # velocity magnitude (m/s)
-m_mag      = 0.15        # particle mass
+m_mag      = 0.012       # particle mass
 
 # create a material :
-n          = 500       # number of particles
+n          = 1000        # number of particles
 r_max      = 0.15        # disk radius
 
 # upper-right disk :
@@ -66,7 +66,7 @@ model.add_material(M1)
 model.add_material(M2)
 
 # perform the material point method algorithm :
-model.mpm(0, 2)
+model.mpm(0, 5)
 
 
 
