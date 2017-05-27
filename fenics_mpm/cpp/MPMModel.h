@@ -17,7 +17,8 @@ namespace dolfin
       MPMModel(const FunctionSpace& V, 
                const unsigned int num_dofs,
                const Array<int>& coords,
-               double time_step);
+               double time_step,
+               bool verbosity);
       double calculate_determinant(std::vector<double>& u);
       void add_material(MPMMaterial& M);
       void update_points();
@@ -54,10 +55,11 @@ namespace dolfin
       void set_f_int(unsigned int index, std::vector<double>& value);
 
     private:
-      double dt = 0;
-      const unsigned int dofs = 0;
+      double             dt               = 0;
+      bool               verbose          = true;
+      const unsigned int dofs             = 0;
       const unsigned int cell_orientation = 0;
-      const unsigned int deriv_order = 1; 
+      const unsigned int deriv_order      = 1; 
       const FunctionSpace* Q;
       std::shared_ptr<const FiniteElement> element;
       std::unique_ptr<Cell> cell;

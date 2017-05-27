@@ -133,7 +133,7 @@ class Material(object):
     screen.
     """
     plt.subplot(111)
-    plt.plot(self.X[:,0], self.X[:,1], 'r*')
+    plt.plot(self.x[:,0], self.x[:,1], 'r*')
     plt.axis('equal')
     plt.show()
 
@@ -210,3 +210,6 @@ class ElasticMaterial(Material):
     
     # return particle Cauchy stress tensors :
     return np.array(sigma, dtype=float)
+
+
+

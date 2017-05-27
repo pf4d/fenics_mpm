@@ -15,12 +15,11 @@ class GridModel(object):
   :type mesh: :class:`~fenics.Mesh`
   """
 
-  def __init__(self, mesh, out_dir='./output/'):
+  def __init__(self, mesh, out_dir='./output/', verbose=True):
     """
     Create and instance of the model.
     """
-    self.this = self
-    #self.this = super(type(self), self)  # pointer to this base class
+    self.this = self     # pointer to this instance
 
     # have the compiler generate code for evaluating basis derivatives :
     parameters['form_compiler']['no-evaluate_basis_derivatives'] = False
@@ -34,9 +33,10 @@ class GridModel(object):
 
     PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
-    self.mesh        = mesh
-    self.out_dir     = out_dir
-    self.MPI_rank    = MPI.rank(mpi_comm_world())
+    self.mesh        = mesh                       # the F.E. mesh
+    self.out_dir     = out_dir                    # directory to save variables
+    self.verbose     = verbose                    # print to screen or not
+    self.MPI_rank    = MPI.rank(mpi_comm_world()) # MPI process ID #
     
     self.generate_function_spaces()
     self.initialize_variables()
@@ -124,6 +124,9 @@ class GridModel(object):
     * ``self.m``          -- mass :math:`m_i` 
     * ``self.m0``         -- inital mass :math:`m_i^0`
     """
+    s = "::: initializing grid variables :::"
+    print_text(s, cls=self.this)
+
     # the finite-element used :
     self.element = self.Q.element()
     
@@ -197,7 +200,8 @@ class GridModel(object):
     """
     # assign the mass to the model variable :
     self.assm.assign(self.m, m)
-    print_min_max(self.m, 'GridModel.m')
+    if self.verbose:
+      print_min_max(self.m, 'GridModel.m')
 
   def update_velocity(self, U):
     r"""
@@ -209,8 +213,9 @@ class GridModel(object):
     # assign the variables to the functions :
     assign(self.u, U[0])
     assign(self.v, U[1])
-    print_min_max(U[0], 'GridModel.u')
-    print_min_max(U[1], 'GridModel.v')
+    if self.verbose:
+      print_min_max(U[0], 'GridModel.u')
+      print_min_max(U[1], 'GridModel.v')
 
   def update_acceleration(self, a):
     r"""
@@ -222,8 +227,9 @@ class GridModel(object):
     # assign the variables to the functions :
     self.assa_x.assign(self.a_x, a[0])
     self.assa_y.assign(self.a_y, a[1])
-    print_min_max(a[0], 'GridModel.a_x')
-    print_min_max(a[1], 'GridModel.a_y')
+    if self.verbose:
+      print_min_max(a[0], 'GridModel.a_x')
+      print_min_max(a[1], 'GridModel.a_y')
 
   def update_internal_force_vector(self, f_int):
     r"""
@@ -235,8 +241,9 @@ class GridModel(object):
     # assign the variables to the functions :
     self.assf_int_x.assign(self.f_int_x, f_int[0])
     self.assf_int_y.assign(self.f_int_y, f_int[1])
-    print_min_max(f_int[0], 'GridModel.f_int_x')
-    print_min_max(f_int[1], 'GridModel.f_int_y')
+    if self.verbose:
+      print_min_max(f_int[0], 'GridModel.f_int_x')
+      print_min_max(f_int[1], 'GridModel.f_int_y')
 
   def assign_variable(self, u, var):
     r"""
@@ -294,7 +301,8 @@ class GridModel(object):
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
       u = var
-    print_min_max(u, u.name())
+    if self.verbose:
+      print_min_max(u, u.name())
 
   def save_pvd(self, u, name, f=None, t=0.0):
     r"""
@@ -316,13 +324,13 @@ class GridModel(object):
     """
     if f != None:
       s       = "::: saving pvd file :::"
-      print_text(s, 'green')#cls=self.this)
       f << (u, float(t))
     else :
       s       = "::: saving %spvd/%s.pvd file :::" % (self.out_dir, name)
-      print_text(s, 'green')#cls=self.this)
       f = File(self.out_dir + 'pvd/' +  name + '.pvd')
       f << (u, float(t))
+    if self.verbose:
+      print_text(s, 'green')#cls=self.this)
 
   def save_xdmf(self, u, name, f=None, t=0.0):
     r"""
@@ -344,10 +352,10 @@ class GridModel(object):
     """
     if f != None:
       s       = "::: saving %s.xdmf file :::" % name
-      print_text(s, 'green')#cls=self.this)
       f.write(u, float(t))
     else :
       s       = "::: saving %sxdmf/%s.xdmf file :::" % (self.out_dir, name)
-      print_text(s, 'green')#cls=self.this)
       f = XDMFFile(self.out_dir + 'xdmf/' +  name + '.xdmf')
       f.write(u)
+    if self.verbose:
+      print_text(s, 'green')#cls=self.this)
