@@ -27,6 +27,8 @@ MPMModel::MPMModel(const FunctionSpace& V,
   V_grid.resize(dofs);     // volume
   U3_grid.resize(3);       // velocity vector
   a3_grid.resize(3);       // acceleration vector
+  U3_grid_new.resize(3);       // velocity vector
+  a3_grid_new.resize(3);       // acceleration vector
   f_int_grid.resize(3);    // internal force vector
   for (unsigned int i = 0; i < 3; i++)
   {
@@ -34,6 +36,8 @@ MPMModel::MPMModel(const FunctionSpace& V,
     if (coords[i] == 1)  coord_arr.push_back(i);
     U3_grid[i].resize(coords[i]*dofs);
     a3_grid[i].resize(coords[i]*dofs);
+    U3_grid_new[i].resize(coords[i]*dofs);
+    a3_grid_new[i].resize(coords[i]*dofs);
     f_int_grid[i].resize(coords[i]*dofs);
   }
 }
@@ -93,6 +97,15 @@ void  MPMModel::set_f_int(unsigned int index, std::vector<double>& value)
 void MPMModel::add_material(MPMMaterial& M)
 {
   materials.push_back(&M);
+}
+
+void MPMModel::set_boundary_conditions(const Array<int>& vertices,
+                                       const Array<double>& values)
+{
+  for (unsigned int i = 0; i < vertices.size(); i++)
+    bc_vrt.push_back(vertices[i]);
+  for (unsigned int i = 0; i < values.size(); i++)
+    bc_val.push_back(values[i]);
 }
 
 void MPMModel::update_points()
@@ -230,6 +243,19 @@ void MPMModel::interpolate_material_velocity_to_grid()
       }
     }
   }
+ 
+  // TODO: set boolean flag for using Dirichlet or not : 
+  // apply boundary conditions if present :
+  for (unsigned int k = 0; k < gdim; k++)
+  {
+    for (unsigned int i = 0; i < bc_val.size(); i++)
+    {
+      for (unsigned int j = 0; j < bc_vrt.size(); j++)
+      {
+        U3_grid[coord_arr[k]][bc_vrt[j]] = bc_val[i];
+      }
+    }
+  }
 }
 
 void MPMModel::calculate_grid_volume()
@@ -287,45 +313,6 @@ void MPMModel::calculate_material_initial_volume()
   }
 }
 
-void MPMModel::calculate_material_velocity_gradient()
-{
-  if (verbose == true)
-    printf("--- C++ calculate_material_velocity_gradient() ---\n");
-
-  unsigned int vtx, stx;
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<unsigned int> idx  = materials[i]->get_vrt(j);
-      std::vector<double> grad_phi_p = materials[i]->get_grad_phi(j);
-      std::vector<double> dudk_p (gdim*gdim, 0.0);
-
-      // iterate through each component of velocity :
-      for (unsigned int p = 0; p < gdim; p++)
-      {
-        // iterate through each coordinate dimension :
-        for (unsigned int q = 0; q < gdim; q++)
-        {
-          vtx = p*gdim + q;
-          stx = q;
-          // iterate through each node of the particle's cell :
-          for (unsigned int s = 0; s < sdim; s++)
-          {
-            dudk_p[vtx] += grad_phi_p[stx] * 
-                           U3_grid[coord_arr[p]][idx[s]];
-            stx += gdim;
-          }
-        }
-      }
-      materials[i]->set_grad_u(j, dudk_p);
-    }
-  } 
-}
-
 void MPMModel::initialize_material_tensors()
 {
   if (verbose == true)
@@ -348,137 +335,6 @@ void MPMModel::initialize_material_tensors()
       materials[i]->set_dF(j, dF_j);
       materials[i]->set_F(j,  dF_j);
       materials[i]->calculate_strain_rate();
-      materials[i]->calculate_stress();
-    }
-  }
-}
-
-void MPMModel::interpolate_grid_velocity_to_material()
-{
-  if (verbose == true)
-    printf("--- C++ interpolate_grid_velocity_to_material() ---\n");
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
-      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
-      std::vector<double> u_p (gdim, 0.0);                       // velocity
-
-      // iterate through each velocty compoenent :
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        // interpolate grid velocity back to particles from each node :
-        for (unsigned int q = 0; q < sdim; q++)
-        {
-          u_p[k] += phi_p[q] * U3_grid[coord_arr[k]][idx[q]];
-        }
-      }
-      materials[i]->set_u_star(j, u_p);
-    }
-  }
-}
-
-void MPMModel::interpolate_grid_acceleration_to_material()
-{
-  if (verbose == true)
-    printf("--- C++ interpolate_grid_acceleration_to_material() ---\n");
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
-      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
-      std::vector<double> a_p (gdim, 0.0);                       // acceleration
-
-      // iterate through each component of velocity :
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        // interpolate grid accleration to particles at each node q :
-        for (unsigned int q = 0; q < sdim; q++)
-        {
-          a_p[k] += phi_p[q] * a3_grid[coord_arr[k]][idx[q]];
-        }
-      }
-      materials[i]->set_a(j, a_p);
-    }
-  }
-}
-
-void MPMModel::update_material_volume()
-{
-  if (verbose == true)
-    printf("--- C++ update_material_volume() ---\n");
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<double> dF_p_j = materials[i]->get_dF(j);  // inc. deform.
-      double det_dF_j = calculate_determinant(dF_p_j);       // determinant
-      double V_p_j    = det_dF_j * materials[i]->get_V(j);   // new volume
-      materials[i]->set_V(j, V_p_j);
-    }
-  }
-}
-
-void MPMModel::update_material_deformation_gradient()
-{
-  if (verbose == true)
-    printf("--- C++ update_material_deformation_gradient() ---\n");
-
-  std::vector<double> I = materials[0]->get_I();
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<double> dF_j     = materials[i]->get_dF(j);
-      std::vector<double> F_j      = materials[i]->get_F(j);
-      std::vector<double> grad_u_j = materials[i]->get_grad_u(j);
-
-      // iterate through each component of the tensor :
-      for (unsigned int k = 0; k < gdim*gdim; k++)
-      {
-        dF_j[k]  = I[k] + grad_u_j[k] * dt;
-        F_j[k]  *= dF_j[k];
-      }
-      materials[i]->set_dF(j, dF_j);
-      materials[i]->set_F(j,  F_j);
-    }
-  }
-}
-
-void MPMModel::update_material_stress()
-{
-  if (verbose == true)
-    printf("--- C++ update_material_stress() ---\n");
-
-  // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
-  {
-    materials[i]->calculate_incremental_strain_rate();
-
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
-    {
-      std::vector<double> eps_j    = materials[i]->get_epsilon(j);
-      std::vector<double> deps_j   = materials[i]->get_depsilon(j);
-
-      // iterate through each component of the tensor :
-      for (unsigned int k = 0; k < gdim*gdim; k++)
-        eps_j[k] += deps_j[k] * dt;
-      materials[i]->set_epsilon(j, eps_j);
       materials[i]->calculate_stress();
     }
   }
@@ -531,26 +387,22 @@ void MPMModel::calculate_grid_internal_forces()
   }
 }
 
-void MPMModel::update_grid_velocity()
+void MPMModel::calculate_grid_acceleration(double m_min)
 {
   if (verbose == true)
-    printf("--- C++ update_grid_velocity() ---\n");
-
-  // iterate through each component of velocity :
+    printf("--- C++ calculate_grid_acceleration() ---\n");
+  
+  // iterate through each component of acceleration :
   for (unsigned int k = 0; k < gdim; k++)
   {
     // iterate through each node :
     for (unsigned int i = 0; i < dofs; i++)
     {
-      U3_grid[coord_arr[k]][i] += a3_grid[coord_arr[k]][i] * dt;
+      // FIXME: this needs to be done properly for the first iteration too.
+      // update old acceleration :
+      a3_grid[coord_arr[k]][i] = a3_grid_new[coord_arr[k]][i];
     }
   }
-}
-
-void MPMModel::calculate_grid_acceleration(double m_min)
-{
-  if (verbose == true)
-    printf("--- C++ calculate_grid_acceleration() ---\n");
 
   // iterate through each component of acceleration :
   for (unsigned int k = 0; k < gdim; k++)
@@ -564,18 +416,225 @@ void MPMModel::calculate_grid_acceleration(double m_min)
         // set the minimum mass :
         if (m_grid[i] < m_min)  m_grid[i] = m_min;
         // update acceleration :
-        a3_grid[coord_arr[k]][i] = f_int_grid[coord_arr[k]][i] / m_grid[i];
+        a3_grid_new[coord_arr[k]][i] = f_int_grid[coord_arr[k]][i] / m_grid[i];
       }
       // otherwise set the grid values to zero :
       else
       {
-        f_int_grid[coord_arr[k]][i] = 0.0;
-        a3_grid[coord_arr[k]][i]    = 0.0;
+        f_int_grid[coord_arr[k]][i]  = 0.0;
+        a3_grid_new[coord_arr[k]][i] = 0.0;
       }
     }
   }
 }
 
+void MPMModel::update_grid_velocity()
+{
+  if (verbose == true)
+    printf("--- C++ update_grid_velocity() ---\n");
+  
+  // iterate through each component of acceleration :
+  for (unsigned int k = 0; k < gdim; k++)
+  {
+    // iterate through each node :
+    for (unsigned int i = 0; i < dofs; i++)
+    {
+      // FIXME: this needs to be done properly for the first iteration too.
+      // update new velocity :
+      U3_grid_new[coord_arr[k]][i] = U3_grid[coord_arr[k]][i];
+    }
+  }
+
+  // iterate through each component of velocity :
+  for (unsigned int k = 0; k < gdim; k++)
+  {
+    // iterate through each node :
+    for (unsigned int i = 0; i < dofs; i++)
+    {
+      U3_grid_new[coord_arr[k]][i] += 0.5 * (a3_grid[coord_arr[k]][i] + 
+                                             a3_grid_new[coord_arr[k]][i]) * dt;
+    }
+  }
+}
+
+void MPMModel::calculate_material_velocity_gradient()
+{
+  if (verbose == true)
+    printf("--- C++ calculate_material_velocity_gradient() ---\n");
+
+  unsigned int vtx, stx;
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<unsigned int> idx      = materials[i]->get_vrt(j);
+      std::vector<double> grad_phi_p     = materials[i]->get_grad_phi(j);
+      std::vector<double> grad_u_star_p  = materials[i]->get_grad_u_star(j);
+      std::vector<double> dudk_p (gdim*gdim, 0.0);
+      
+      // set the previous velocity gradient :
+      materials[i]->set_grad_u(j, grad_u_star_p);
+
+      // iterate through each component of velocity :
+      for (unsigned int p = 0; p < gdim; p++)
+      {
+        // iterate through each coordinate dimension :
+        for (unsigned int q = 0; q < gdim; q++)
+        {
+          vtx = p*gdim + q;
+          stx = q;
+          // iterate through each node of the particle's cell :
+          for (unsigned int s = 0; s < sdim; s++)
+          {
+            dudk_p[vtx] += grad_phi_p[stx] * 
+                           U3_grid_new[coord_arr[p]][idx[s]];
+            stx += gdim;
+          }
+        }
+      }
+      materials[i]->set_grad_u_star(j, dudk_p);
+    }
+  } 
+}
+
+void MPMModel::update_material_deformation_gradient()
+{
+  if (verbose == true)
+    printf("--- C++ update_material_deformation_gradient() ---\n");
+
+  std::vector<double> I = materials[0]->get_I();
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<double> dF_j          = materials[i]->get_dF(j);
+      std::vector<double> F_j           = materials[i]->get_F(j);
+      std::vector<double> grad_u_j      = materials[i]->get_grad_u(j);
+      std::vector<double> grad_u_star_j = materials[i]->get_grad_u_star(j);
+
+      // iterate through each component of the tensor :
+      for (unsigned int k = 0; k < gdim*gdim; k++)
+      {
+        dF_j[k]  = I[k] + 0.5 * (grad_u_j[k] + grad_u_star_j[k]) * dt;
+        F_j[k]  *= dF_j[k];
+      }
+      materials[i]->set_dF(j, dF_j);
+      materials[i]->set_F(j,  F_j);
+    }
+  }
+}
+
+void MPMModel::update_material_volume()
+{
+  if (verbose == true)
+    printf("--- C++ update_material_volume() ---\n");
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<double> dF_p_j = materials[i]->get_dF(j);  // inc. deform.
+      double det_dF_j = calculate_determinant(dF_p_j);       // determinant
+      double V_p_j    = det_dF_j * materials[i]->get_V(j);   // new volume
+      materials[i]->set_V(j, V_p_j);
+    }
+  }
+}
+
+void MPMModel::update_material_stress()
+{
+  if (verbose == true)
+    printf("--- C++ update_material_stress() ---\n");
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    materials[i]->calculate_incremental_strain_rate();
+
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<double> eps_j    = materials[i]->get_epsilon(j);
+      std::vector<double> deps_j   = materials[i]->get_depsilon(j);
+
+      // iterate through each component of the tensor :
+      for (unsigned int k = 0; k < gdim*gdim; k++)
+        eps_j[k] += deps_j[k] * dt;
+      materials[i]->set_epsilon(j, eps_j);
+      materials[i]->calculate_stress();
+    }
+  }
+}
+
+void MPMModel::interpolate_grid_velocity_to_material()
+{
+  if (verbose == true)
+    printf("--- C++ interpolate_grid_velocity_to_material() ---\n");
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
+      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
+      std::vector<double> u_p (gdim, 0.0);                       // velocity
+
+      // iterate through each velocty compoenent :
+      for (unsigned int k = 0; k < gdim; k++)
+      {
+        // interpolate grid velocity back to particles from each node :
+        for (unsigned int q = 0; q < sdim; q++)
+        {
+          u_p[k] += phi_p[q] * U3_grid_new[coord_arr[k]][idx[q]];
+        }
+      }
+      materials[i]->set_u_star(j, u_p);
+    }
+  }
+}
+
+void MPMModel::interpolate_grid_acceleration_to_material()
+{
+  if (verbose == true)
+    printf("--- C++ interpolate_grid_acceleration_to_material() ---\n");
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    {
+      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
+      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
+      std::vector<double> a_star_p  = materials[i]->get_a_star(j);
+      std::vector<double> a_p (gdim, 0.0);                       // acceleration
+      
+      // set the previous acceleration :
+      materials[i]->set_a(j, a_star_p);
+
+      // iterate through each component of velocity :
+      for (unsigned int k = 0; k < gdim; k++)
+      {
+        // interpolate grid accleration to particles at each node q :
+        for (unsigned int q = 0; q < sdim; q++)
+        {
+          a_p[k] += phi_p[q] * a3_grid_new[coord_arr[k]][idx[q]];
+        }
+      }
+      materials[i]->set_a_star(j, a_p);
+    }
+  }
+}
 
 void MPMModel::advect_material_particles()
 {
@@ -589,14 +648,15 @@ void MPMModel::advect_material_particles()
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
       std::vector<double> a_j      = materials[i]->get_a(j);
+      std::vector<double> a_star_j = materials[i]->get_a_star(j);
       std::vector<double> u_j      = materials[i]->get_u(j);
       std::vector<double> u_star_j = materials[i]->get_u_star(j);
       std::vector<double> x_j      = materials[i]->get_x(j);
 
       for (unsigned int k = 0; k < gdim; k++)
       {
-        u_j[k] += a_j[k] * dt;
-        x_j[k] += u_star_j[k] * dt;
+        u_j[k] += 0.5 * (a_j[k] + a_star_j[k])* dt;
+        x_j[k] += u_star_j[k] * dt + 0.5 * a_star_j[k] * dt*dt;
       }
       materials[i]->set_u(j, u_j);
       materials[i]->set_x(j, x_j);

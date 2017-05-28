@@ -135,6 +135,13 @@ class GridModel(object):
 
     # map from verticies to nodes :
     self.dofmap  = self.Q.dofmap()
+      
+    # for finding vertices sitting on boundary :
+    self.d2v     = dof_to_vertex_map(self.Q)
+
+    # list of arrays of vertices and bcs set by self.set_boundary_conditions() :
+    self.bc_vrt  = None
+    self.bc_val  = None
 
     # cell diameter :
     self.h       = project(CellSize(self.mesh), self.Q)  # cell diameter vector
@@ -173,8 +180,8 @@ class GridModel(object):
     self.f_int_z              = f_int_z
 
     # grid mass :
-    self.m             = Function(self.Q, name='m')
-    self.m0            = Function(self.Q, name='m0')
+    self.m                    = Function(self.Q, name='m')
+    self.m0                   = Function(self.Q, name='m0')
 
     # function assigners speed assigning up :
     self.assu       = FunctionAssigner(self.u.function_space(),       self.Q)
@@ -190,6 +197,35 @@ class GridModel(object):
 
     # save the number of degrees of freedom :
     self.dofs       = self.m.vector().size()
+
+  def set_boundary_conditions(self, boundary_subdomains, boundary_values):
+    """
+    """
+
+    # generate arrays of vertex indices corresponding to boundary condition
+    # values :
+    try:
+      bc_vrt = []
+      for bs, bv in zip(boundary_subdomains, boundary_values):
+
+        bc = DirichletBC(self.Q, 1.0, bs)
+        u  = Function(self.Q)
+        bc.apply(u.vector())
+
+        vertices_on_boundary = self.d2v[u.vector() == 1.0]
+        
+        bc_vrt.append(vertices_on_boundary) 
+
+      self.bc_vrt = np.array(bc_vrt, dtype = 'intc')
+      self.bc_val = np.array(boundary_values, dtype = 'float') 
+    except TypeError:
+      bc = DirichletBC(self.Q, 1.0, boundary_subdomains)
+      u  = Function(self.Q)
+      bc.apply(u.vector())
+
+      #self.bc_vrt = self.d2v[u.vector() == 1.0].astype('intc')
+      self.bc_vrt = np.where(u.vector() == 1.0)[0].astype('intc')
+      self.bc_val = np.array([boundary_values], dtype = 'float') 
 
   def update_mass(self, m):
     r"""

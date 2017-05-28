@@ -26,8 +26,10 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   x_pt.resize(n_p);
   u.resize(n_p);
   u_star.resize(n_p);
+  a_star.resize(n_p);
   a.resize(n_p);
   grad_u.resize(n_p);
+  grad_u_star.resize(n_p);
   vrt.resize(n_p);
   phi.resize(n_p);
   grad_phi.resize(n_p);
@@ -64,6 +66,7 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
     x[i].resize(gdim);
     u[i].resize(gdim);
     u_star[i].resize(gdim);
+    a_star[i].resize(gdim);
     a[i].resize(gdim);
     
     // these are vectors in element dimension :
@@ -77,6 +80,7 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
     // these are rank-two flattened tensors defined over each 
     //   topological dimension :
     grad_u[i].resize(gdim*gdim);
+    grad_u_star[i].resize(gdim*gdim);
     dF[i].resize(gdim*gdim);
     F[i].resize(gdim*gdim);
     sigma[i].resize(gdim*gdim);
@@ -179,6 +183,16 @@ void  MPMMaterial::set_u_star(unsigned int index, std::vector<double>& value)
   u_star.at(index) = value;
 }
 
+std::vector<double>  MPMMaterial::get_a_star(unsigned int index) const
+{
+  return a_star.at(index);
+}
+
+void  MPMMaterial::set_a_star(unsigned int index, std::vector<double>& value)
+{
+  a_star.at(index) = value;
+}
+
 std::vector<double>  MPMMaterial::get_phi(unsigned int index) const
 {
   return phi.at(index);
@@ -217,6 +231,17 @@ std::vector<double>  MPMMaterial::get_grad_u(unsigned int index) const
 void  MPMMaterial::set_grad_u(unsigned int index, std::vector<double>& value)
 {
   grad_u.at(index) = value;
+}
+
+std::vector<double>  MPMMaterial::get_grad_u_star(unsigned int index) const
+{
+  return grad_u_star.at(index);
+}
+
+void  MPMMaterial::set_grad_u_star(unsigned int index,
+                                   std::vector<double>& value)
+{
+  grad_u_star.at(index) = value;
 }
 
 std::vector<double>  MPMMaterial::get_dF(unsigned int index) const

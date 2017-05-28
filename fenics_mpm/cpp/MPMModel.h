@@ -8,6 +8,7 @@
 #include <dolfin/fem/GenericDofMap.h>
 #include "MPMMaterial.h"
 #include <math.h>
+#include <omp.h>
 
 namespace dolfin
 {
@@ -21,6 +22,8 @@ namespace dolfin
                bool verbosity);
       double calculate_determinant(std::vector<double>& u);
       void add_material(MPMMaterial& M);
+      void set_boundary_conditions(const Array<int>& vertices,
+                                   const Array<double>& values);
       void update_points();
       void update_particle_basis_functions(MPMMaterial* M);
       void formulate_material_basis_functions();
@@ -60,6 +63,8 @@ namespace dolfin
       const unsigned int dofs             = 0;
       const unsigned int cell_orientation = 0;
       const unsigned int deriv_order      = 1; 
+      std::vector<unsigned int> bc_vrt;
+      std::vector<double>       bc_val;
       const FunctionSpace* Q;
       std::shared_ptr<const FiniteElement> element;
       std::unique_ptr<Cell> cell;
@@ -77,6 +82,8 @@ namespace dolfin
       std::vector<double> V_grid;
       std::vector<std::vector<double>> U3_grid;
       std::vector<std::vector<double>> a3_grid;
+      std::vector<std::vector<double>> U3_grid_new;
+      std::vector<std::vector<double>> a3_grid_new;
       std::vector<std::vector<double>> f_int_grid;
   };
 }

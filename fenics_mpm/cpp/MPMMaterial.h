@@ -19,18 +19,20 @@ namespace dolfin
                   const Array<double>& u_a,
                   const FiniteElement& element);
       
-      std::vector<double>                    get_m()        {return m;};
-      std::vector<double>                    get_rho()      {return rho;};
-      std::vector<double>                    get_V0()       {return V0;};
-      std::vector<double>                    get_V()        {return V;};
-      std::vector<double>                    get_I()        {return I;};
-      std::vector<std::vector<double>>       get_u_star()   {return u_star;};
-      std::vector<std::vector<double>>       get_a()        {return a;};
-      std::vector<std::vector<double>>       get_u()        {return u;};
-      std::vector<std::vector<double>>       get_grad_u()   {return grad_u;};
-      std::vector<std::vector<double>>       get_F()        {return F;};
-      std::vector<std::vector<double>>       get_sigma()    {return sigma;};
-      std::vector<std::vector<double>>       get_epsilon()  {return epsilon;};
+      std::vector<double>                 get_m()           {return m;};
+      std::vector<double>                 get_rho()         {return rho;};
+      std::vector<double>                 get_V0()          {return V0;};
+      std::vector<double>                 get_V()           {return V;};
+      std::vector<double>                 get_I()           {return I;};
+      std::vector<std::vector<double>>    get_u_star()      {return u_star;};
+      std::vector<std::vector<double>>    get_a_star()      {return a_star;};
+      std::vector<std::vector<double>>    get_a()           {return a;};
+      std::vector<std::vector<double>>    get_u()           {return u;};
+      std::vector<std::vector<double>>    get_grad_u()      {return grad_u;};
+      std::vector<std::vector<double>>    get_grad_u_star() {return grad_u;};
+      std::vector<std::vector<double>>    get_F()           {return F;};
+      std::vector<std::vector<double>>    get_sigma()       {return sigma;};
+      std::vector<std::vector<double>>    get_epsilon()     {return epsilon;};
 
       unsigned int get_num_particles() const {return n_p;};
       void         calculate_strain_rate();
@@ -64,6 +66,9 @@ namespace dolfin
       std::vector<double>       get_u_star(unsigned int index) const;
       void set_u_star(unsigned int index, std::vector<double>& value);
       
+      std::vector<double>       get_a_star(unsigned int index) const;
+      void set_a_star(unsigned int index, std::vector<double>& value);
+      
       std::vector<double>       get_phi(unsigned int index) const;
       void  set_phi(unsigned int index, std::vector<double>& value);
       
@@ -75,6 +80,9 @@ namespace dolfin
       
       std::vector<double>       get_grad_u(unsigned int index) const;
       void  set_grad_u(unsigned int index, std::vector<double>& value);
+      
+      std::vector<double>       get_grad_u_star(unsigned int index) const;
+      void  set_grad_u_star(unsigned int index, std::vector<double>& value);
       
       std::vector<double>       get_dF(unsigned int index) const;
       void  set_dF(unsigned int index, std::vector<double>& value);
@@ -104,8 +112,10 @@ namespace dolfin
       std::vector<std::vector<double>>       x;        // position vector
       std::vector<std::vector<double>>       u;        // velocity vector
       std::vector<std::vector<double>>       u_star;   // grid vel. interp.
+      std::vector<std::vector<double>>       a_star;   // grid vel. interp.
       std::vector<std::vector<double>>       a;        // acceleration vector
       std::vector<std::vector<double>>       grad_u;   // velocity grad. tensor
+      std::vector<std::vector<double>>       grad_u_star; // vel. grad. tensor
       std::vector<std::vector<unsigned int>> vrt;      // grid nodal indicies
       std::vector<std::vector<double>>       phi;      // grid basis val's
       std::vector<std::vector<double>>       grad_phi; // grid basis grad. val's

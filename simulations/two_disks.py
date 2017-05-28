@@ -34,9 +34,13 @@ E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 u_mag      = 0.1         # velocity magnitude   [m/s]
 m_mag      = 0.012       # particle mass        [kg]
-t0         = 0.0         # starting time        [s]
-tf         = 3.0         # ending time          [s]
+dt_save    = 0.01        # time between saves   [s]
 dt         = 0.002       # time-step            [s]
+t0         = 0.0         # starting time        [s]
+tf         = 10          # ending time          [s]
+
+# calculate the number of iterations between saves :
+save_int   = int(dt_save / dt)
 
 # create a material :
 n          = 1000        # number of particles
@@ -59,8 +63,19 @@ M2         = ElasticMaterial(M2, X2, U2, E, nu)
 # the finite-element mesh used :    
 mesh       = UnitSquareMesh(n_x, n_x)
 
+# the exterior boundary :
+class Boundary(SubDomain):
+  def inside(self, x, on_boundary):
+    return on_boundary
+boundary = Boundary()
+
 # initialize the model :
 grid_model = GridModel(mesh, out_dir, verbose=False)
+
+# set the velocity along the entire boundary to 0.0 :
+grid_model.set_boundary_conditions(boundary, 0.0)
+
+# create the main model to perform MPM calculations :
 model      = Model(out_dir, grid_model, dt, verbose=False)
 
 # add the materials to the model :
@@ -75,10 +90,15 @@ f_file = File(out_dir + '/f.pvd')
  
 # callback function saves result :
 def cb_ftn():
-  grid_model.save_pvd(grid_model.m,     'm',     f=m_file, t=model.t)
-  grid_model.save_pvd(grid_model.U3,    'U3',    f=u_file, t=model.t)
-  grid_model.save_pvd(grid_model.a3,    'a3',    f=a_file, t=model.t)
-  grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
+  if model.iter % save_int == 0:
+    model.retrieve_cpp_grid_m()
+    model.retrieve_cpp_grid_U3()
+    model.retrieve_cpp_grid_f_int()
+    model.retrieve_cpp_grid_a3()
+    grid_model.save_pvd(grid_model.m,     'm',     f=m_file, t=model.t)
+    grid_model.save_pvd(grid_model.U3,    'U3',    f=u_file, t=model.t)
+    grid_model.save_pvd(grid_model.a3,    'a3',    f=a_file, t=model.t)
+    grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
 model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)

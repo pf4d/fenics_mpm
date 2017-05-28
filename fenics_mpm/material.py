@@ -26,7 +26,6 @@ class Material(object):
   * ``self.m``        -- :math:`n_p \times 1` mass vector :math:`\mathbf{m}_p`
   * ``self.x``        -- :math:`n_p \times d` position vector :math:`\mathbf{x}_p`
   * ``self.u``        -- :math:`n_p \times d` velocity vector :math:`\mathbf{u}_p`
-  * ``self.u_star``   -- :math:`n_p \times d` grid velocity interpolation :math:`\mathbf{u}_p^*`
   * ``self.a``        -- :math:`n_p \times d` acceleration vector :math:`\mathbf{a}_p`
   * ``self.grad_u``   -- :math:`n_p \times (d \times d)` velocity gradient tensors :math:`\nabla \mathbf{u}_p`
   * ``self.vrt``      -- :math:`n_p \times n_n` grid nodal indicies for points :math:`i`
@@ -53,7 +52,6 @@ class Material(object):
     self.m        = m                  # mass vector
     self.x        = x                  # position vector
     self.u        = u                  # velocity vector
-    self.u_star   = u                  # grid velocity interpolation
     self.a        = None               # acceleration vector
     self.grad_u   = None               # velocity gradient tensor
     self.vrt      = None               # grid nodal indicies for points
@@ -136,6 +134,121 @@ class Material(object):
     plt.plot(self.x[:,0], self.x[:,1], 'r*')
     plt.axis('equal')
     plt.show()
+
+  def retrieve_cpp_vrt(self):
+    """
+    """
+    vrt         = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      vrt.append(self.cpp_mat.get_vrt(i))
+    self.vrt      = np.array(vrt)
+
+  def retrieve_cpp_phi(self):
+    """
+    """
+    phi         = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      phi.append(self.cpp_mat.get_phi(i))
+    self.phi      = np.array(phi,          dtype=float)
+
+  def retrieve_cpp_grad_phi(self):
+    """
+    """
+    grad_phi    = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      grad_phi.append(self.cpp_mat.get_grad_phi(i))
+    self.grad_phi = np.array(grad_phi,     dtype=float)
+
+  def retrieve_cpp_grad_u(self):
+    """
+    """
+    grad_u_p_v  = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      grad_u_p_v.append(self.cpp_mat.get_grad_u(i))
+    self.grad_u   = np.array(grad_u_p_v,   dtype=float)
+
+  def retrieve_cpp_x(self):
+    """
+    """
+    x_p_v       = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      x_p_v.append(self.cpp_mat.get_x(i))
+    self.x        = np.array(x_p_v,        dtype=float)
+
+  def retrieve_cpp_u(self):
+    """
+    """
+    u_p_v       = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      u_p_v.append(self.cpp_mat.get_u(i))
+    self.u        = np.array(u_p_v,        dtype=float)
+
+  def retrieve_cpp_a(self):
+    """
+    """
+    a_p_v       = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      a_p_v.append(self.cpp_mat.get_a(i))
+    self.a        = np.array(a_p_v,        dtype=float)
+
+  def retrieve_cpp_F(self):
+    """
+    """
+    F_p_v       = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      F_p_v.append(self.cpp_mat.get_F(i))
+    self.F        = np.array(F_p_v,        dtype=float)
+
+  def retrieve_cpp_epsilon(self):
+    """
+    """
+    epsilon_p_v = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      epsilon_p_v.append(self.cpp_mat.get_epsilon(i))
+    self.epsilon  = np.array(epsilon_p_v,  dtype=float)
+
+  def retrieve_cpp_sigma(self):
+    """
+    """
+    sigma_p_v   = []
+    # iterate through particle positions :
+    # append these to a list corresponding with particles : 
+    for i in range(self.cpp_mat.get_num_particles()):
+      sigma_p_v.append(self.cpp_mat.get_sigma(i))
+    self.sigma    = np.array(sigma_p_v,    dtype=float)
+    
+  def retrieve_cpp_rho(self):
+    """
+    """
+    self.rho = np.array(self.cpp_mat.get_rho(), dtype=float)
+
+  def retrieve_cpp_V(self):
+    """
+    """
+    self.V   = np.array(self.cpp_mat.get_V(),   dtype=float)
+
+  def retrieve_cpp_V0(self):
+    """
+    """
+    self.V0  = np.array(self.cpp_mat.get_V0(),  dtype=float)
 
 
 class ElasticMaterial(Material):
