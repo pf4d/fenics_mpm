@@ -49,12 +49,12 @@ r_max      = 0.15        # disk radius          [m]
 # upper-right disk :
 X1         = sunflower(n, 2, 0.66, 0.66, r_max)
 M1         =  m_mag * np.ones(n)
-U1         = -u_mag * np.ones([n,2])
+U1         =  u_mag * np.ones([n,2])
 
 # lower-left disk : 
 X2         = sunflower(n, 2, 0.34, 0.34, r_max)
-M2         = m_mag * np.ones(n)
-U2         = u_mag * np.ones([n,2])
+M2         =  m_mag * np.ones(n)
+U2         = -u_mag * np.ones([n,2])
 
 # corresponding Material objects : 
 M1         = ElasticMaterial(M1, X1, U1, E, nu)

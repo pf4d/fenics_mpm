@@ -243,19 +243,6 @@ void MPMModel::interpolate_material_velocity_to_grid()
       }
     }
   }
- 
-  // TODO: set boolean flag for using Dirichlet or not : 
-  // apply boundary conditions if present :
-  for (unsigned int k = 0; k < gdim; k++)
-  {
-    for (unsigned int i = 0; i < bc_val.size(); i++)
-    {
-      for (unsigned int j = 0; j < bc_vrt.size(); j++)
-      {
-        U3_grid[coord_arr[k]][bc_vrt[j]] = bc_val[i];
-      }
-    }
-  }
 }
 
 void MPMModel::calculate_grid_volume()
@@ -432,16 +419,17 @@ void MPMModel::update_grid_velocity()
 {
   if (verbose == true)
     printf("--- C++ update_grid_velocity() ---\n");
-  
-  // iterate through each component of acceleration :
+ 
+  // TODO: set boolean flag for using Dirichlet or not : 
+  // apply boundary conditions if present :
   for (unsigned int k = 0; k < gdim; k++)
   {
-    // iterate through each node :
-    for (unsigned int i = 0; i < dofs; i++)
+    for (unsigned int i = 0; i < bc_val.size(); i++)
     {
-      // FIXME: this needs to be done properly for the first iteration too.
-      // update new velocity :
-      U3_grid_new[coord_arr[k]][i] = U3_grid[coord_arr[k]][i];
+      for (unsigned int j = 0; j < bc_vrt.size(); j++)
+      {
+        U3_grid[coord_arr[k]][bc_vrt[j]] = 0.0;
+      }
     }
   }
 
@@ -451,8 +439,9 @@ void MPMModel::update_grid_velocity()
     // iterate through each node :
     for (unsigned int i = 0; i < dofs; i++)
     {
-      U3_grid_new[coord_arr[k]][i] += 0.5 * (a3_grid[coord_arr[k]][i] + 
-                                             a3_grid_new[coord_arr[k]][i]) * dt;
+      U3_grid_new[coord_arr[k]][i] = U3_grid[coord_arr[k]][i] +
+                                     0.5 * (a3_grid[coord_arr[k]][i] + 
+                                            a3_grid_new[coord_arr[k]][i]) * dt;
     }
   }
 }
