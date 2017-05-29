@@ -23,6 +23,7 @@ from   fenics  import compile_extension_module
 cpp_src_dir     = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
 headers         = ["MPMMaterial.h",
                    "MPMElasticMaterial.h",
+                   "MPMImpenetrableMaterial.h",
                    "MPMModel.h"]
 code            = ''
 for header_file in headers:
@@ -39,6 +40,7 @@ cmake_packages  = ['DOLFIN']
 module_name     = "MPMModelcpp"
 sources         = ["MPMMaterial.cpp",
                    "MPMElasticMaterial.cpp",
+                   "MPMImpenetrableMaterial.cpp",
                    "MPMModel.cpp"]
 source_dir      = cpp_src_dir
 include_dirs    = [".", cpp_src_dir, 
@@ -106,9 +108,8 @@ from helper      import *
 from model       import *
 from material    import *
 from gridmodel   import *
-import MPMModelcpp
 
-mpm_module = MPMModelcpp.get_compile_cpp_code()
+#mpm_module = MPMModelcpp.get_compile_cpp_code()
 
 
 

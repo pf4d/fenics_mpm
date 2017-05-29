@@ -49,16 +49,44 @@ r_max      = 0.15        # disk radius          [m]
 # upper-right disk :
 X1         = sunflower(n, 2, 0.66, 0.66, r_max)
 M1         =  m_mag * np.ones(n)
-U1         =  u_mag * np.ones([n,2])
+U1         = -u_mag * np.ones([n,2])
 
 # lower-left disk : 
 X2         = sunflower(n, 2, 0.34, 0.34, r_max)
-M2         =  m_mag * np.ones(n)
-U2         = -u_mag * np.ones([n,2])
+M2         =  0.5 * m_mag * np.ones(n)
+U2         =  u_mag * np.ones([n,2])
 
 # corresponding Material objects : 
 M1         = ElasticMaterial(M1, X1, U1, E, nu)
 M2         = ElasticMaterial(M2, X2, U2, E, nu)
+
+# the four walls of the box :
+gap        = 1e-1
+n_wall     = 500
+M_wall     = 1e-10*np.ones(n_wall)
+U_wall     = np.zeros(n_wall)
+
+x_east     = np.ones(n_wall) - gap
+y_east     = np.linspace(gap, 1-gap, n_wall) 
+
+x_west     = np.zeros(n_wall) + gap
+y_west     = np.linspace(gap, 1-gap, n_wall) 
+
+x_south    = np.linspace(gap, 1-gap, n_wall)
+y_south    = np.zeros(n_wall) + gap
+
+x_north    = np.linspace(gap, 1-gap, n_wall)
+y_north    = np.ones(n_wall) - gap
+
+X_east     = np.ascontiguousarray(np.array([x_east,  y_east ]).T)
+X_west     = np.ascontiguousarray(np.array([x_west,  y_west ]).T)
+X_north    = np.ascontiguousarray(np.array([x_north, y_north]).T)
+X_south    = np.ascontiguousarray(np.array([x_south, y_south]).T)
+
+n_wall     = ImpenetrableMaterial(M_wall, X_north, U_wall)
+s_wall     = ImpenetrableMaterial(M_wall, X_south, U_wall)
+e_wall     = ImpenetrableMaterial(M_wall, X_east,  U_wall)
+w_wall     = ImpenetrableMaterial(M_wall, X_west,  U_wall)
 
 # the finite-element mesh used :    
 mesh       = UnitSquareMesh(n_x, n_x)
@@ -81,6 +109,10 @@ model      = Model(out_dir, grid_model, dt, verbose=False)
 # add the materials to the model :
 model.add_material(M1)
 model.add_material(M2)
+model.add_material(n_wall)
+#model.add_material(s_wall)
+model.add_material(e_wall)
+#model.add_material(w_wall)
 
 # files for saving grid variables :
 m_file = File(out_dir + '/m.pvd')

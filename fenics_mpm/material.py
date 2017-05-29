@@ -116,8 +116,6 @@ class Material(object):
       eps    = np.array( [eps_xx, eps_xy, eps_xy, eps_yy], dtype=float )
       epsilon_n.append(eps)
     return np.array(epsilon_n, dtype=float)
-    #self.cpp_mat.update_strain_rate()
-    #return self.cpp_mat.get_epsilon()
 
   def calculate_stress(self):
     r"""
@@ -323,6 +321,41 @@ class ElasticMaterial(Material):
     
     # return particle Cauchy stress tensors :
     return np.array(sigma, dtype=float)
+
+
+class ImpenetrableMaterial(Material):
+  r"""
+  Representation of an impenetrable boundary with initial conditions given by the 
+  parameters ``m``, ``x``, and ``u``.
+
+  :param m: particle mass vector :math:`\mathbf{m}_p`
+  :param x: particle position vector :math:`\mathbf{x}_p`
+  :param u: particle velocity vector :math:`\mathbf{u}_p`
+  :type m: :class:`~numpy.ndarray`
+  :type x: :class:`~numpy.ndarray`
+  :type u: :class:`~numpy.ndarray`
+  """
+  def __init__(self, m, x, u):
+    """
+    """
+    s = "::: INITIALIZING IMPENETRABLE MATERIAL :::"
+    print_text(s, cls=self)
+
+    Material.__init__(self, m, x, u)
+
+  def get_cpp_material(self, element):
+    r"""
+    return the appropriate cpp module to instantiate this material.
+
+    This method must be implemented by child classes.
+    """
+    return mpm_module.MPMImpenetrableMaterial(self.m,
+                                              self.x.flatten(),
+                                              self.u.flatten(),
+                                              element)
+
+  def color(self):
+    return '150'
 
 
 

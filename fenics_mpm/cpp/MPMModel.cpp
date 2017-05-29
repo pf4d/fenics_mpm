@@ -419,7 +419,7 @@ void MPMModel::update_grid_velocity()
 {
   if (verbose == true)
     printf("--- C++ update_grid_velocity() ---\n");
- 
+  /* 
   // TODO: set boolean flag for using Dirichlet or not : 
   // apply boundary conditions if present :
   for (unsigned int k = 0; k < gdim; k++)
@@ -432,7 +432,7 @@ void MPMModel::update_grid_velocity()
       }
     }
   }
-
+  */
   // iterate through each component of velocity :
   for (unsigned int k = 0; k < gdim; k++)
   {
