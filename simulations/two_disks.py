@@ -35,9 +35,9 @@ nu         = 0.3         # Poisson's ratio
 u_mag      = 0.1         # velocity magnitude   [m/s]
 m_mag      = 0.012       # particle mass        [kg]
 dt_save    = 0.01        # time between saves   [s]
-dt         = 0.002       # time-step            [s]
+dt         = 0.0002       # time-step            [s]
 t0         = 0.0         # starting time        [s]
-tf         = 10          # ending time          [s]
+tf         = 50          # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
@@ -53,7 +53,7 @@ U1         = -u_mag * np.ones([n,2])
 
 # lower-left disk : 
 X2         = sunflower(n, 2, 0.34, 0.34, r_max)
-M2         =  0.5 * m_mag * np.ones(n)
+M2         =  m_mag * np.ones(n)
 U2         =  u_mag * np.ones([n,2])
 
 # corresponding Material objects : 
@@ -61,21 +61,21 @@ M1         = ElasticMaterial(M1, X1, U1, E, nu)
 M2         = ElasticMaterial(M2, X2, U2, E, nu)
 
 # the four walls of the box :
-gap        = 1e-1
+gap        = 1e-3
 n_wall     = 500
-M_wall     = 1e-10*np.ones(n_wall)
-U_wall     = np.zeros(n_wall)
+M_wall     = 1e16*np.ones(n_wall)
+U_wall     = np.zeros([n_wall,2])
 
 x_east     = np.ones(n_wall) - gap
-y_east     = np.linspace(gap, 1-gap, n_wall) 
+y_east     = np.linspace(gap, 1-gap, n_wall+2)[1:-1]
 
 x_west     = np.zeros(n_wall) + gap
-y_west     = np.linspace(gap, 1-gap, n_wall) 
+y_west     = np.linspace(gap, 1-gap, n_wall+2)[1:-1]
 
-x_south    = np.linspace(gap, 1-gap, n_wall)
+x_south    = np.linspace(gap, 1-gap, n_wall+2)[1:-1]
 y_south    = np.zeros(n_wall) + gap
 
-x_north    = np.linspace(gap, 1-gap, n_wall)
+x_north    = np.linspace(gap, 1-gap, n_wall+2)[1:-1]
 y_north    = np.ones(n_wall) - gap
 
 X_east     = np.ascontiguousarray(np.array([x_east,  y_east ]).T)
@@ -87,6 +87,10 @@ n_wall     = ImpenetrableMaterial(M_wall, X_north, U_wall)
 s_wall     = ImpenetrableMaterial(M_wall, X_south, U_wall)
 e_wall     = ImpenetrableMaterial(M_wall, X_east,  U_wall)
 w_wall     = ImpenetrableMaterial(M_wall, X_west,  U_wall)
+#n_wall     = ElasticMaterial(M_wall, X_north, U_wall, E, nu)
+#s_wall     = ElasticMaterial(M_wall, X_south, U_wall, E, nu)
+#e_wall     = ElasticMaterial(M_wall, X_east,  U_wall, E, nu)
+#w_wall     = ElasticMaterial(M_wall, X_west,  U_wall, E, nu)
 
 # the finite-element mesh used :    
 mesh       = UnitSquareMesh(n_x, n_x)
@@ -110,9 +114,9 @@ model      = Model(out_dir, grid_model, dt, verbose=False)
 model.add_material(M1)
 model.add_material(M2)
 model.add_material(n_wall)
-#model.add_material(s_wall)
+model.add_material(s_wall)
 model.add_material(e_wall)
-#model.add_material(w_wall)
+model.add_material(w_wall)
 
 # files for saving grid variables :
 m_file = File(out_dir + '/m.pvd')

@@ -103,6 +103,22 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
   }
 }
 
+double MPMMaterial::det(std::vector<double>& u)
+{
+  unsigned int n = u.size(); // n x n tensor of rank n - 1
+  double det;                // the determinant
+
+  if      (n == 1) det = u[0];
+  else if (n == 4) det = u[0] * u[3] - u[2] * u[1];
+  else if (n == 9) det = + u[0] * u[4] * u[8]
+                         + u[1] * u[5] * u[6]
+                         + u[2] * u[3] * u[7]
+                         - u[2] * u[4] * u[6]
+                         - u[1] * u[3] * u[8]
+                         - u[0] * u[5] * u[7];
+  return det;
+}
+
 double               MPMMaterial::get_m(unsigned int index) const
 {
   return m.at(index);
@@ -336,6 +352,84 @@ void MPMMaterial::calculate_incremental_strain_rate()
         else
           depsilon[i][idx] = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
       }
+    }
+  }
+}
+
+void MPMMaterial::initialize_tensors(double dt)
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    // iterate through each element of the tensor :
+    for (unsigned int k = 0; k < gdim*gdim; k++)
+    {
+      dF[j][k] = I[k] + grad_u[j][k] * dt;
+      F[j][k]  = dF[j][k];
+    }
+  }
+  calculate_strain_rate();
+  calculate_stress();
+}
+
+void MPMMaterial::calculate_initial_volume()
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    // calculate inital volume from particle mass and density :
+    double V0_j = m[j] / rho[j];
+    V0[j]       = V0_j;
+    V[j]        = V0_j;
+  }
+}
+
+void MPMMaterial::update_deformation_gradient(double dt)
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    // iterate through each component of the tensor :
+    for (unsigned int k = 0; k < gdim*gdim; k++)
+    {
+      dF[j][k]  = I[k] + 0.5 * (grad_u[j][k] + grad_u_star[j][k]) * dt;
+      F[j][k]  *= dF[j][k];
+    }
+  }
+}
+
+void MPMMaterial::update_volume()
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    V[j] *= det(dF[j]);
+  }
+}
+
+void MPMMaterial::update_stress(double dt)
+{
+  calculate_incremental_strain_rate();
+
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    // iterate through each component of the tensor :
+    for (unsigned int k = 0; k < gdim*gdim; k++)
+      epsilon[j][k] += depsilon[j][k] * dt;
+  }
+  calculate_stress();
+}
+
+void MPMMaterial::advect_particles(double dt)
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    for (unsigned int k = 0; k < gdim; k++)
+    {
+      u[j][k] += 0.5 * (a[j][k] + a_star[j][k])* dt;
+      x[j][k] += u_star[j][k] * dt + 0.5 * a_star[j][k] * dt*dt;
     }
   }
 }

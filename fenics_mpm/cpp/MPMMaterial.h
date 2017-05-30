@@ -19,6 +19,7 @@ namespace dolfin
                   const Array<double>& u_a,
                   const FiniteElement& element);
       
+      double                              det(std::vector<double>& u);
       std::vector<double>                 get_m()           {return m;};
       std::vector<double>                 get_rho()         {return rho;};
       std::vector<double>                 get_V0()          {return V0;};
@@ -35,9 +36,16 @@ namespace dolfin
       std::vector<std::vector<double>>    get_epsilon()     {return epsilon;};
 
       unsigned int get_num_particles() const {return n_p;};
-      void         calculate_strain_rate();
-      void         calculate_incremental_strain_rate();
+      virtual void calculate_strain_rate();
+      virtual void calculate_incremental_strain_rate();
       virtual void calculate_stress() = 0;
+
+      virtual void initialize_tensors(double dt);
+      virtual void calculate_initial_volume();
+      virtual void update_deformation_gradient(double dt);
+      virtual void update_volume();
+      virtual void update_stress(double dt);
+      virtual void advect_particles(double dt);
       void         calc_pi();
       
       Point* get_x_pt(unsigned int index) const {return x_pt.at(index);};

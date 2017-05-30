@@ -20,7 +20,6 @@ namespace dolfin
                const Array<int>& coords,
                double time_step,
                bool verbosity);
-      double calculate_determinant(std::vector<double>& u);
       void add_material(MPMMaterial& M);
       void set_boundary_conditions(const Array<int>& vertices,
                                    const Array<double>& values);
