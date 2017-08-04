@@ -201,7 +201,6 @@ class GridModel(object):
   def set_boundary_conditions(self, boundary_subdomains, boundary_values):
     """
     """
-
     # generate arrays of vertex indices corresponding to boundary condition
     # values :
     try:
