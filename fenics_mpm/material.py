@@ -387,8 +387,7 @@ class ImpenetrableMaterial(Material):
   def __init__(self, name, x, u, m=None, V=None, rho=None):
     """
     """
-    #FIXME: fix initialization with rho and V, etc.
-    s = "::: INITIALIZING IMPENETRABLE MATERIAL :::"
+    s = "::: INITIALIZING IMPENETRABLE MATERIAL `%s` :::" % name
     print_text(s, cls=self)
 
     Material.__init__(self, name, x, u, m, V, rho)

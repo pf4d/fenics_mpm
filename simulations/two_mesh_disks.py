@@ -12,7 +12,7 @@ u_mag      = 0.1         # velocity magnitude   [m/s]
 dt_save    = 0.01        # time between saves   [s]
 dt         = 0.0002      # time-step            [s]
 t0         = 0.0         # starting time        [s]
-tf         = 1.5         # ending time          [s]
+tf         = 0.0008      # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
@@ -20,7 +20,7 @@ save_int   = int(dt_save / dt)
 # create a material :
 n          = 1000        # number of particles
 r_max      = 0.15        # disk radius          [m]
-res        = 10          # disk mesh resolution
+res        = 400         # disk mesh resolution
 
 # upper-right disk :
 domain1    = Circle(Point(0.66, 0.66), r_max)
@@ -81,7 +81,7 @@ def cb_ftn():
     grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
-model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)
+model.mpm(t_start = t0, t_end = tf, cb_ftn = None)
 
 
 

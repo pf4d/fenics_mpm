@@ -367,6 +367,7 @@ void MPMMaterial::calculate_strain_rate()
   unsigned int idx, idx_T;
 
   // calculate particle strain-rate tensors :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     for (unsigned int j = 0; j < gdim; j++)
@@ -391,6 +392,7 @@ void MPMMaterial::calculate_incremental_strain_rate()
   unsigned int idx, idx_T;
 
   // calculate particle strain-rate tensors :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     for (unsigned int j = 0; j < gdim; j++)
@@ -412,6 +414,7 @@ void MPMMaterial::initialize_tensors(double dt)
 {
   printf("--- C++ initialize_tensors() ---\n");
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     // iterate through each element of the tensor :
@@ -441,6 +444,7 @@ void MPMMaterial::calculate_initial_volume()
 void MPMMaterial::update_deformation_gradient(double dt)
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     // iterate through each component of the tensor :
@@ -455,6 +459,7 @@ void MPMMaterial::update_deformation_gradient(double dt)
 void MPMMaterial::update_density()
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     rho[j] /= det(dF[j]);
@@ -464,6 +469,7 @@ void MPMMaterial::update_density()
 void MPMMaterial::update_volume()
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     V[j] *= det(dF[j]);
@@ -475,6 +481,7 @@ void MPMMaterial::update_stress(double dt)
   calculate_incremental_strain_rate();
 
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     // iterate through each component of the tensor :
@@ -487,6 +494,7 @@ void MPMMaterial::update_stress(double dt)
 void MPMMaterial::advect_particles(double dt)
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int j = 0; j < n_p; j++) 
   {
     for (unsigned int k = 0; k < gdim; k++)
@@ -521,8 +529,8 @@ void MPMMaterial::calc_pi()
   pi *= dx;                          // pull dx multiplication ouside sum
   dt  = omp_get_wtime() - t0;        // time to compute
 
-  printf("pi = %.2e \t pi - pi_true = %.2e \t dt = %.2e\n", 
-          pi,          pi - M_PI,             dt);
+  //printf("pi = %.2e \t pi - pi_true = %.2e \t dt = %.2e\n", 
+  //        pi,          pi - M_PI,             dt);
 }
 
 

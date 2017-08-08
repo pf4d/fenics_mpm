@@ -104,6 +104,7 @@ void MPMModel::update_points()
   for (unsigned int i = 0; i < materials.size(); i++)
   {
     // iterate through particle positions :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
       Point* pt_j = materials[i]->get_x_pt(j);          // the particle point
@@ -181,6 +182,7 @@ void MPMModel::interpolate_material_mass_to_grid()
   for (unsigned int i = 0; i < materials.size(); i++)
   {
     // iterate through particles :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
       std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
@@ -213,6 +215,7 @@ void MPMModel::interpolate_material_velocity_to_grid()
   for (unsigned int i = 0; i < materials.size(); i++)
   {
     // iterate through particles :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
       std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
@@ -335,6 +338,7 @@ void MPMModel::calculate_grid_internal_forces()
   for (unsigned int i = 0; i < materials.size(); i++)
   {
     // iterate through particles :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
       std::vector<unsigned int> idx  = materials[i]->get_vrt(j);
@@ -372,6 +376,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
   for (unsigned int k = 0; k < gdim; k++)
   {
     // iterate through each node :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int i = 0; i < dofs; i++)
     {
       // FIXME: this needs to be done properly for the first iteration too.
@@ -384,6 +389,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
   for (unsigned int k = 0; k < gdim; k++)
   {
     // iterate through each node :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int i = 0; i < dofs; i++)
     {
       // if there is a mass on the grid node :
@@ -413,6 +419,7 @@ void MPMModel::update_grid_velocity()
   for (unsigned int k = 0; k < gdim; k++)
   {
     // iterate through each node :
+    # pragma omp parallel for schedule(auto)
     for (unsigned int i = 0; i < dofs; i++)
     {
       U3_grid_new[coord_arr[k]][i] = U3_grid[coord_arr[k]][i] +
@@ -588,6 +595,7 @@ void MPMModel::interpolate_grid_acceleration_to_material()
       }
       materials[i]->set_a_star(j, a_p);
     }
+    //materials[i]->calc_pi();
   }
 }
 

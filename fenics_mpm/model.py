@@ -580,8 +580,8 @@ class Model(object):
     h = m / 60.0
     s = s % 60
     m = m % 60
-    text = "\ntotal time to perform transient run: %02d:%02d:%02d" % (h,m,s)
-    print_text(text, 'red', 1)
+    text = "\ntotal time to perform transient run: %02d:%02d:%02d (%.3e s)"
+    print_text(text % (h,m,s, time() - t0), 'red', 1)
    
     # always get the properties back from C++ land : 
     self.retrieve_cpp_material_properties()
