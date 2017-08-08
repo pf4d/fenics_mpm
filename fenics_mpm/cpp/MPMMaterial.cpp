@@ -6,19 +6,22 @@ using namespace dolfin;
 MPMMaterial::~MPMMaterial() { }
 
 // initialize the MPMMaterial variables :
-MPMMaterial::MPMMaterial(const Array<double>& m_a,
+MPMMaterial::MPMMaterial(const std::string&   name,
+                         const int            n,
                          const Array<double>& x_a,
                          const Array<double>& u_a,
                          const FiniteElement& element) :
                            gdim(element.geometric_dimension()),
-                           sdim(element.space_dimension())
+                           sdim(element.space_dimension()),
+                           name(name),
+                           n_p(n)
 {
-  n_p = m_a.size();
-  printf("::: MPMMaterialcpp with n_p = %u \t gdim = %u \t sdim = %u :::\n", 
-         n_p, gdim, sdim);
+  printf("::: initializing MPMMaterialcpp `%s` with n_p = %u,  gdim = %u,"
+         "  sdim = %u :::\n", name.c_str(), n_p, gdim, sdim);
 
   // one scalar or vector for each particle :
   m.resize(n_p);
+  rho0.resize(n_p);
   rho.resize(n_p);
   V0.resize(n_p);
   V.resize(n_p);
@@ -87,7 +90,6 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
     epsilon[i].resize(gdim*gdim);
     depsilon[i].resize(gdim*gdim);
     
-    m[i] = m_a[i];                               // initalize the mass
     unsigned int idx = 0;                        // index variable
     std::vector<double> x_t = {0.0, 0.0, 0.0};   // the vector to make a Point
     for (unsigned int j = 0; j < gdim; j++)
@@ -100,6 +102,46 @@ MPMMaterial::MPMMaterial(const Array<double>& m_a,
     }
     Point* x_point = new Point(x_t[0], x_t[1], x_t[2]);  // create a new Point
     x_pt[i]        = x_point;                            // put it in the vector
+  }
+}
+
+void MPMMaterial::set_initialized_by_mass(const bool val)
+{
+  printf("--- C++ set_initialized_by_mass(%s) ---\n", val ? "true" : "false");
+  mass_init = val;
+}
+
+void MPMMaterial::initialize_mass(const Array<double>& m_a)
+{
+  printf("--- C++ initialize_mass() ---\n");
+  // resize each of the vectors :
+  for (unsigned int i = 0; i < n_p; i++)
+  {
+    m[i] = m_a[i];  // initalize the mass
+  }
+}
+
+void MPMMaterial::initialize_volume(const Array<double>& V_a)
+{
+  printf("--- C++ initialize_volume() ---\n");
+  // resize each of the vectors :
+  for (unsigned int i = 0; i < n_p; i++)
+  {
+    V0[i] = V_a[i];  // initalize the initial volume
+    V[i]  = V_a[i];  // initalize the current volume
+  }
+}
+
+void MPMMaterial::initialize_mass_from_density(const double rho_a)
+{
+  printf("--- C++ initialize_mass_from_density(%g) ---\n", rho_a);
+  // resize each of the vectors :
+  for (unsigned int i = 0; i < n_p; i++)
+  {
+    double m_i = rho_a * V0[i];
+    m[i]       = m_i;    // initialize the mass
+    rho[i]     = rho_a;  // initialize the current denisty
+    rho0[i]    = rho_a;  // initialize the initial density
   }
 }
 
@@ -127,6 +169,16 @@ double               MPMMaterial::get_m(unsigned int index) const
 void  MPMMaterial::set_m(unsigned int index, double& value)
 {
   m.at(index) = value;
+}
+
+double               MPMMaterial::get_rho0(unsigned int index) const
+{
+  return rho0.at(index);
+}
+
+void  MPMMaterial::set_rho0(unsigned int index, double& value)
+{
+  rho0.at(index) = value;
 }
 
 double               MPMMaterial::get_rho(unsigned int index) const
@@ -358,6 +410,7 @@ void MPMMaterial::calculate_incremental_strain_rate()
 
 void MPMMaterial::initialize_tensors(double dt)
 {
+  printf("--- C++ initialize_tensors() ---\n");
   // iterate through particles :
   for (unsigned int j = 0; j < n_p; j++) 
   {
@@ -374,6 +427,7 @@ void MPMMaterial::initialize_tensors(double dt)
 
 void MPMMaterial::calculate_initial_volume()
 {
+  printf("--- C++ calculate_initial_volume() ---\n");
   // iterate through particles :
   for (unsigned int j = 0; j < n_p; j++) 
   {
@@ -395,6 +449,15 @@ void MPMMaterial::update_deformation_gradient(double dt)
       dF[j][k]  = I[k] + 0.5 * (grad_u[j][k] + grad_u_star[j][k]) * dt;
       F[j][k]  *= dF[j][k];
     }
+  }
+}
+
+void MPMMaterial::update_density()
+{
+  // iterate through particles :
+  for (unsigned int j = 0; j < n_p; j++) 
+  {
+    rho[j] /= det(dF[j]);
   }
 }
 

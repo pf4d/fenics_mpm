@@ -29,12 +29,13 @@ namespace dolfin
       void interpolate_material_velocity_to_grid(); 
       void interpolate_material_mass_to_grid();
       void calculate_grid_volume();
-      void calculate_material_density();
+      void calculate_material_initial_density();
       void calculate_material_initial_volume();
       void calculate_material_velocity_gradient();
       void initialize_material_tensors();
       void interpolate_grid_velocity_to_material();
       void interpolate_grid_acceleration_to_material();
+      void update_material_density();
       void update_material_volume();
       void update_material_deformation_gradient();
       void update_material_stress();
@@ -44,6 +45,7 @@ namespace dolfin
       void advect_material_particles();
       
       void set_h(const Array<double>& h);
+      void set_V(const Array<double>& V);
 
       std::vector<double>       get_m() {return m_grid;};
       

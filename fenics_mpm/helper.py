@@ -3,7 +3,7 @@
 import inspect
 from   fenics   import *
 from   colored  import fg, attr
-import numpy             as np
+import numpy        as np
 
 
 def raiseNotDefined():
@@ -100,3 +100,43 @@ def print_text(text, color='white', atrb=0, cls=None):
     else:
       text = ('%s' + text + '%s') % (fg(color), attr(0))
     print text
+
+def calculate_mesh_midpoints_and_volumes(mesh):
+  """
+  """
+  s = "::: CALCULATING CELL MIDPOINTS AND VOLUMES :::"
+  print_text(s)
+
+  dim   = mesh.ufl_cell().topological_dimension()
+  s = "    - iterating through %i cells of %i-dimensional mesh - "
+  print_text(s % (mesh.num_cells(), dim))
+
+  x,y,z,V = [],[],[],[]
+  if dim == 2:
+    for c in cells(mesh):
+      x.append(c.midpoint().x())
+      y.append(c.midpoint().y())
+      V.append(c.volume())
+    x = np.array(x)
+    y = np.array(y)
+    V = np.array(V)
+    X = np.ascontiguousarray(np.array([x, y]).T)
+  elif dim == 3:
+    for c in cells(mesh):
+      x.append(c.midpoint().x())
+      y.append(c.midpoint().y())
+      z.append(c.midpoint().z())
+      V.append(c.volume())
+    x = np.array(x)
+    y = np.array(y)
+    z = np.array(z)
+    V = np.array(V)
+    X = np.ascontiguousarray(np.array([x, y, z]).T)
+  s = "    - done - "
+  print_text(s)
+  print_min_max(x, 'x')
+  print_min_max(y, 'y')
+  if dim == 3: print_min_max(z, 'z')
+  print_min_max(V, 'V')
+  return (X, V)
+

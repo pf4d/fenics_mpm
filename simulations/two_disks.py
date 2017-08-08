@@ -33,11 +33,12 @@ n_x        = 20          # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 u_mag      = 0.1         # velocity magnitude   [m/s]
+#m_mag      = 10.0        # particle mass        [kg]
 m_mag      = 0.012       # particle mass        [kg]
 dt_save    = 0.01        # time between saves   [s]
-dt         = 0.0002       # time-step            [s]
+dt         = 0.0002      # time-step            [s]
 t0         = 0.0         # starting time        [s]
-tf         = 50          # ending time          [s]
+tf         = 1.5         # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
@@ -57,8 +58,8 @@ M2         =  m_mag * np.ones(n)
 U2         =  u_mag * np.ones([n,2])
 
 # corresponding Material objects : 
-M1         = ElasticMaterial(M1, X1, U1, E, nu)
-M2         = ElasticMaterial(M2, X2, U2, E, nu)
+M1         = ElasticMaterial('disk1', X1, U1, E, nu, m=M1)
+M2         = ElasticMaterial('disk2', X2, U2, E, nu, m=M2)
 
 # the four walls of the box :
 gap        = 1e-3
@@ -83,14 +84,14 @@ X_west     = np.ascontiguousarray(np.array([x_west,  y_west ]).T)
 X_north    = np.ascontiguousarray(np.array([x_north, y_north]).T)
 X_south    = np.ascontiguousarray(np.array([x_south, y_south]).T)
 
-n_wall     = ImpenetrableMaterial(M_wall, X_north, U_wall)
-s_wall     = ImpenetrableMaterial(M_wall, X_south, U_wall)
-e_wall     = ImpenetrableMaterial(M_wall, X_east,  U_wall)
-w_wall     = ImpenetrableMaterial(M_wall, X_west,  U_wall)
-#n_wall     = ElasticMaterial(M_wall, X_north, U_wall, E, nu)
-#s_wall     = ElasticMaterial(M_wall, X_south, U_wall, E, nu)
-#e_wall     = ElasticMaterial(M_wall, X_east,  U_wall, E, nu)
-#w_wall     = ElasticMaterial(M_wall, X_west,  U_wall, E, nu)
+n_wall     = ImpenetrableMaterial('n_wall', X_north, U_wall, m=M_wall)
+s_wall     = ImpenetrableMaterial('s_wall', X_south, U_wall, m=M_wall)
+e_wall     = ImpenetrableMaterial('e_wall', X_east,  U_wall, m=M_wall)
+w_wall     = ImpenetrableMaterial('w_wall', X_west,  U_wall, m=M_wall)
+#n_wall     = ElasticMaterial(X_north, U_wall, E, nu, M_wall)
+#s_wall     = ElasticMaterial(X_south, U_wall, E, nu, M_wall)
+#e_wall     = ElasticMaterial(X_east,  U_wall, E, nu, M_wall)
+#w_wall     = ElasticMaterial(X_west,  U_wall, E, nu, M_wall)
 
 # the finite-element mesh used :    
 mesh       = UnitSquareMesh(n_x, n_x)
@@ -113,10 +114,10 @@ model      = Model(out_dir, grid_model, dt, verbose=False)
 # add the materials to the model :
 model.add_material(M1)
 model.add_material(M2)
-model.add_material(n_wall)
-model.add_material(s_wall)
-model.add_material(e_wall)
-model.add_material(w_wall)
+#model.add_material(n_wall)
+#model.add_material(s_wall)
+#model.add_material(e_wall)
+#model.add_material(w_wall)
 
 # files for saving grid variables :
 m_file = File(out_dir + '/m.pvd')

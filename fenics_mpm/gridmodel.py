@@ -145,6 +145,9 @@ class GridModel(object):
 
     # cell diameter :
     self.h       = project(CellSize(self.mesh), self.Q)  # cell diameter vector
+
+    # cell volume :
+    self.Ve      = project(CellVolume(self.mesh), self.Q) # cell volume vector
     
     # grid velocity :
     self.U_mag                = Function(self.Q,  name='U_mag')

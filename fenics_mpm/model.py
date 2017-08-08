@@ -49,6 +49,9 @@ class Model(object):
                                        dt, verbose)
     # intialize the cell diameter :
     self.mpm_cpp.set_h(self.grid_model.h.vector().array())
+    
+    # intialize the cell volume :
+    self.mpm_cpp.set_V(self.grid_model.Ve.vector().array())
   
     # set the boundary conditions for C++ code :
     self.set_boundary_conditions()
@@ -112,22 +115,36 @@ class Model(object):
 
     self.mpm_cpp.interpolate_material_velocity_to_grid()
 
-  def calculate_material_density(self):
+  def calculate_material_initial_mass(self):
+    r"""
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle masses :math:`m_p` given by ``M.m`` using particle volume :math:`V_p` and constant material density :math:`\rho` :
+
+    .. math::
+      m_p = \frac{V_p}{\rho}.
+    """
+    if self.verbose:
+      s = "::: CALCULATING MATERIAL INITIAL MASS :::"
+      print_text(s, cls=self.this)
+
+    # calculate particle masses :
+    self.mpm_cpp.calculate_material_initial_mass()
+
+  def calculate_material_initial_density(self):
     r"""
     Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities :math:`\rho_p` given by ``M.rho`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal masses :math:`m_i` and nodal cell diameter volume estimates :math:`v_i = \frac{4}{3} \pi \left(\frac{h_i}{2}\right)^3` using approximate nodal cell diameter :math:`h_i`.  That is,
 
     .. math::
       \rho_p = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \frac{m_i}{v_i}
     
-    Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.
+    Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve thereafter with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.
     """
     if self.verbose:
-      s = "::: CALCULATING MATERIAL DENSITY :::"
+      s = "::: CALCULATING MATERIAL INITIAL DENSITY :::"
       print_text(s, cls=self.this)
 
     # calculate particle densities :
-    self.mpm_cpp.calculate_grid_volume()
-    self.mpm_cpp.calculate_material_density()
+    #NOTE: this is not needed now -> self.mpm_cpp.calculate_grid_volume()
+    self.mpm_cpp.calculate_material_initial_density()
 
   def calculate_material_initial_volume(self):
     r"""
@@ -209,6 +226,26 @@ class Model(object):
 
     self.calculate_material_velocity_gradient()
     self.mpm_cpp.initialize_material_tensors()
+
+  def update_material_density(self):
+    r"""
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities from the incremental particle deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula
+
+    .. math::
+      \rho_p^t = \mathrm{det}(\mathrm{d}F_p)^{-1} \rho_p^{t-1}.
+
+    This is equivalent to the operation
+
+    .. math::
+      V_p^t = \mathrm{det}(F_p)^{-1} \rho_p^0,
+
+    with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial density :math:`\rho_p^0` calculated by :func:`~model.Model.calculate_material_initial_density` and set to ``M.rho0``.
+    """
+    if self.verbose:
+      s = "::: UPDATING MATERIAL VOLUME :::"
+      print_text(s, cls=self.this)
+    
+    self.mpm_cpp.update_material_density()
 
   def update_material_volume(self):
     r"""
@@ -476,15 +513,24 @@ class Model(object):
       #=========================================================================
       # begin MPM algorithm :
 
-      # interpolation from particle stage :
+      # get basis function values at material point locations :
       self.formulate_material_basis_functions()
+      
+      ## initialization step :
+      #if self.t == t_start:
+      #  self.initialize_material_tensors()
+      #  self.calculate_material_initial_density()
+      #  self.calculate_material_initial_volume()
+      #  #self.calculate_material_initial_mass()
+
+      # interpolation from particle stage :
       self.interpolate_material_mass_to_grid()
       self.interpolate_material_velocity_to_grid()
       
       # initialization step :
       if self.t == t_start:
         self.initialize_material_tensors()
-        self.calculate_material_density()
+        self.calculate_material_initial_density()
         self.calculate_material_initial_volume()
         
       # grid calculation stage : 

@@ -13,13 +13,14 @@ sigma_p    = np.array( [[sig_xx, sig_xy], [sig_xy, sig_yy]], dtype=float )
 sigma.append(sigma_p)
 */
 
-MPMElasticMaterial::MPMElasticMaterial(const Array<double>& m_a,
+MPMElasticMaterial::MPMElasticMaterial(const std::string&   name,
+                                       const int            n,
                                        const Array<double>& x_a,
                                        const Array<double>& u_a,
                                        const FiniteElement& element,
                                        const double young_modulus,
                                        const double poisson_ratio) :
-                    MPMMaterial(m_a, x_a, u_a, element),
+                    MPMMaterial(name, n, x_a, u_a, element),
                     E(young_modulus),
                     nu(poisson_ratio)
 {

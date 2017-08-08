@@ -16,8 +16,8 @@ MPMModel::MPMModel(const FunctionSpace& V,
   gdim    = mesh->geometry().dim();
   sdim    = element->space_dimension();
   
-  printf("::: MPMModelcpp with gDim = %zu \t sDim = %zu, dt = %f :::\n",
-          gdim, sdim, dt);
+  printf("::: initializing MPMModelcpp with gDim = %zu,  sDim = %zu,"
+         " dt = %f :::\n", gdim, sdim, dt);
 
   // FIXME: make the vectors of size gdim instead of 3:
   //        this will require some work with the setting of vector
@@ -46,6 +46,12 @@ void MPMModel::set_h(const Array<double>& h)
 {
   for (std::size_t i = 0; i < h.size(); i++)
     h_grid[i] = h[i];
+}
+
+void MPMModel::set_V(const Array<double>& V)
+{
+  for (std::size_t i = 0; i < V.size(); i++)
+    V_grid[i] = V[i];
 }
 
 std::vector<double>  MPMModel::get_U3(unsigned int index) const
@@ -239,41 +245,60 @@ void MPMModel::calculate_grid_volume()
 }
 
   
-void MPMModel::calculate_material_density()
+void MPMModel::calculate_material_initial_density()
 {
-  if (verbose == true)
-    printf("--- C++ calculate_material_density() ---\n");
+  printf("--- C++ calculate_material_initial_density() ---\n");
 
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    if (materials[i]->get_mass_init() == true)
     {
-      std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
-      std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
-      double m_p                    = materials[i]->get_m(j);    // mass
-      double rho_j                  = 0;                         // sum identity
-
-      // interpolate the particle mass to each node of its cell :
-      for (unsigned int q = 0; q < sdim; q++)
+      printf("    - material `%s` has not been initialized with density -\n",
+             materials[i]->get_name());
+      // iterate through particles :
+      for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
       {
-        rho_j += m_grid[idx[q]] * phi_p[q] / V_grid[idx[q]];
+        std::vector<unsigned int> idx = materials[i]->get_vrt(j);  // node index
+        std::vector<double> phi_p     = materials[i]->get_phi(j);  // basis
+        double m_p                    = materials[i]->get_m(j);    // mass
+        double rho_j                  = 0;                         // sum ident.
+      
+        // interpolate the particle mass to each node of its cell :
+        for (unsigned int q = 0; q < sdim; q++)
+        {
+          rho_j += m_grid[idx[q]] * phi_p[q] / V_grid[idx[q]];
+        }
+        materials[i]->set_rho0(j, rho_j);
+        materials[i]->set_rho(j,  rho_j);
       }
-      materials[i]->set_rho(j, rho_j);
+    }
+    else
+    {
+      printf("    - material `%s` has been initialized with density,"
+             " skipping calculation -\n", materials[i]->get_name());
     }
   }
 }
   
 void MPMModel::calculate_material_initial_volume()
 {
-  if (verbose == true)
-    printf("--- C++ calculate_material_initial_volume() ---\n");
+  printf("--- C++ calculate_material_initial_volume() ---\n");
 
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    materials[i]->calculate_initial_volume();
+    if (materials[i]->get_mass_init() == true)
+    {
+      printf("    - material `%s` has not been initialized with volume -\n",
+             materials[i]->get_name());
+      materials[i]->calculate_initial_volume();
+    }
+    else
+    {
+      printf("    - material `%s` has been initialized with volume,"
+             " skipping calculation -\n", materials[i]->get_name());
+    }
   }
 }
 
@@ -465,6 +490,18 @@ void MPMModel::update_material_deformation_gradient()
   for (unsigned int i = 0; i < materials.size(); i++)
   {
     materials[i]->update_deformation_gradient(dt);
+  }
+}
+
+void MPMModel::update_material_density()
+{
+  if (verbose == true)
+    printf("--- C++ update_material_density() ---\n");
+
+  // iterate through all materials :
+  for (unsigned int i = 0; i < materials.size(); i++)
+  {
+    materials[i]->update_density();
   }
 }
 

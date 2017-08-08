@@ -8,7 +8,8 @@ namespace dolfin
   class MPMElasticMaterial : public MPMMaterial
   {
     public:
-      MPMElasticMaterial(const Array<double>& m_a,
+      MPMElasticMaterial(const std::string&   name,
+                         const int            n,
                          const Array<double>& x_a,
                          const Array<double>& u_a,
                          const FiniteElement& element,

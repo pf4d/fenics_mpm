@@ -8,7 +8,8 @@ namespace dolfin
   class MPMImpenetrableMaterial : public MPMMaterial
   {
     public:
-      MPMImpenetrableMaterial(const Array<double>& m_a,
+      MPMImpenetrableMaterial(const std::string&   name,
+                              const int            n,
                               const Array<double>& x_a,
                               const Array<double>& u_a,
                               const FiniteElement& element);

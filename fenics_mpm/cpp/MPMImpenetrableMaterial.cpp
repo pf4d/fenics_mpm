@@ -2,11 +2,12 @@
 
 using namespace dolfin;
 
-MPMImpenetrableMaterial::MPMImpenetrableMaterial(const Array<double>& m_a,
+MPMImpenetrableMaterial::MPMImpenetrableMaterial(const std::string&   name,
+                                                 const int            n,
                                                  const Array<double>& x_a,
                                                  const Array<double>& u_a,
                                                  const FiniteElement& element) :
-                    MPMMaterial(m_a, x_a, u_a, element)
+                    MPMMaterial(name, n, x_a, u_a, element)
 {
   unsigned int idx, idx_T;
   

@@ -14,27 +14,35 @@ namespace dolfin
   {
     public:
       virtual ~MPMMaterial() = 0;
-      MPMMaterial(const Array<double>& m_a,
+      MPMMaterial(const std::string&   name,
+                  const int            n,
                   const Array<double>& x_a,
                   const Array<double>& u_a,
                   const FiniteElement& element);
-      
-      double                              det(std::vector<double>& u);
-      std::vector<double>                 get_m()           {return m;};
-      std::vector<double>                 get_rho()         {return rho;};
-      std::vector<double>                 get_V0()          {return V0;};
-      std::vector<double>                 get_V()           {return V;};
-      std::vector<double>                 get_I()           {return I;};
-      std::vector<std::vector<double>>    get_u_star()      {return u_star;};
-      std::vector<std::vector<double>>    get_a_star()      {return a_star;};
-      std::vector<std::vector<double>>    get_a()           {return a;};
-      std::vector<std::vector<double>>    get_u()           {return u;};
-      std::vector<std::vector<double>>    get_grad_u()      {return grad_u;};
-      std::vector<std::vector<double>>    get_grad_u_star() {return grad_u;};
-      std::vector<std::vector<double>>    get_F()           {return F;};
-      std::vector<std::vector<double>>    get_sigma()       {return sigma;};
-      std::vector<std::vector<double>>    get_epsilon()     {return epsilon;};
+     
+      double                           det(std::vector<double>& u);
+      bool                             get_mass_init()   {return mass_init;};
+      const char *                     get_name()        {return name.c_str();};
+      std::vector<double>              get_m()           {return m;};
+      std::vector<double>              get_rho0()        {return rho0;};
+      std::vector<double>              get_rho()         {return rho;};
+      std::vector<double>              get_V0()          {return V0;};
+      std::vector<double>              get_V()           {return V;};
+      std::vector<double>              get_I()           {return I;};
+      std::vector<std::vector<double>> get_u_star()      {return u_star;};
+      std::vector<std::vector<double>> get_a_star()      {return a_star;};
+      std::vector<std::vector<double>> get_a()           {return a;};
+      std::vector<std::vector<double>> get_u()           {return u;};
+      std::vector<std::vector<double>> get_grad_u()      {return grad_u;};
+      std::vector<std::vector<double>> get_grad_u_star() {return grad_u;};
+      std::vector<std::vector<double>> get_F()           {return F;};
+      std::vector<std::vector<double>> get_sigma()       {return sigma;};
+      std::vector<std::vector<double>> get_epsilon()     {return epsilon;};
 
+      void         set_initialized_by_mass(const bool val);
+      void         initialize_mass(const Array<double>& m_a);
+      void         initialize_volume(const Array<double>& V_a);
+      void         initialize_mass_from_density(const double rho_a);
       unsigned int get_num_particles() const {return n_p;};
       virtual void calculate_strain_rate();
       virtual void calculate_incremental_strain_rate();
@@ -43,6 +51,7 @@ namespace dolfin
       virtual void initialize_tensors(double dt);
       virtual void calculate_initial_volume();
       virtual void update_deformation_gradient(double dt);
+      virtual void update_density();
       virtual void update_volume();
       virtual void update_stress(double dt);
       virtual void advect_particles(double dt);
@@ -52,6 +61,9 @@ namespace dolfin
       
       double                    get_m(unsigned int index) const;
       void set_m(unsigned int index, double& value);
+      
+      double                    get_rho0(unsigned int index) const;
+      void set_rho0(unsigned int index, double& value);
       
       double                    get_rho(unsigned int index) const;
       void set_rho(unsigned int index, double& value);
@@ -108,10 +120,13 @@ namespace dolfin
       void  set_depsilon(unsigned int index, std::vector<double>& value);
 
     protected:
+      std::string                            name;     // name of material
+      bool                                   mass_init;// initialized via mass
       unsigned int                           n_p;      // number of particles
       const unsigned int                     gdim;     // topological dimension
       const unsigned int                     sdim;     // element dimension
       std::vector<double>                    m;        // mass vector
+      std::vector<double>                    rho0;     // initial density vector
       std::vector<double>                    rho;      // density vector
       std::vector<double>                    V0;       // initial volume vector
       std::vector<double>                    V;        // volume vector

@@ -4,6 +4,7 @@ import numpy                  as np
 import matplotlib.pyplot      as plt
 from   fenics_mpm.helper      import print_text, raiseNotDefined
 from   fenics_mpm             import mpm_module
+import sys
 
 
 class Material(object):
@@ -12,12 +13,16 @@ class Material(object):
   parameters length :math:`n_p` :class:`~numpy.ndarray` vectors ``m``, ``x`` 
   and ``u``.
 
-  :param m: particle mass vector :math:`\mathbf{m}_p`
   :param x: particle position vector :math:`\mathbf{x}_p`
   :param u: particle velocity vector :math:`\mathbf{u}_p`
-  :type m: :class:`~numpy.ndarray`
+  :param m: particle mass vector :math:`\mathbf{m}_p`
+  :param V: particle volume vector :math:`\mathbf{V}_p`
+  :param rho: particle density :math:`\rho`
   :type x: :class:`~numpy.ndarray`
   :type u: :class:`~numpy.ndarray`
+  :type m: :class:`~numpy.ndarray`
+  :type V: :class:`~numpy.ndarray`
+  :type rho: float
 
   In creation of this class, a number of particle state paramters are initialized.  These are:
 
@@ -31,7 +36,8 @@ class Material(object):
   * ``self.vrt``      -- :math:`n_p \times n_n` grid nodal indicies for points :math:`i`
   * ``self.phi``      -- :math:`n_p \times n_n` grid basis values at points :math:`\phi(\mathbf{x}_p)`
   * ``self.grad_phi`` -- :math:`n_p \times (n_n \times d)` grid basis gradient tensors at points :math:`\nabla \phi_i(\mathbf{x}_p)`
-  * ``self.rho``      -- :math:`n_p \times 1` density vector :math:`\rho_p`
+  * ``self.rho0``     -- :math:`n_p \times 1` initial density vector :math:`\rho_p^0`
+  * ``self.rho``      -- :math:`n_p \times 1` density vector :math:`\rho_p^t`
   * ``self.V0``       -- :math:`n_p \times 1` initial volume vector :math:`V_p^0`
   * ``self.V``        -- :math:`n_p \times 1` volume vector :math:`V_p`
   * ``self.F``        -- :math:`n_p \times (d \times d)` deformation gradient tensors :math:`F_p`
@@ -39,27 +45,40 @@ class Material(object):
   * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`
   * ``self.I``        -- :math:`n_p \times (d \times d)` identity tensors :math:`I`
   """
-  def __init__(self, m, x, u):
+  def __init__(self, name, x, u, m=None, V=None, rho=None):
     """
     """
     self.this     = super(type(self), self)  # pointer to this base class
+    self.name     = name
 
-    s = "::: INITIALIZING BASE MATERIAL :::"
+    s = "::: INITIALIZING BASE MATERIAL `%s` :::" % name
     print_text(s, cls=self.this)
+
+    if     (m is None and rho is None and V is None) \
+        or (m is not None and (rho is not None or V is not None)):
+      s = ">>> MATERIALS ARE CREATED EITHER WITH MASS VECTOR `m` OR WITH A " \
+          "DENSITY `rho` AND VOLUME VECTOR `V` <<<"
+      print_text(s , 'red', 1)
+      sys.exit(1)
+
+    # cpp arguments, if needed these are set in child classes
+    # (find example child classes after this class) :
+    self.cpp_args = None
 
     self.n        = len(x[:,0])        # number of particles
     self.d        = len(x[0])          # topological dimension
-    self.m        = m                  # mass vector
     self.x        = x                  # position vector
     self.u        = u                  # velocity vector
+    self.m        = m                  # mass vector
+    self.rho      = rho                # density vector
+    self.rho0     = None               # initial density vector
+    self.V        = V                  # volume vector
+    self.V0       = None               # initial volume vector
     self.a        = None               # acceleration vector
     self.grad_u   = None               # velocity gradient tensor
     self.vrt      = None               # grid nodal indicies for points
     self.phi      = None               # grid basis values at points
     self.grad_phi = None               # grid basis gradient values at points
-    self.rho      = None               # density vector
-    self.V0       = None               # initial volume vector
-    self.V        = None               # volume vector
     self.F        = None               # deformation gradient tensor
     self.sigma    = None               # stress tensor
     self.epsilon  = None               # strain-rate tensor
@@ -67,23 +86,49 @@ class Material(object):
     # identity tensors :
     self.I        = np.array([np.identity(self.d).flatten()]*self.n)
     
-  def get_cpp_material(self, element):
+  def cpp_module(self):
     r"""
     return the appropriate cpp module to instantiate this material.
 
     This method must be implemented by child classes.
     """
     raiseNotDefined()
+  
+  def get_cpp_material(self, element):
+    r"""
+    instantiate and return the cpp module for this material with element type
+    ``element``.
+    """
+    # create the underlying C++ code representation :
+    mod = self.cpp_module()(self.name,
+                            self.n, 
+                            self.x.flatten(),
+                            self.u.flatten(),
+                            element, *self.cpp_args)
+
+    # if the material has been initialized with a mass vector :
+    if self.m is not None:
+      mod.set_initialized_by_mass(True)
+      mod.initialize_mass(self.m)
+
+    # otherwise, the material has been initialized with a constant density :
+    if self.rho is not None and self.V is not None:
+      mod.set_initialized_by_mass(False)
+      mod.initialize_volume(self.V)
+      mod.initialize_mass_from_density(self.rho)
+
+    return mod
 
   def set_cpp_material(self, cpp_mat):
     r"""
-    Instantiante the C++ code for this material with .
+    Instantiante the C++ code object ``self.cpp_mat`` for this material
+    to ``cpp_mat``.
     
     :param element: The FEniCS element used.
     :type element: :class:`~fenics.FiniteElement`
     """
     self.cpp_mat = cpp_mat 
-  
+
   def color(self):
     r"""
     The color used for printing messages to the screen.
@@ -233,20 +278,25 @@ class Material(object):
       sigma_p_v.append(self.cpp_mat.get_sigma(i))
     self.sigma    = np.array(sigma_p_v,    dtype=float)
     
+  def retrieve_cpp_rho0(self):
+    """
+    """
+    self.rho0 = np.array(self.cpp_mat.get_rho0(), dtype=float)
+    
   def retrieve_cpp_rho(self):
     """
     """
-    self.rho = np.array(self.cpp_mat.get_rho(), dtype=float)
+    self.rho  = np.array(self.cpp_mat.get_rho(),  dtype=float)
 
   def retrieve_cpp_V(self):
     """
     """
-    self.V   = np.array(self.cpp_mat.get_V(),   dtype=float)
+    self.V    = np.array(self.cpp_mat.get_V(),    dtype=float)
 
   def retrieve_cpp_V0(self):
     """
     """
-    self.V0  = np.array(self.cpp_mat.get_V0(),  dtype=float)
+    self.V0   = np.array(self.cpp_mat.get_V0(),   dtype=float)
 
 
 class ElasticMaterial(Material):
@@ -265,32 +315,31 @@ class ElasticMaterial(Material):
   :type E: float
   :type nu: float
   """
-  def __init__(self, m, x, u, E, nu):
+  def __init__(self, name, x, u, E, nu, m=None, V=None, rho=None):
     """
     """
-    s = "::: INITIALIZING ELASTIC MATERIAL :::"
+    s = "::: INITIALIZING ELASTIC MATERIAL `%s` :::" % name
     print_text(s, cls=self)
 
-    Material.__init__(self, m, x, u)
+    Material.__init__(self, name, x, u, m, V, rho)
 
     self.E        = E         # Young's modulus
     self.nu       = nu        # Poisson's ratio
+
+    self.cpp_args = {self.E, self.nu}
 
     # Lamé parameters :
     self.mu       = E / (2.0*(1.0 + nu))
     self.lmbda    = E*nu / ((1.0 + nu)*(1.0 - 2.0*nu))
   
-  def get_cpp_material(self, element):
+  def cpp_module(self):
     r"""
     return the appropriate cpp module to instantiate this material.
 
     This method must be implemented by child classes.
     """
-    return mpm_module.MPMElasticMaterial(self.m,
-                                         self.x.flatten(),
-                                         self.u.flatten(),
-                                         element,
-                                         self.E, self.nu)
+    # create the underlying C++ code representation :
+    return mpm_module.MPMElasticMaterial
 
   def color(self):
     return '150'
@@ -335,24 +384,23 @@ class ImpenetrableMaterial(Material):
   :type x: :class:`~numpy.ndarray`
   :type u: :class:`~numpy.ndarray`
   """
-  def __init__(self, m, x, u):
+  def __init__(self, name, x, u, m=None, V=None, rho=None):
     """
     """
+    #FIXME: fix initialization with rho and V, etc.
     s = "::: INITIALIZING IMPENETRABLE MATERIAL :::"
     print_text(s, cls=self)
 
-    Material.__init__(self, m, x, u)
-
-  def get_cpp_material(self, element):
+    Material.__init__(self, name, x, u, m, V, rho)
+  
+  def cpp_module(self):
     r"""
     return the appropriate cpp module to instantiate this material.
 
     This method must be implemented by child classes.
     """
-    return mpm_module.MPMImpenetrableMaterial(self.m,
-                                              self.x.flatten(),
-                                              self.u.flatten(),
-                                              element)
+    # create the underlying C++ code representation :
+    return mpm_module.MPMImpenetrableMaterial
 
   def color(self):
     return '150'
