@@ -575,13 +575,13 @@ class Model(object):
         print text
 
     # calculate total time to compute
-    s = time() - t0
-    m = s / 60.0
-    h = m / 60.0
-    s = s % 60
-    m = m % 60
+    dt = time() - t0
+    m  = dt / 60.0
+    h  = m / 60.0
+    s  = dt % 60
+    m  = m % 60
     text = "\ntotal time to perform transient run: %02d:%02d:%02d (%.3e s)"
-    print_text(text % (h,m,s, time() - t0), 'red', 1)
+    print_text(text % (h,m,s,dt), 'red', 1)
    
     # always get the properties back from C++ land : 
     self.retrieve_cpp_material_properties()

@@ -25,22 +25,32 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   rho.resize(n_p);
   V0.resize(n_p);
   V.resize(n_p);
-  x.resize(n_p);
   x_pt.resize(n_p);
-  u.resize(n_p);
-  u_star.resize(n_p);
-  a_star.resize(n_p);
-  a.resize(n_p);
-  grad_u.resize(n_p);
-  grad_u_star.resize(n_p);
-  vrt.resize(n_p);
-  phi.resize(n_p);
-  grad_phi.resize(n_p);
-  dF.resize(n_p);
-  F.resize(n_p);
-  sigma.resize(n_p);
-  epsilon.resize(n_p);
-  depsilon.resize(n_p);
+  
+  // these are vectors in topological dimension :
+  x.resize(n_p*gdim);
+  u.resize(n_p*gdim);
+  u_star.resize(n_p*gdim);
+  a_star.resize(n_p*gdim);
+  a.resize(n_p*gdim);
+    
+  // these are vectors in element dimension :
+  vrt.resize(n_p*sdim);
+  phi.resize(n_p*sdim);
+  
+  // this is a flattened tensor defined with columns over each 
+  //   topological dim. and rows over each element dimension :
+  grad_phi.resize(n_p*gdim*sdim);
+  
+  // these are rank-two flattened tensors defined over each 
+  //   topological dimension :
+  grad_u.resize(n_p*gdim*gdim);
+  grad_u_star.resize(n_p*gdim*gdim);
+  dF.resize(n_p*gdim*gdim);
+  F.resize(n_p*gdim*gdim);
+  sigma.resize(n_p*gdim*gdim);
+  epsilon.resize(n_p*gdim*gdim);
+  depsilon.resize(n_p*gdim*gdim);
  
   // the flattened identity tensor :
   I.resize(gdim*gdim);
@@ -62,43 +72,18 @@ MPMMaterial::MPMMaterial(const std::string&   name,
     }
   }
   
-  // resize each of the vectors :
+  // initialize the positions, Points, and velocities :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    // these are vectors in topological dimension :
-    x[i].resize(gdim);
-    u[i].resize(gdim);
-    u_star[i].resize(gdim);
-    a_star[i].resize(gdim);
-    a[i].resize(gdim);
-    
-    // these are vectors in element dimension :
-    vrt[i].resize(sdim);
-    phi[i].resize(sdim);
-  
-    // this is a flattened tensor defined with columns over each 
-    //   topological dim. and rows over each element dimension :
-    grad_phi[i].resize(gdim*sdim);
-    
-    // these are rank-two flattened tensors defined over each 
-    //   topological dimension :
-    grad_u[i].resize(gdim*gdim);
-    grad_u_star[i].resize(gdim*gdim);
-    dF[i].resize(gdim*gdim);
-    F[i].resize(gdim*gdim);
-    sigma[i].resize(gdim*gdim);
-    epsilon[i].resize(gdim*gdim);
-    depsilon[i].resize(gdim*gdim);
-    
     unsigned int idx = 0;                        // index variable
     std::vector<double> x_t = {0.0, 0.0, 0.0};   // the vector to make a Point
     for (unsigned int j = 0; j < gdim; j++)
     {
-      idx          = i*gdim + j;
-      x_t[j]       = x_a[idx];
-      x[i][j]      = x_a[idx];
-      u[i][j]      = u_a[idx];
-      u_star[i][j] = u[i][j];
+      idx         = i*gdim + j;
+      x_t[j]      = x_a[idx];
+      x[idx]      = x_a[idx];
+      u[idx]      = u_a[idx];
+      u_star[idx] = u[idx];
     }
     Point* x_point = new Point(x_t[0], x_t[1], x_t[2]);  // create a new Point
     x_pt[i]        = x_point;                            // put it in the vector
@@ -161,226 +146,25 @@ double MPMMaterial::det(std::vector<double>& u)
   return det;
 }
 
-double               MPMMaterial::get_m(unsigned int index) const
-{
-  return m.at(index);
-}
-
-void  MPMMaterial::set_m(unsigned int index, double& value)
-{
-  m.at(index) = value;
-}
-
-double               MPMMaterial::get_rho0(unsigned int index) const
-{
-  return rho0.at(index);
-}
-
-void  MPMMaterial::set_rho0(unsigned int index, double& value)
-{
-  rho0.at(index) = value;
-}
-
-double               MPMMaterial::get_rho(unsigned int index) const
-{
-  return rho.at(index);
-}
-
-void  MPMMaterial::set_rho(unsigned int index, double& value)
-{
-  rho.at(index) = value;
-}
-
-double               MPMMaterial::get_V0(unsigned int index) const
-{
-  return V0.at(index);
-}
-
-void  MPMMaterial::set_V0(unsigned int index, double& value)
-{
-  V0.at(index) = value;
-}
-
-double               MPMMaterial::get_V(unsigned int index) const
-{
-  return V.at(index);
-}
-
-void  MPMMaterial::set_V(unsigned int index, double& value)
-{
-  V.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_x(unsigned int index) const
-{
-  return x.at(index);
-}
-
-void  MPMMaterial::set_x(unsigned int index, std::vector<double>& value)
-{
-  x.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_u(unsigned int index) const
-{
-  return u.at(index);
-}
-
-void  MPMMaterial::set_u(unsigned int index, std::vector<double>& value)
-{
-  u.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_a(unsigned int index) const
-{
-  return a.at(index);
-}
-
-void  MPMMaterial::set_a(unsigned int index, std::vector<double>& value)
-{
-  a.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_u_star(unsigned int index) const
-{
-  return u_star.at(index);
-}
-
-void  MPMMaterial::set_u_star(unsigned int index, std::vector<double>& value)
-{
-  u_star.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_a_star(unsigned int index) const
-{
-  return a_star.at(index);
-}
-
-void  MPMMaterial::set_a_star(unsigned int index, std::vector<double>& value)
-{
-  a_star.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_phi(unsigned int index) const
-{
-  return phi.at(index);
-}
-
-void  MPMMaterial::set_phi(unsigned int index, std::vector<double>& value)
-{
-  phi.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_grad_phi(unsigned int index) const
-{
-  return grad_phi.at(index);
-}
-
-void  MPMMaterial::set_grad_phi(unsigned int index, std::vector<double>& value)
-{
-  grad_phi.at(index) = value;
-}
-
-std::vector<unsigned int>  MPMMaterial::get_vrt(unsigned int index) const
-{
-  return vrt.at(index);
-}
-
-void  MPMMaterial::set_vrt(unsigned int index, std::vector<unsigned int>& value)
-{
-  vrt.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_grad_u(unsigned int index) const
-{
-  return grad_u.at(index);
-}
-
-void  MPMMaterial::set_grad_u(unsigned int index, std::vector<double>& value)
-{
-  grad_u.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_grad_u_star(unsigned int index) const
-{
-  return grad_u_star.at(index);
-}
-
-void  MPMMaterial::set_grad_u_star(unsigned int index,
-                                   std::vector<double>& value)
-{
-  grad_u_star.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_dF(unsigned int index) const
-{
-  return dF.at(index);
-}
-
-void  MPMMaterial::set_dF(unsigned int index, std::vector<double>& value)
-{
-  dF.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_F(unsigned int index) const
-{
-  return F.at(index);
-}
-
-void  MPMMaterial::set_F(unsigned int index, std::vector<double>& value)
-{
-  F.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_sigma(unsigned int index) const
-{
-  return sigma.at(index);
-}
-
-void  MPMMaterial::set_sigma(unsigned int index, std::vector<double>& value)
-{
-  sigma.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_epsilon(unsigned int index) const
-{
-  return epsilon.at(index);
-}
-
-void  MPMMaterial::set_epsilon(unsigned int index, std::vector<double>& value)
-{
-  epsilon.at(index) = value;
-}
-
-std::vector<double>  MPMMaterial::get_depsilon(unsigned int index) const
-{
-  return depsilon.at(index);
-}
-
-void  MPMMaterial::set_depsilon(unsigned int index, std::vector<double>& value)
-{
-  depsilon.at(index) = value;
-}
-
 void MPMMaterial::calculate_strain_rate()
 {
-  unsigned int idx, idx_T;
+  unsigned int idn, idx, idx_T;
 
   // calculate particle strain-rate tensors :
-  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
+    idn = i*gdim*gdim;
     for (unsigned int j = 0; j < gdim; j++)
     {
       for (unsigned int k = 0; k < gdim; k++)
       {
-        idx   = j + k*gdim;
-        idx_T = k + j*gdim;
+        idx   = j + k*gdim + idn;
+        idx_T = k + j*gdim + idn;
         if (k == j)
-          epsilon[i][idx] = grad_u[i][idx];
+          epsilon[idx] = grad_u[idx];
         else
         {
-          epsilon[i][idx] = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
+          epsilon[idx] = 0.5 * (grad_u[idx] + grad_u[idx_T]);
         }
       }
     }
@@ -389,22 +173,22 @@ void MPMMaterial::calculate_strain_rate()
 
 void MPMMaterial::calculate_incremental_strain_rate()
 {
-  unsigned int idx, idx_T;
+  unsigned int idn, idx, idx_T;
 
   // calculate particle strain-rate tensors :
-  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
+    idn = i*gdim*gdim;
     for (unsigned int j = 0; j < gdim; j++)
     {
       for (unsigned int k = 0; k < gdim; k++)
       {
-        idx   = j + k*gdim;
-        idx_T = k + j*gdim;
+        idx   = j + k*gdim + idn;
+        idx_T = k + j*gdim + idn;
         if (k == j)
-          depsilon[i][idx] = grad_u[i][idx];
+          depsilon[idx] = grad_u[idx];
         else
-          depsilon[i][idx] = 0.5 * (grad_u[i][idx] + grad_u[i][idx_T]);
+          depsilon[idx] = 0.5 * (grad_u[idx] + grad_u[idx_T]);
       }
     }
   }
@@ -413,15 +197,20 @@ void MPMMaterial::calculate_incremental_strain_rate()
 void MPMMaterial::initialize_tensors(double dt)
 {
   printf("--- C++ initialize_tensors() ---\n");
+  
+  unsigned int idn, idx;
+ 
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
+    idn = i*gdim*gdim;
+
     // iterate through each element of the tensor :
-    for (unsigned int k = 0; k < gdim*gdim; k++)
+    for (unsigned int j = 0; j < gdim*gdim; j++)
     {
-      dF[j][k] = I[k] + grad_u[j][k] * dt;
-      F[j][k]  = dF[j][k];
+      idx     = j + idn;
+      dF[idx] = I[j] + grad_u[idx] * dt;
+      F[idx]  = dF[idx];
     }
   }
   calculate_strain_rate();
@@ -432,26 +221,30 @@ void MPMMaterial::calculate_initial_volume()
 {
   printf("--- C++ calculate_initial_volume() ---\n");
   // iterate through particles :
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
     // calculate inital volume from particle mass and density :
-    double V0_j = m[j] / rho[j];
-    V0[j]       = V0_j;
-    V[j]        = V0_j;
+    double V0_i = m[i] / rho[i];
+    V0[i]       = V0_i;
+    V[i]        = V0_i;
   }
 }
 
 void MPMMaterial::update_deformation_gradient(double dt)
 {
+  unsigned int idn, idx;
+  
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
+    idn = i*gdim*gdim;
+
     // iterate through each component of the tensor :
-    for (unsigned int k = 0; k < gdim*gdim; k++)
+    for (unsigned int j = 0; j < gdim*gdim; j++)
     {
-      dF[j][k]  = I[k] + 0.5 * (grad_u[j][k] + grad_u_star[j][k]) * dt;
-      F[j][k]  *= dF[j][k];
+      idx      = j + idn;
+      dF[idx]  = I[j] + 0.5 * (grad_u[idx] + grad_u_star[idx]) * dt;
+      F[idx]  *= dF[idx];
     }
   }
 }
@@ -459,48 +252,54 @@ void MPMMaterial::update_deformation_gradient(double dt)
 void MPMMaterial::update_density()
 {
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
-    rho[j] /= det(dF[j]);
+    rho[i] /= det(dF[i]);
   }
 }
 
 void MPMMaterial::update_volume()
 {
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
-    V[j] *= det(dF[j]);
+    V[i] *= det(dF[i]);
   }
 }
 
 void MPMMaterial::update_stress(double dt)
 {
+  unsigned int idn, idx;
+
   calculate_incremental_strain_rate();
 
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
+    idn = i*gdim*gdim;
     // iterate through each component of the tensor :
-    for (unsigned int k = 0; k < gdim*gdim; k++)
-      epsilon[j][k] += depsilon[j][k] * dt;
+    for (unsigned int j = 0; j < gdim*gdim; j++)
+    {
+      idx           = j + idn;
+      epsilon[idx] += depsilon[idx] * dt;
+    }
   }
   calculate_stress();
 }
 
 void MPMMaterial::advect_particles(double dt)
 {
+  unsigned int idn, idx;
+
   // iterate through particles :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int j = 0; j < n_p; j++) 
+  for (unsigned int i = 0; i < n_p; i++) 
   {
-    for (unsigned int k = 0; k < gdim; k++)
+    idn = i*gdim;
+    for (unsigned int j = 0; j < gdim; j++)
     {
-      u[j][k] += 0.5 * (a[j][k] + a_star[j][k])* dt;
-      x[j][k] += u_star[j][k] * dt + 0.5 * a_star[j][k] * dt*dt;
+      idx      = j + idn;
+      u[idx] += 0.5 * (a[idx] + a_star[idx])* dt;
+      x[idx] += u_star[idx] * dt + 0.5 * a_star[idx] * dt*dt;
     }
   }
 }

@@ -18,7 +18,9 @@ mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # open the cpp code :
 import os
-from   fenics  import compile_extension_module
+from   fenics  import compile_extension_module, parameters
+
+parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
 
 cpp_src_dir     = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
 headers         = ["MPMMaterial.h",
@@ -86,6 +88,7 @@ additional_decl = """
 inst_params = {'code'                      : code,
                'module_name'               : module_name,
                'source_directory'          : cpp_src_dir,
+               'cppargs'                   : '-O3',
                'sources'                   : sources,
                'additional_system_headers' : [],
                'include_dirs'              : include_dirs}

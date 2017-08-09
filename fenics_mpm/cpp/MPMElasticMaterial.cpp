@@ -32,17 +32,17 @@ MPMElasticMaterial::MPMElasticMaterial(const std::string&   name,
 
 void MPMElasticMaterial::calculate_stress()
 {
-  unsigned int idx;
+  unsigned int idn, idx;
   double       c2, trace_eps;
 
   // calculate particle strain-rate tensors :
-  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
+    idn = i*gdim;
     // calculate the trace of epsilon :
     trace_eps = 0;
     for (unsigned int p = 0; p < gdim; p++)
-      trace_eps += epsilon[i][p*gdim + p];
+      trace_eps += epsilon[idn + p*gdim + p];
     c2 = lmbda * trace_eps;
 
     // update the stress tensor :
@@ -50,11 +50,11 @@ void MPMElasticMaterial::calculate_stress()
     {
       for (unsigned int k = 0; k < gdim; k++)
       {
-        idx   = j*gdim + k;
+        idx   = j*gdim + k + idn;
         if (k == j)
-          sigma[i][idx] = c1 * epsilon[i][idx] + c2;
+          sigma[idx] = c1 * epsilon[idx] + c2;
         else
-          sigma[i][idx] = c1 * epsilon[i][idx];
+          sigma[idx] = c1 * epsilon[idx];
       }
     }
   }

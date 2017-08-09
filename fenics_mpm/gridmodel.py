@@ -31,7 +31,7 @@ class GridModel(object):
     parameters["std_out_all_processes"]               = False
     parameters['form_compiler']['cpp_optimize']       = True
 
-    PETScOptions.set("mat_mumps_icntl_14", 100.0)
+    #PETScOptions.set("mat_mumps_icntl_14", 100.0)
 
     self.mesh        = mesh                       # the F.E. mesh
     self.out_dir     = out_dir                    # directory to save variables

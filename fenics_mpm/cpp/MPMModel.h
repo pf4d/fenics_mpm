@@ -47,16 +47,10 @@ namespace dolfin
       void set_h(const Array<double>& h);
       void set_V(const Array<double>& V);
 
-      std::vector<double>       get_m() {return m_grid;};
-      
-      std::vector<double>       get_U3(unsigned int index) const;
-      void set_U3(unsigned int index, std::vector<double>& value);
-      
-      std::vector<double>       get_a3(unsigned int index) const;
-      void set_a3(unsigned int index, std::vector<double>& value);
-      
-      std::vector<double>       get_f_int(unsigned int index) const;
-      void set_f_int(unsigned int index, std::vector<double>& value);
+      std::vector<double> get_m()     {return m_grid;};
+      std::vector<double> get_U3()    {return U3_grid;};
+      std::vector<double> get_a3()    {return a3_grid;};
+      std::vector<double> get_f_int() {return f_int_grid;};
 
     private:
       double             dt               = 0;
@@ -69,7 +63,7 @@ namespace dolfin
       const FunctionSpace* Q;
       std::shared_ptr<const FiniteElement> element;
       std::unique_ptr<Cell> cell;
-      unsigned int cell_id;
+      unsigned int c_id;
       std::size_t gdim;
       std::size_t sdim;
       std::shared_ptr<const dolfin::Mesh> mesh;
@@ -81,11 +75,11 @@ namespace dolfin
       std::vector<double> h_grid;
       std::vector<double> m_grid;
       std::vector<double> V_grid;
-      std::vector<std::vector<double>> U3_grid;
-      std::vector<std::vector<double>> a3_grid;
-      std::vector<std::vector<double>> U3_grid_new;
-      std::vector<std::vector<double>> a3_grid_new;
-      std::vector<std::vector<double>> f_int_grid;
+      std::vector<double> U3_grid;
+      std::vector<double> a3_grid;
+      std::vector<double> U3_grid_new;
+      std::vector<double> a3_grid_new;
+      std::vector<double> f_int_grid;
   };
 }
 #endif
