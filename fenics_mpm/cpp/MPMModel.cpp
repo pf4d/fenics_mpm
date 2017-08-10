@@ -19,39 +19,53 @@ MPMModel::MPMModel(const FunctionSpace& V,
   printf("::: initializing MPMModelcpp with gDim = %zu,  sDim = %zu,"
          " dt = %f :::\n", gdim, sdim, dt);
 
+  // basis function variables :
+  phi_temp.resize(sdim);
+  grad_phi_temp.resize(gdim*sdim);
+
+  // scalars :
   h_grid.resize(dofs);             // cell diameter at node
   m_grid.resize(dofs);             // mass
   V_grid.resize(dofs);             // volume
-  U3_grid.resize(gdim*dofs);       // velocity vector
-  a3_grid.resize(gdim*dofs);       // acceleration vector
-  U3_grid_new.resize(gdim*dofs);   // next velocity vector
-  a3_grid_new.resize(gdim*dofs);   // next acceleration vector
-  f_int_grid.resize(gdim*dofs);    // internal force vector
 
-  /*
-  for (unsigned int i = 0; i < 3; i++)
+  // vectors :
+  u_x_grid.resize(dofs);           // velocity vector
+  u_x_grid_new.resize(dofs);       // next velocity vector
+  a_x_grid.resize(dofs);           // acceleration vector
+  a_x_grid_new.resize(dofs);       // next acceleration vector
+  f_x_int_grid.resize(dofs);       // internal force vector
+
+  // in two or three dimensions, need y components :
+  if (gdim == 2 or gdim == 3)
   {
-    // set index of vector with a dimension : 
-    if (coords[i] == 1)  coord_arr.push_back(i);
-    U3_grid[i].resize(coords[i]*dofs);
-    a3_grid[i].resize(coords[i]*dofs);
-    U3_grid_new[i].resize(coords[i]*dofs);
-    a3_grid_new[i].resize(coords[i]*dofs);
-    f_int_grid[i].resize(coords[i]*dofs);
+    u_y_grid.resize(dofs);           // velocity vector
+    u_y_grid_new.resize(dofs);       // next velocity vector
+    a_y_grid.resize(dofs);           // acceleration vector
+    a_y_grid_new.resize(dofs);       // next acceleration vector
+    f_y_int_grid.resize(dofs);       // internal force vector
   }
-  */
+  
+  // in three dimensions, need z components :
+  if (gdim == 2 or gdim == 3)
+  {
+    u_z_grid.resize(dofs);           // velocity vector
+    u_z_grid_new.resize(dofs);       // next velocity vector
+    a_z_grid.resize(dofs);           // acceleration vector
+    a_z_grid_new.resize(dofs);       // next acceleration vector
+    f_z_int_grid.resize(dofs);       // internal force vector
+  }
 }
 
-void MPMModel::set_h(const Array<double>& h)
+void MPMModel::set_h(const Array<double>& h_a)
 {
-  for (std::size_t i = 0; i < h.size(); i++)
-    h_grid[i] = h[i];
+  for (std::size_t i = 0; i < h_a.size(); i++)
+    h_grid[i] = h_a[i];
 }
 
-void MPMModel::set_V(const Array<double>& V)
+void MPMModel::set_V(const Array<double>& V_a)
 {
-  for (std::size_t i = 0; i < V.size(); i++)
-    V_grid[i] = V[i];
+  for (std::size_t i = 0; i < V_a.size(); i++)
+    V_grid[i] = V_a[i];
 }
 
 void MPMModel::add_material(MPMMaterial& M)
@@ -70,25 +84,24 @@ void MPMModel::set_boundary_conditions(const Array<int>& vertices,
 
 void MPMModel::update_points()
 {
-  unsigned int idn, idx;
-
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    std::vector<double> x_i  = materials[i]->get_x();    // the particle coord's
-    std::vector<Point*> pt_i = materials[i]->get_x_pt(); // the particle point
+    std::vector<Point*> pt_i = materials[i]->get_x_pt(); // the particle Points
 
     // iterate through particle positions :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++)
     {
-      idn = j*gdim;
+      // always have an x component :
+      pt_i[j]->coordinates()[0] = materials[i]->get_x()[j];
+      
+      // two and three dimensions also has a y component :
+      if (gdim == 2 or gdim == 3)
+        pt_i[j]->coordinates()[1] = materials[i]->get_y()[j];
 
-      // iterate through dimension and set the coordinate :
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        idx = k + idn;
-        pt_i[j]->coordinates()[idx] = x_i[idx];
-      }
+      // three dimensions also has a z component :
+      if (gdim == 3)
+        pt_i[j]->coordinates()[2] = materials[i]->get_z()[j];
     }
   }
 }
@@ -98,7 +111,6 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
   update_points();  // update the point coordinates
     
   std::vector<Point*> x_pt      = M->get_x_pt();
-  std::vector<double> x         = M->get_x();
   std::vector<double> phi       = M->get_phi();
   std::vector<double> grad_phi  = M->get_grad_phi();
   std::vector<unsigned int> vrt = M->get_vrt();
@@ -108,24 +120,76 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
   {
     // update the grid node indices, basis values, and basis gradient values :
     c_id = mesh->bounding_box_tree()->compute_first_entity_collision(*x_pt[i]);
-    cell.reset(new Cell( *mesh, c_id));
+    cell.reset(new Cell(*mesh, c_id));
 
 
     cell->get_vertex_coordinates(vertex_coordinates);
-    element->evaluate_basis_all(&phi[i],
-                                &x[i],
+    element->evaluate_basis_all(&phi_temp[0],
+                                &x_pt[i]->coordinates(),
                                 vertex_coordinates.data(),
                                 cell_orientation);
  
     element->evaluate_basis_derivatives_all(deriv_order,
-                                            &grad_phi[i],
-                                            &x[i],
+                                            &grad_phi_temp[0],
+                                            &x_pt[i]->coordinates(),
                                             vertex_coordinates.data(),
                                             cell_orientation);
 
-    for (unsigned int j = 0; j < Q->dofmap()->cell_dofs(0).size(); j++)
+    // all cells have at least two vertices :
+    vrt_1[i] = Q->dofmap()->cell_dofs(cell->index())[1];
+    vrt_2[i] = Q->dofmap()->cell_dofs(cell->index())[2];
+
+    // two basis functions :
+    phi_1[i] = phi_temp[0];
+    phi_2[i] = phi_temp[2];
+  
+    // two or three dimensions have a third basis function : 
+    if (gdim == 2 or gdim == 3)
     {
-      vrt[i*sdim + j] = Q->dofmap()->cell_dofs(cell->index())[j];
+      vrt_3[i] = Q->dofmap()->cell_dofs(cell->index())[3];
+      phi_3[i] = phi_temp[3];
+    }
+    
+    // three dimensions another :
+    if (gdim == 3)
+    {
+      vrt_4[i]       = Q->dofmap()->cell_dofs(cell->index())[4];
+      phi_4[i]       = phi_temp[4];
+    }
+
+    // one dimension has two basis function derivatives :
+    if (gdim == 1)
+    {
+      grad_phi_1x[i] = grad_phi_temp[0];
+      grad_phi_2x[i] = grad_phi_temp[1];
+    }
+
+    // two dimensions have six : 
+    else if (gdim == 2)
+    {
+      grad_phi_1x[i] = grad_phi_temp[0];
+      grad_phi_1y[i] = grad_phi_temp[1];
+      grad_phi_2x[i] = grad_phi_temp[2];
+      grad_phi_2y[i] = grad_phi_temp[3];
+      grad_phi_3x[i] = grad_phi_temp[4];
+      grad_phi_3y[i] = grad_phi_temp[5];
+    }
+    
+    // three dimensions have twelve :
+    else if (gdim == 3)
+    {
+      grad_phi_1x[i] = grad_phi_temp[0];
+      grad_phi_1y[i] = grad_phi_temp[1];
+      grad_phi_1z[i] = grad_phi_temp[2];
+      grad_phi_2x[i] = grad_phi_temp[3];
+      grad_phi_2y[i] = grad_phi_temp[4];
+      grad_phi_2z[i] = grad_phi_temp[5];
+      grad_phi_3x[i] = grad_phi_temp[6];
+      grad_phi_3y[i] = grad_phi_temp[7];
+      grad_phi_3z[i] = grad_phi_temp[8];
+      grad_phi_4x[i] = grad_phi_temp[9];
+      grad_phi_4y[i] = grad_phi_temp[10];
+      grad_phi_4z[i] = grad_phi_temp[11];
     }
   }
 }
@@ -143,8 +207,6 @@ void MPMModel::formulate_material_basis_functions()
 
 void MPMModel::interpolate_material_mass_to_grid()
 {
-  unsigned int idn;
-
   if (verbose == true)
     printf("--- C++ interpolate_material_mass_to_grid() ---\n");
 
@@ -154,59 +216,110 @@ void MPMModel::interpolate_material_mass_to_grid()
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    std::vector<unsigned int> vrt = materials[i]->get_vrt();  // node index
-    std::vector<double> phi       = materials[i]->get_phi();  // basis
-    std::vector<double> m         = materials[i]->get_m();    // mass
+    // node index :
+    std::vector<unsigned int> vrt_1 = materials[i]->get_vrt_1();
+    std::vector<unsigned int> vrt_2 = materials[i]->get_vrt_2();
+    std::vector<unsigned int> vrt_3 = materials[i]->get_vrt_3();
+    std::vector<unsigned int> vrt_4 = materials[i]->get_vrt_4();
+   
+    // basis functions : 
+    std::vector<double> phi_1       = materials[i]->get_phi_1();
+    std::vector<double> phi_2       = materials[i]->get_phi_2();
+    std::vector<double> phi_3       = materials[i]->get_phi_3();
+    std::vector<double> phi_4       = materials[i]->get_phi_4();
 
-    // iterate through particles :
+    // mass :
+    std::vector<double> m           = materials[i]->get_m();
+
+    // iterate through particles and interpolate the 
+    // particle mass to each node of its cell :
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
-      idn = j*gdim;
+      // in one dimension, two vertices :
+      m_grid[vrt_1[j]] += phi_1[j] * m[j];
+      m_grid[vrt_2[j]] += phi_2[j] * m[j];
 
-      // interpolate the particle mass to each node of its cell :
-      for (unsigned int k = 0; k < sdim; k++)
-      {
-        m_grid[vrt[k+idn]] += phi[k+idn] * m[j];
-      }
+      // in two or three dimensions, one more :
+      if (gdim == 2 or gdim == 3)
+        m_grid[vrt_3[j]] += phi_3[j] * m[j];
+      
+      // in three dimensions, one more :
+      if (gdim == 3)
+        m_grid[vrt_4[j]] += phi_4[j] * m[j];
     }
   }
 }
 
 void MPMModel::interpolate_material_velocity_to_grid()
 {
-  unsigned int idj, idk, idq, idu, idn;
-  
   if (verbose == true)
     printf("--- C++ interpolate_material_velocity_to_grid() ---\n");
 
   // first reset the velocity to zero :
-  std::fill(U3_grid.begin(), U3_grid.end(), 0.0);
+  std::fill(u_x_grid.begin(), u_x_grid.end(), 0.0);
+  
+  // y-component :    
+  if (gdim == 2 or gdim == 3)
+    std::fill(u_y_grid.begin(), u_y_grid.end(), 0.0);
+  
+  // z-component :    
+  if (gdim == 3)
+    std::fill(u_z_grid.begin(), u_z_grid.end(), 0.0);
 
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    std::vector<unsigned int> vrt = materials[i]->get_vrt();  // node index
-    std::vector<double> phi       = materials[i]->get_phi();  // basis
-    std::vector<double> u         = materials[i]->get_u();    // velocity
-    std::vector<double> m         = materials[i]->get_m();    // mass
+    // node index :
+    std::vector<unsigned int> vrt_1 = materials[i]->get_vrt_1();
+    std::vector<unsigned int> vrt_2 = materials[i]->get_vrt_2();
+    std::vector<unsigned int> vrt_3 = materials[i]->get_vrt_3();
+    std::vector<unsigned int> vrt_4 = materials[i]->get_vrt_4();
+   
+    // basis functions : 
+    std::vector<double> phi_1       = materials[i]->get_phi_1();
+    std::vector<double> phi_2       = materials[i]->get_phi_2();
+    std::vector<double> phi_3       = materials[i]->get_phi_3();
+    std::vector<double> phi_4       = materials[i]->get_phi_4();
 
-    // calculate mass-conserving grid velocity at each node :
-    for (unsigned int j = 0; j < gdim; j++)
+    // velocity :
+    std::vector<double> u_x         = materials[i]->get_u_x();
+    std::vector<double> u_y         = materials[i]->get_u_y();
+    std::vector<double> u_z         = materials[i]->get_u_z();
+
+    // mass :
+    std::vector<double> m           = materials[i]->get_m();
+
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
     {
-      idj = j*dofs;                              // grid velocity component 
-      idn = j*materials[i]->get_num_particles(); // particle vel. component
+      // in one dimension, two vertices, one component of velocity :
+      u_x_grid[vrt_1[j]] += u_x[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+      u_x_grid[vrt_2[j]] += u_x[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
 
-      // iterate through particles :
-      for (unsigned int k = 0; k < materials[i]->get_num_particles(); k++) 
+      // in two or three dimensions, one more component and vertex :
+      if (gdim == 2 or gdim == 3)
       {
-        idk = k*sdim;
-        // iterate through each coordinate :
-        for (unsigned int q = 0; q < sdim; q++)
-        {
-          idq = idk + q;
-          idu = idj + vrt[idq];
-          U3_grid[idu] += u[idn+k] * phi[idq] * m[j] / m_grid[vrt[idq]];
-        }
+        // extra node for x-velocity component :
+        u_x_grid[vrt_3[j]] += u_x[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+
+        // new y-component of velocity :
+        u_y_grid[vrt_1[j]] += u_y[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+        u_y_grid[vrt_2[j]] += u_y[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
+        u_y_grid[vrt_3[j]] += u_y[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+      }
+      
+      // in three dimensions, one more component and vertex :
+      if (gdim == 3)
+      {
+        // extra node for x- and y-velocity components :
+        u_x_grid[vrt_4[j]] += u_x[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+        u_y_grid[vrt_4[j]] += u_y[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+
+        // new z-component of velocity :
+        u_z_grid[vrt_1[j]] += u_z[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+        u_z_grid[vrt_2[j]] += u_z[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
+        u_z_grid[vrt_3[j]] += u_z[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+        u_z_grid[vrt_4[j]] += u_z[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
       }
     }
   }
@@ -224,8 +337,6 @@ void MPMModel::calculate_grid_volume()
   
 void MPMModel::calculate_material_initial_density()
 {
-  unsigned int idn, idk;
-
   printf("--- C++ calculate_material_initial_density() ---\n");
 
   // iterate through all materials :
@@ -236,26 +347,39 @@ void MPMModel::calculate_material_initial_density()
       printf("    - material `%s` has not been initialized with density -\n",
              materials[i]->get_name());
 
-      std::vector<unsigned int> vrt = materials[i]->get_vrt();  // node index
-      std::vector<double> phi       = materials[i]->get_phi();  // basis
-      std::vector<double> m         = materials[i]->get_m();    // mass
-      std::vector<double> rho       = materials[i]->get_rho();  // density
-      std::vector<double> rho0      = materials[i]->get_rho0(); // init. density
+      // node index :
+      std::vector<unsigned int> vrt_1 = materials[i]->get_vrt_1();
+      std::vector<unsigned int> vrt_2 = materials[i]->get_vrt_2();
+      std::vector<unsigned int> vrt_3 = materials[i]->get_vrt_3();
+      std::vector<unsigned int> vrt_4 = materials[i]->get_vrt_4();
+   
+      // basis functions : 
+      std::vector<double> phi_1       = materials[i]->get_phi_1();
+      std::vector<double> phi_2       = materials[i]->get_phi_2();
+      std::vector<double> phi_3       = materials[i]->get_phi_3();
+      std::vector<double> phi_4       = materials[i]->get_phi_4();
+
+      // mass and density :
+      std::vector<double> m           = materials[i]->get_m();
+      std::vector<double> rho         = materials[i]->get_rho();
+      std::vector<double> rho0        = materials[i]->get_rho0();
 
       // iterate through particles :
       for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
       {
-        idn        = j*sdim;
-        double rho = 0.0;  // sum identity
-      
-        // interpolate the particle mass to each node of its cell :
-        for (unsigned int k = 0; k < sdim; k++)
-        {
-          idk = idn+k;
-          rho += m_grid[vrt[idk]] * phi_p[idk] / V_grid[vrt[idk]];
-        }
-        rho0[j] = rho;
-        rho[j]  = rho;
+        // in one dimension, two nodes :
+        rho0[j] += m_grid[vrt_1[j]] * phi_1[j] / V_grid[vrt_1[j]];
+        rho0[j] += m_grid[vrt_2[j]] * phi_2[j] / V_grid[vrt_2[j]];
+
+        // in two or three dimensions add the y-component node :
+        if (gdim == 2 or gdim == 3)
+          rho0[j] += m_grid[vrt_3[j]] * phi_3[j] / V_grid[vrt_3[j]];
+        
+        // in three dimensions add the z-component node :
+        if (gdim == 3)
+          rho0[j] += m_grid[vrt_4[j]] * phi_4[j] / V_grid[vrt_4[j]];
+
+        rho[j] = rho0[j];  // set the current velocity too
       }
     }
     else
@@ -306,40 +430,77 @@ void MPMModel::calculate_grid_internal_forces()
   if (verbose == true)
     printf("--- C++ update_grid_internal_forces() ---\n");
 
-  unsigned int idj, idk, idq, idf, idn;
-
   // first reset the forces to zero :
-  for (unsigned int k = 0; k < gdim; k++)
-  {
-    std::fill(f_int_grid.begin(), f_int_grid.end(), 0.0);
-  }
+  std::fill(f_int_x_grid.begin(), f_int_x_grid.end(), 0.0);
+  
+  // y-component :    
+  if (gdim == 2 or gdim == 3)
+    std::fill(f_int_y_grid.begin(), f_int_y_grid.end(), 0.0);
+  
+  // z-component :    
+  if (gdim == 3)
+    std::fill(f_int_z_grid.begin(), f_int_z_grid.end(), 0.0);
+      
 
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); i++)
   {
-    std::vector<unsigned int> vrt  = materials[i]->get_vrt();
-    std::vector<double> grad_phi   = materials[i]->get_grad_phi();
-    std::vector<double> sigma      = materials[i]->get_sigma();
-    std::vector<double> V          = materials[i]->get_V();
-    
-    // iterate through each component of grid force vector :
-    for (unsigned int j = 0; j < gdim; j++)
-    {
-      idj = j*dofs;   // grid force component index
+    // node index :
+    std::vector<unsigned int> vrt_1 = materials[i]->get_vrt_1();
+    std::vector<unsigned int> vrt_2 = materials[i]->get_vrt_2();
+    std::vector<unsigned int> vrt_3 = materials[i]->get_vrt_3();
+    std::vector<unsigned int> vrt_4 = materials[i]->get_vrt_4();
+   
+    // basis function derivatives :
+    std::vector<double> grad_phi_1x = materials[i]->get_grad_phi_1x();
+    std::vector<double> grad_phi_1y = materials[i]->get_grad_phi_1y();
+    std::vector<double> grad_phi_1z = materials[i]->get_grad_phi_1z();
+    std::vector<double> grad_phi_2x = materials[i]->get_grad_phi_2x();
+    std::vector<double> grad_phi_2y = materials[i]->get_grad_phi_2y();
+    std::vector<double> grad_phi_2z = materials[i]->get_grad_phi_2z();
+    std::vector<double> grad_phi_3x = materials[i]->get_grad_phi_3x();
+    std::vector<double> grad_phi_3y = materials[i]->get_grad_phi_3y();
+    std::vector<double> grad_phi_3z = materials[i]->get_grad_phi_3z();
+    std::vector<double> grad_phi_4x = materials[i]->get_grad_phi_4x();
+    std::vector<double> grad_phi_4y = materials[i]->get_grad_phi_4y();
+    std::vector<double> grad_phi_4z = materials[i]->get_grad_phi_4z();
 
-      // iterate through particles :
-      for (unsigned int k = 0; k < materials[i]->get_num_particles(); k++)
+    // stress tensor :
+    std::vector<double> sigma_xx    = get_sigma_xx();
+    std::vector<double> sigma_xy    = get_sigma_xy();
+    std::vector<double> sigma_xz    = get_sigma_xz();
+    std::vector<double> sigma_yy    = get_sigma_yy();
+    std::vector<double> sigma_yz    = get_sigma_yz();
+    std::vector<double> sigma_zz    = get_sigma_zz();
+
+    // volume :
+    std::vector<double> V           = materials[i]->get_V();
+    
+    // iterate through particles :
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++)
+    {
+      // in one dimension, two vertices, one component of force :
+      f_int_x_grid[vrt_1[j]] -= sigma_xx[j] * grad_phi_1x[j] * V[j];
+      f_int_x_grid[vrt_2[j]] -= sigma_xx[j] * grad_phi_2x[j] * V[j];
+
+      // in two or three dimensions, one more component and vertex :
+      if (gdim == 2 or gdim == 3)
       {
-        idk = k*sdim;
-        // iterate through each coordinate :
-        for (unsigned int q = 0; q < sdim; q++)
-        {
-          idq = idk + q;
-          idf = idj + vrt[idq];
-          f_int_grid[idf] -= grad_phi[stx + q] * sigma[vtx + q] * V[k];
-        }
+        // extra node for x-force component :
+        f_int_x_grid[vrt_3[j]] -= sigma_xx[j] * grad_phi_3x[j] * V[j];
+
+        // new y-component of velocity :
+      }
+      
+      // in three dimensions, one more component and vertex :
+      if (gdim == 3)
+      {
+        // extra node for x- and y-force components :
+
+        // new z-component of force :
       }
     }
+    
 
     // iterate through particles :
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 

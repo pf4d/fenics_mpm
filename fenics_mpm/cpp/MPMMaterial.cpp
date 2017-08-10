@@ -19,72 +19,174 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   printf("::: initializing MPMMaterialcpp `%s` with n_p = %u,  gdim = %u,"
          "  sdim = %u :::\n", name.c_str(), n_p, gdim, sdim);
 
-  // one scalar or vector for each particle :
+  // one component for each particle :
   m.resize(n_p);
   rho0.resize(n_p);
   rho.resize(n_p);
   V0.resize(n_p);
   V.resize(n_p);
   x_pt.resize(n_p);
+  det_dF.resize(n_p);
   
   // these are vectors in topological dimension :
-  x.resize(n_p*gdim);
-  u.resize(n_p*gdim);
-  u_star.resize(n_p*gdim);
-  a_star.resize(n_p*gdim);
-  a.resize(n_p*gdim);
-    
-  // these are vectors in element dimension :
-  vrt.resize(n_p*sdim);
-  phi.resize(n_p*sdim);
+  x.resize(n_p);
+  u_x.resize(n_p);
+  u_x_star.resize(n_p);
+  a_x_star.resize(n_p);
+  a_x.resize(n_p);
+  
+  // these are components of rank-two flattened tensors defined over each 
+  // topological dimension :
+  grad_u_xx.resize(n_p);
+  grad_u_xx_star.resize(n_p);
+  dF_xx.resize(n_p);
+  F_xx.resize(n_p);
+  sigma_xx.resize(n_p);
+  epsilon_xx.resize(n_p);
+  depsilon_xx.resize(n_p);
+ 
+  // these are vectors in element dimension; 
+  // always at least two nodes per cell :
+  // TODO: allow higher-order functionspaces 
+  vrt_1.resize(n_p);
+  vrt_2.resize(n_p);
+  phi_1.resize(n_p);
+  phi_2.resize(n_p);
   
   // this is a flattened tensor defined with columns over each 
   //   topological dim. and rows over each element dimension :
-  grad_phi.resize(n_p*gdim*sdim);
-  
-  // these are rank-two flattened tensors defined over each 
-  //   topological dimension :
-  grad_u.resize(n_p*gdim*gdim);
-  grad_u_star.resize(n_p*gdim*gdim);
-  dF.resize(n_p*gdim*gdim);
-  F.resize(n_p*gdim*gdim);
-  sigma.resize(n_p*gdim*gdim);
-  epsilon.resize(n_p*gdim*gdim);
-  depsilon.resize(n_p*gdim*gdim);
- 
-  // the flattened identity tensor :
-  I.resize(gdim*gdim);
+  grad_phi_1x.resize(n_p);
+  grad_phi_2x.resize(n_p);
 
-  // create the identity tensor
-  // FIXME: rewrite any code that uses "I" to skip multiplication by zero.
-  for (unsigned int i = 0; i < gdim; i++)
+  // if this is a two- or three-dimensional problem, 
+  // allocate space for the y componets :
+  if (gdim == 2 or gdim == 3)
   {
-    for (unsigned int j = 0; j < gdim; j++)
-    {
-      if (i == j)
-      {
-        I[i + j*gdim] = 1.0;
-      }
-      else
-      {
-        I[i + j*gdim] = 0.0;
-      }
-    }
+    // one extra vector component :
+    u_y.resize(n_p);
+    u_y_star.resize(n_p);
+    a_y_star.resize(n_p);
+    a_y.resize(n_p);
+
+    // the velocity gradient is not symetric :
+    grad_u_xy.resize(n_p);
+    grad_u_yx.resize(n_p);
+    grad_u_yy.resize(n_p);
+    grad_u_xy_star.resize(n_p);
+    grad_u_yx_star.resize(n_p);
+    grad_u_yy_star.resize(n_p);
+    dF_xy.resize(n_p);
+    dF_yx.resize(n_p);
+    dF_yy.resize(n_p);
+    F_xy.resize(n_p);
+    F_yx.resize(n_p);
+    F_yy.resize(n_p);
+    
+    // two extra symmetric tensor components :
+    sigma_xy.resize(n_p);
+    sigma_yy.resize(n_p);
+    epsilon_xy.resize(n_p);
+    epsilon_yy.resize(n_p);
+    depsilon_xy.resize(n_p);
+    depsilon_yy.resize(n_p);
+
+    // basis functions have an additional vertex with triangle :
+    vrt_3.resize(n_p);
+    phi_3.resize(n_p);
+
+    // basis function gradient have four more components :
+    grad_phi_1y.resize(n_p);
+    grad_phi_2y.resize(n_p);
+    grad_phi_3x.resize(n_p);
+    grad_phi_3y.resize(n_p);
   }
-  
+
+  // if this is a three-dimensional problem, 
+  // allocate space for the z components :
+  if (gdim == 3)
+  {
+    // one extra vector component :
+    u_z.resize(n_p);
+    u_z_star.resize(n_p);
+    a_z_star.resize(n_p);
+    a_z.resize(n_p);
+    
+    // the velocity gradient is not symetric :
+    grad_u_xz.resize(n_p);
+    grad_u_yz.resize(n_p);
+    grad_u_zx.resize(n_p);
+    grad_u_zy.resize(n_p);
+    grad_u_zz.resize(n_p);
+    grad_u_xz_star.resize(n_p);
+    grad_u_yz_star.resize(n_p);
+    grad_u_zx_star.resize(n_p);
+    grad_u_zy_star.resize(n_p);
+    grad_u_zz_star.resize(n_p);
+    dF_xz.resize(n_p);
+    dF_yz.resize(n_p);
+    dF_zx.resize(n_p);
+    dF_zy.resize(n_p);
+    dF_zz.resize(n_p);
+    F_xz.resize(n_p);
+    F_yz.resize(n_p);
+    F_zx.resize(n_p);
+    F_zy.resize(n_p);
+    F_zz.resize(n_p);
+
+    // three extra tensor components :
+    sigma_xz.resize(n_p);
+    sigma_yz.resize(n_p);
+    sigma_zz.resize(n_p);
+    epsilon_xz.resize(n_p);
+    epsilon_yz.resize(n_p);
+    epsilon_zz.resize(n_p);
+    depsilon_xz.resize(n_p);
+    depsilon_yz.resize(n_p);
+    depsilon_zz.resize(n_p);
+    
+    // basis functions have one more vertex for tetrahedra :
+    vrt_4.resize(n_p);
+    phi_4.resize(n_p);
+    
+    // basis function gradient has six more components :
+    grad_phi_1z.resize(n_p);
+    grad_phi_2z.resize(n_p);
+    grad_phi_3z.resize(n_p);
+    grad_phi_4x.resize(n_p);
+    grad_phi_4y.resize(n_p);
+    grad_phi_4z.resize(n_p);
+  }
+ 
   // initialize the positions, Points, and velocities :
   for (unsigned int i = 0; i < n_p; i++)
   {
     unsigned int idx = 0;                        // index variable
     std::vector<double> x_t = {0.0, 0.0, 0.0};   // the vector to make a Point
-    for (unsigned int j = 0; j < gdim; j++)
+
+    // we always have one dimension :
+    x[i]        = x_a[i*gdim];
+    u_x[i]      = u_a[i*gdim];
+    u_x_star[i] = u_a[i*gdim];
+    x_t[0]      = x_a[i*gdim];
+
+    // tack on another :
+    if (gdim == 2 or gdim == 3)
     {
-      idx         = i*gdim + j;
-      x_t[j]      = x_a[idx];
-      x[idx]      = x_a[idx];
-      u[idx]      = u_a[idx];
-      u_star[idx] = u[idx];
+      y[i]        = x_a[i*gdim + 1];
+      u_y[i]      = u_a[i*gdim + 1];
+      u_y_star[i] = u_a[i*gdim + 1];
+      x_t[1]      = x_a[i*gdim + 1];
     }
+
+    // and another :
+    if (gdim == 3)
+    { 
+      z[i]        = x_a[i*gdim + 2];
+      u_z[i]      = u_a[i*gdim + 2];
+      u_z_star[i] = u_a[i*gdim + 2];
+      x_t[2]      = x_a[i*gdim + 2];
+    }
+    
     Point* x_point = new Point(x_t[0], x_t[1], x_t[2]);  // create a new Point
     x_pt[i]        = x_point;                            // put it in the vector
   }
@@ -123,73 +225,66 @@ void MPMMaterial::initialize_mass_from_density(const double rho_a)
   // resize each of the vectors :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    double m_i = rho_a * V0[i];
-    m[i]       = m_i;    // initialize the mass
-    rho[i]     = rho_a;  // initialize the current denisty
-    rho0[i]    = rho_a;  // initialize the initial density
+    m[i]    = rho_a * V0[i];;    // initialize the mass
+    rho[i]  = rho_a;             // initialize the current denisty
+    rho0[i] = rho_a;             // initialize the initial density
   }
-}
-
-double MPMMaterial::det(std::vector<double>& u)
-{
-  unsigned int n = u.size(); // n x n tensor of rank n - 1
-  double det;                // the determinant
-
-  if      (n == 1) det = u[0];
-  else if (n == 4) det = u[0] * u[3] - u[2] * u[1];
-  else if (n == 9) det = + u[0] * u[4] * u[8]
-                         + u[1] * u[5] * u[6]
-                         + u[2] * u[3] * u[7]
-                         - u[2] * u[4] * u[6]
-                         - u[1] * u[3] * u[8]
-                         - u[0] * u[5] * u[7];
-  return det;
 }
 
 void MPMMaterial::calculate_strain_rate()
 {
-  unsigned int idn, idx, idx_T;
-
-  // calculate particle strain-rate tensors :
+  // calculate particle strain-rate tensor commponents :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    idn = i*gdim*gdim;
-    for (unsigned int j = 0; j < gdim; j++)
+    // we always have at least one component :
+    epsilon_xx[i] = grad_u_xx[i];
+  
+    // if this is a two- or three-dimensional problem, 
+    // allocate space for the y componets :
+    if (gdim == 2 or gdim == 3)
     {
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        idx   = j + k*gdim + idn;
-        idx_T = k + j*gdim + idn;
-        if (k == j)
-          epsilon[idx] = grad_u[idx];
-        else
-        {
-          epsilon[idx] = 0.5 * (grad_u[idx] + grad_u[idx_T]);
-        }
-      }
+      // two extra tensor components :
+      epsilon_xy[i] = 0.5 * (grad_u_xy[i] + grad_u_yx[i]);
+      epsilon_yy[i] = grad_u_yy[i];
+    }
+
+    // if this is a three-dimensional problem, 
+    // allocate space for the z components :
+    if (gdim == 3)
+    {
+      // three extra tensor components :
+      epsilon_xz[i] = 0.5 * (grad_u_xz[i] + grad_u_zx[i]);
+      epsilon_yz[i] = 0.5 * (grad_u_yz[i] + grad_u_zy[i]);
+      epsilon_zz[i] = grad_u_zz[i];
     }
   }
 }
 
 void MPMMaterial::calculate_incremental_strain_rate()
 {
-  unsigned int idn, idx, idx_T;
-
-  // calculate particle strain-rate tensors :
+  // calculate particle strain-rate tensor commponents :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    idn = i*gdim*gdim;
-    for (unsigned int j = 0; j < gdim; j++)
+    // we always have at least one component :
+    depsilon_xx[i] = grad_u_xx[i];
+  
+    // if this is a two- or three-dimensional problem, 
+    // allocate space for the y componets :
+    if (gdim == 2 or gdim == 3)
     {
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        idx   = j + k*gdim + idn;
-        idx_T = k + j*gdim + idn;
-        if (k == j)
-          depsilon[idx] = grad_u[idx];
-        else
-          depsilon[idx] = 0.5 * (grad_u[idx] + grad_u[idx_T]);
-      }
+      // two extra tensor components :
+      depsilon_xy[i] = 0.5 * (grad_u_xy[i] + grad_u_yx[i]);
+      depsilon_yy[i] = grad_u_yy[i];
+    }
+
+    // if this is a three-dimensional problem, 
+    // allocate space for the z components :
+    if (gdim == 3)
+    {
+      // three extra tensor components :
+      depsilon_xz[i] = 0.5 * (grad_u_xz[i] + grad_u_zx[i]);
+      depsilon_yz[i] = 0.5 * (grad_u_yz[i] + grad_u_zy[i]);
+      depsilon_zz[i] = grad_u_zz[i];
     }
   }
 }
@@ -197,20 +292,40 @@ void MPMMaterial::calculate_incremental_strain_rate()
 void MPMMaterial::initialize_tensors(double dt)
 {
   printf("--- C++ initialize_tensors() ---\n");
-  
-  unsigned int idn, idx;
- 
+
   // iterate through particles :
   for (unsigned int i = 0; i < n_p; i++) 
   {
-    idn = i*gdim*gdim;
-
-    // iterate through each element of the tensor :
-    for (unsigned int j = 0; j < gdim*gdim; j++)
+    // we always have at least one component :
+    dF_xx[i] = 1.0 + grad_u_xx[i] * dt;
+    F_xx[i]  = dF_xx[i];
+  
+    // if this is a two- or three-dimensional problem, compute the y componets :
+    if (gdim == 2 or gdim == 3)
     {
-      idx     = j + idn;
-      dF[idx] = I[j] + grad_u[idx] * dt;
-      F[idx]  = dF[idx];
+      // three extra tensor components :
+      dF_xy[i] =       grad_u_xy[i] * dt;
+      dF_yx[i] =       grad_u_yx[i] * dt;
+      dF_yy[i] = 1.0 + grad_u_yy[i] * dt;
+      F_xy[i]  = dF_xy[i];
+      F_yx[i]  = dF_yx[i];
+      F_yy[i]  = dF_yy[i];
+    } 
+
+    // if this is a three-dimensional problem, compute the z componets :
+    if (gdim == 3)
+    {
+      // five extra tensor components :
+      dF_xz[i] =       grad_u_xz[i] * dt;
+      dF_yz[i] =       grad_u_yz[i] * dt;
+      dF_zx[i] =       grad_u_zx[i] * dt;
+      dF_zy[i] =       grad_u_zy[i] * dt;
+      dF_zz[i] = 1.0 + grad_u_zz[i] * dt;
+      F_xz[i]  = dF_xz[i];
+      F_yz[i]  = dF_yz[i];
+      F_zx[i]  = dF_zx[i];
+      F_zy[i]  = dF_zy[i];
+      F_zz[i]  = dF_zz[i];
     }
   }
   calculate_strain_rate();
@@ -224,28 +339,72 @@ void MPMMaterial::calculate_initial_volume()
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // calculate inital volume from particle mass and density :
-    double V0_i = m[i] / rho[i];
-    V0[i]       = V0_i;
-    V[i]        = V0_i;
+    V0[i] = m[i] / rho[i];
+    V[i]  = V0[i];
   }
 }
 
 void MPMMaterial::update_deformation_gradient(double dt)
 {
-  unsigned int idn, idx;
-  
+
   // iterate through particles :
   for (unsigned int i = 0; i < n_p; i++) 
   {
-    idn = i*gdim*gdim;
-
-    // iterate through each component of the tensor :
-    for (unsigned int j = 0; j < gdim*gdim; j++)
+    // we always have at least one component :
+    dF_xx[i]  = 1.0 + 0.5 * (grad_u_xx[i] + grad_u_xx_star[i]) * dt;
+    F_xx[i]  *= dF_xx[i];
+  
+    // if this is a two- or three-dimensional problem, compute the y componets :
+    if (gdim == 2 or gdim == 3)
     {
-      idx      = j + idn;
-      dF[idx]  = I[j] + 0.5 * (grad_u[idx] + grad_u_star[idx]) * dt;
-      F[idx]  *= dF[idx];
+      // three extra tensor components :
+      dF_xy[i]  =       0.5 * (grad_u_xy[i] + grad_u_xy_star[i]) * dt;
+      dF_yx[i]  =       0.5 * (grad_u_yx[i] + grad_u_yx_star[i]) * dt;
+      dF_yy[i]  = 1.0 + 0.5 * (grad_u_yy[i] + grad_u_yy_star[i]) * dt;
+      F_xy[i]  *= dF_xy[i];
+      F_yx[i]  *= dF_yx[i];
+      F_yy[i]  *= dF_yy[i];
+    } 
+
+    // if this is a three-dimensional problem, compute the z componets :
+    if (gdim == 3)
+    {
+      // five extra tensor components :
+      dF_xz[i]  =       0.5 * (grad_u_xz[i] + grad_u_xz_star[i]) * dt;
+      dF_yz[i]  =       0.5 * (grad_u_yz[i] + grad_u_yz_star[i]) * dt;
+      dF_zx[i]  =       0.5 * (grad_u_zx[i] + grad_u_zx_star[i]) * dt;
+      dF_zy[i]  =       0.5 * (grad_u_zy[i] + grad_u_zy_star[i]) * dt;
+      dF_zz[i]  = 1.0 + 0.5 * (grad_u_zz[i] + grad_u_zz_star[i]) * dt;
+      F_xz[i]  *= dF_xz[i];
+      F_yz[i]  *= dF_yz[i];
+      F_zx[i]  *= dF_zx[i];
+      F_zy[i]  *= dF_zy[i];
+      F_zz[i]  *= dF_zz[i];
     }
+  }
+}
+
+void MPMMaterial::calculate_determinant_dF()
+{
+  // iterate through particles :
+  for (unsigned int i = 0; i < n_p; i++) 
+  {
+    // first calculate the determinant :
+    // one dimension :
+    if (gdim == 1)
+      det_dF[i] = dF_xx[i];
+    
+    // two dimensions :
+    if (gdim == 2)
+      det_dF[i] = dF_xx[i] * dF_yy[i] - dF_yx[i] * dF_xy[i];
+
+    // three dimensions :
+    if (gdim == 3)
+      det_dF[i] = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
+                  + dF_xy[i] * dF_yz[i] * dF_zx[i] 
+                  - dF_xz[i] * dF_yy[i] * dF_zx[i] 
+                  - dF_xy[i] * dF_yx[i] * dF_zz[i] 
+                  - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
   }
 }
 
@@ -254,7 +413,24 @@ void MPMMaterial::update_density()
   // iterate through particles :
   for (unsigned int i = 0; i < n_p; i++) 
   {
-    rho[i] /= det(dF[i]);
+    // first calculate the determinant :
+    // one dimension :
+    if (gdim == 1)
+      det_dF = dF_xx[i];
+    
+    // two dimensions :
+    if (gdim == 2)
+      det_dF = dF_xx[i] * dF_yy[i] - dF_yx[i] * dF_xy[i];
+
+    // three dimensions :
+    if (gdim == 3)
+      det_dF = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
+               + dF_xy[i] * dF_yz[i] * dF_zx[i] 
+               - dF_xz[i] * dF_yy[i] * dF_zx[i] 
+               - dF_xy[i] * dF_yx[i] * dF_zz[i] 
+               - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
+
+    rho[i] /= det_dF;
   }
 }
 
@@ -263,43 +439,80 @@ void MPMMaterial::update_volume()
   // iterate through particles :
   for (unsigned int i = 0; i < n_p; i++) 
   {
-    V[i] *= det(dF[i]);
+    // first calculate the determinant :
+    // one dimension :
+    if (gdim == 1)
+      det = dF_xx[i];
+    
+    // two dimensions :
+    if (gdim == 2)
+      det = dF_xx[i] * dF_yy[i] - dF_yx[i] * dF_xy[i];
+
+    // three dimensions :
+    if (gdim == 3)
+      det = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
+            + dF_xy[i] * dF_yz[i] * dF_zx[i] 
+            - dF_xz[i] * dF_yy[i] * dF_zx[i] 
+            - dF_xy[i] * dF_yx[i] * dF_zz[i] 
+            - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
+
+    V[i] *= det;
   }
 }
 
 void MPMMaterial::update_stress(double dt)
 {
-  unsigned int idn, idx;
-
-  calculate_incremental_strain_rate();
-
-  // iterate through particles :
-  for (unsigned int i = 0; i < n_p; i++) 
+  calculate_incremental_strain_rate();  // calculate depsilon
+  
+  // calculate particle strain-rate tensor commponents :
+  for (unsigned int i = 0; i < n_p; i++)
   {
-    idn = i*gdim*gdim;
-    // iterate through each component of the tensor :
-    for (unsigned int j = 0; j < gdim*gdim; j++)
+    // we always have at least one component :
+    epsilon_xx[i] += depsilon_xx[i] * dt;
+  
+    // if this is a two- or three-dimensional problem, 
+    // allocate space for the y componets :
+    if (gdim == 2 or gdim == 3)
     {
-      idx           = j + idn;
-      epsilon[idx] += depsilon[idx] * dt;
+      // two extra tensor components :
+      epsilon_xy[i] += depsilon_yx[i] * dt;
+      epsilon_yy[i] += depsilon_yy[i] * dt;
+    }
+
+    // if this is a three-dimensional problem, 
+    // allocate space for the z components :
+    if (gdim == 3)
+    {
+      // three extra tensor components :
+      epsilon_xz[i] += depsilon_zx[i] * dt;
+      epsilon_yz[i] += depsilon_zy[i] * dt;
+      epsilon_zz[i] += depsilon_zz[i] * dt;
     }
   }
-  calculate_stress();
+  calculate_stress();  // calculate sigma
 }
 
 void MPMMaterial::advect_particles(double dt)
 {
-  unsigned int idn, idx;
-
   // iterate through particles :
   for (unsigned int i = 0; i < n_p; i++) 
   {
-    idn = i*gdim;
-    for (unsigned int j = 0; j < gdim; j++)
+    // we always have at least one component :
+    u_x[i]   += 0.5 * (a_x[i] + a_x_star[i]) * dt;
+    x[i]     += u_x_star[i] * dt + 0.5 * a_x_star[i] * dt*dt;
+
+    // if this is two- or three-dimensional :
+    if (gdim == 2 or gdim == 3)
     {
-      idx      = j + idn;
-      u[idx] += 0.5 * (a[idx] + a_star[idx])* dt;
-      x[idx] += u_star[idx] * dt + 0.5 * a_star[idx] * dt*dt;
+      u_y[i] += 0.5 * (a_y[i] + a_y_star[i]) * dt;
+      y[i]   += u_y_star[i] * dt + 0.5 * a_y_star[i] * dt*dt;
+    }
+
+    // if this is three-dimensional :
+    if (gdim == 3)
+    {
+      u_z[i] += 0.5 * (a_z[i] + a_z_star[i]) * dt;
+      z[i]   += u_z_star[i] * dt + 0.5 * a_z_star[i] * dt*dt;
     }
   }
 }

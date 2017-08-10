@@ -32,30 +32,41 @@ MPMElasticMaterial::MPMElasticMaterial(const std::string&   name,
 
 void MPMElasticMaterial::calculate_stress()
 {
-  unsigned int idn, idx;
-  double       c2, trace_eps;
+  double c2, trace_eps;
 
   // calculate particle strain-rate tensors :
   for (unsigned int i = 0; i < n_p; i++)
   {
-    idn = i*gdim;
-    // calculate the trace of epsilon :
-    trace_eps = 0;
-    for (unsigned int p = 0; p < gdim; p++)
-      trace_eps += epsilon[idn + p*gdim + p];
-    c2 = lmbda * trace_eps;
+    
+    // there is always one component of epsilon :
+    trace_eps = epsilon_xx[i];
+
+    // two or three dimensions there is one more :
+    if (gdim == 2 or gdim == 3)
+      trace_eps += epsilon_yy[i];
+
+    // three dimensions there is yet one more :
+    if (gdim == 3)
+      trace_eps += epsilon_zz[i];
+
+    c2 = lmbda * trace_eps;  // the coefficient
 
     // update the stress tensor :
-    for (unsigned int j = 0; j < gdim; j++)
+    sigma_xx[i] = c1 * epsilon_xx[i] + c2;
+
+    // two or three dimensions there are two more components :
+    if (gdim == 2 or gdim == 3)
     {
-      for (unsigned int k = 0; k < gdim; k++)
-      {
-        idx   = j*gdim + k + idn;
-        if (k == j)
-          sigma[idx] = c1 * epsilon[idx] + c2;
-        else
-          sigma[idx] = c1 * epsilon[idx];
-      }
+      sigma_xy[i] = c1 * epsilon_xy[i];
+      sigma_yy[i] = c1 * epsilon_yy[i] + c2;
+    }
+
+    // three dimensions there are yet three more :
+    if (gdim == 3)
+    {
+      sigma_xz[i] = c1 * epsilon_xz[i];
+      sigma_yz[i] = c1 * epsilon_yz[i];
+      sigma_zz[i] = c1 * epsilon_zz[i] + c2;
     }
   }
 }
