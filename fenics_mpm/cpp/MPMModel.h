@@ -54,9 +54,9 @@ namespace dolfin
       std::vector<double> get_a_x()     {return a_x_grid;};
       std::vector<double> get_a_y()     {return a_y_grid;};
       std::vector<double> get_a_z()     {return a_z_grid;};
-      std::vector<double> get_f_x_int() {return f_int_x_grid;};
-      std::vector<double> get_f_y_int() {return f_int_y_grid;};
-      std::vector<double> get_f_z_int() {return f_int_z_grid;};
+      std::vector<double> get_f_int_x() {return f_int_x_grid;};
+      std::vector<double> get_f_int_y() {return f_int_y_grid;};
+      std::vector<double> get_f_int_z() {return f_int_z_grid;};
 
     private:
       double                               dt               = 0;
@@ -75,6 +75,10 @@ namespace dolfin
       std::shared_ptr<const dolfin::Mesh>  mesh;
       std::vector<double>                  vertex_coordinates;
       std::vector<MPMMaterial*>            materials;
+ 
+      // temporary basis vectors : 
+      std::vector<double>       phi_temp;
+      std::vector<double>       grad_phi_temp;
 
       // grid variables :
       std::vector<double>       h_grid;

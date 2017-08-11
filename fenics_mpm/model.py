@@ -376,8 +376,8 @@ class Model(object):
     #FIXME: figure out a way to directly update grid_model.U3 :
     u = Function(self.grid_model.Q, name='u')
     v = Function(self.grid_model.Q, name='v')
-    self.grid_model.assign_variable(u, self.mpm_cpp.get_U3(0))
-    self.grid_model.assign_variable(v, self.mpm_cpp.get_U3(1))
+    self.grid_model.assign_variable(u, self.mpm_cpp.get_u_x())
+    self.grid_model.assign_variable(v, self.mpm_cpp.get_u_y())
 
     # assign the variables to the functions
     self.grid_model.assu.assign(self.grid_model.u, u)
@@ -389,8 +389,8 @@ class Model(object):
     #FIXME: figure out a way to directly update grid_model.f_int :
     f_int_x  = Function(self.grid_model.Q, name='f_int_x')
     f_int_y  = Function(self.grid_model.Q, name='f_int_y')
-    self.grid_model.assign_variable(f_int_x, self.mpm_cpp.get_f_int(0))
-    self.grid_model.assign_variable(f_int_y, self.mpm_cpp.get_f_int(1))
+    self.grid_model.assign_variable(f_int_x, self.mpm_cpp.get_f_int_x())
+    self.grid_model.assign_variable(f_int_y, self.mpm_cpp.get_f_int_y())
 
     # assign the variables to the functions
     self.grid_model.update_internal_force_vector([f_int_x, f_int_y])
@@ -401,8 +401,8 @@ class Model(object):
     #FIXME: figure out a way to directly update grid_model.a3 :
     a_x = Function(self.grid_model.Q, name='a_x')
     a_y = Function(self.grid_model.Q, name='a_y')
-    self.grid_model.assign_variable(a_x, self.mpm_cpp.get_a3(0))
-    self.grid_model.assign_variable(a_y, self.mpm_cpp.get_a3(1))
+    self.grid_model.assign_variable(a_x, self.mpm_cpp.get_a_x())
+    self.grid_model.assign_variable(a_y, self.mpm_cpp.get_a_y())
     self.grid_model.update_acceleration([a_x, a_y])
 
   def retrieve_cpp_grid_properties(self):

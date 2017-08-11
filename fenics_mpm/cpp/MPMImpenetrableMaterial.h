@@ -15,16 +15,16 @@ namespace dolfin
                               const FiniteElement& element);
      ~MPMImpenetrableMaterial() {};
 
-      virtual void calculate_stress() {};
-      virtual void calculate_strain_rate() {};
-      virtual void calculate_incremental_strain_rate() {};
+      void calculate_stress() {};
+      void calculate_strain_rate() {};
+      void calculate_incremental_strain_rate() {};
       
-      virtual void initialize_tensors(double dt) {};
-      virtual void calculate_initial_volume() {};
-      virtual void update_deformation_gradient(double dt) {};
-      virtual void update_volume() {};
-      virtual void update_stress(double dt) {};
-      virtual void advect_particles(double dt) {};
+      void initialize_tensors(double dt) {};
+      void calculate_initial_volume() {};
+      void update_deformation_gradient(double dt) {};
+      void update_volume() {};
+      void update_stress(double dt) {};
+      void advect_particles(double dt) {};
 
   };
 }

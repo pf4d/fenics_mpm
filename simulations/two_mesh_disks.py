@@ -4,7 +4,7 @@ from mshr       import *
 #===============================================================================
 # model properties :
 out_dir    = 'output/'   # output directory
-n_x        = 20          # number of grid x- and y-divisions
+n_x        = 100         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 rho        = 1000.0      # material density     [kg/m^3]
@@ -12,15 +12,14 @@ u_mag      = 0.1         # velocity magnitude   [m/s]
 dt_save    = 0.01        # time between saves   [s]
 dt         = 0.0002      # time-step            [s]
 t0         = 0.0         # starting time        [s]
-tf         = 0.0008      # ending time          [s]
+tf         = 1.5         # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
 
 # create a material :
-n          = 1000        # number of particles
 r_max      = 0.15        # disk radius          [m]
-res        = 400         # disk mesh resolution
+res        = 1000        # disk mesh resolution
 
 # upper-right disk :
 domain1    = Circle(Point(0.66, 0.66), r_max)
@@ -56,7 +55,7 @@ grid_model = GridModel(mesh, out_dir, verbose=False)
 grid_model.set_boundary_conditions(boundary, 0.0)
 
 # create the main model to perform MPM calculations :
-model      = Model(out_dir, grid_model, dt, verbose=False)
+model      = Model(out_dir, grid_model, dt, verbose=True)
 
 # add the materials to the model :
 model.add_material(disk1)
@@ -81,7 +80,7 @@ def cb_ftn():
     grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
-model.mpm(t_start = t0, t_end = tf, cb_ftn = None)
+model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)
 
 
 

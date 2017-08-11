@@ -17,7 +17,7 @@ namespace dolfin
                          double poisson_ratio);
      ~MPMElasticMaterial() {};
 
-      virtual void calculate_stress();
+      void calculate_stress();
 
     private:
       double E;

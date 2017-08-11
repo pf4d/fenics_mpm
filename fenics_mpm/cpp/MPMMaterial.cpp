@@ -62,6 +62,9 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   // allocate space for the y componets :
   if (gdim == 2 or gdim == 3)
   {
+    // one extra spatial coordinate :
+    y.resize(n_p);
+
     // one extra vector component :
     u_y.resize(n_p);
     u_y_star.resize(n_p);
@@ -105,6 +108,9 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   // allocate space for the z components :
   if (gdim == 3)
   {
+    // one extra spatial coordinate :
+    z.resize(n_p);
+    
     // one extra vector component :
     u_z.resize(n_p);
     u_z_star.resize(n_p);
@@ -158,6 +164,7 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   }
  
   // initialize the positions, Points, and velocities :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     unsigned int idx = 0;                        // index variable
@@ -187,9 +194,10 @@ MPMMaterial::MPMMaterial(const std::string&   name,
       x_t[2]      = x_a[i*gdim + 2];
     }
     
-    Point* x_point = new Point(x_t[0], x_t[1], x_t[2]);  // create a new Point
+    Point* x_point = new Point(3, x_t.data());  // create a new Point
     x_pt[i]        = x_point;                            // put it in the vector
   }
+  printf("    - done -\n");
 }
 
 void MPMMaterial::set_initialized_by_mass(const bool val)
@@ -202,6 +210,7 @@ void MPMMaterial::initialize_mass(const Array<double>& m_a)
 {
   printf("--- C++ initialize_mass() ---\n");
   // resize each of the vectors :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     m[i] = m_a[i];  // initalize the mass
@@ -212,6 +221,7 @@ void MPMMaterial::initialize_volume(const Array<double>& V_a)
 {
   printf("--- C++ initialize_volume() ---\n");
   // resize each of the vectors :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     V0[i] = V_a[i];  // initalize the initial volume
@@ -223,6 +233,7 @@ void MPMMaterial::initialize_mass_from_density(const double rho_a)
 {
   printf("--- C++ initialize_mass_from_density(%g) ---\n", rho_a);
   // resize each of the vectors :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     m[i]    = rho_a * V0[i];;    // initialize the mass
@@ -234,6 +245,7 @@ void MPMMaterial::initialize_mass_from_density(const double rho_a)
 void MPMMaterial::calculate_strain_rate()
 {
   // calculate particle strain-rate tensor commponents :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     // we always have at least one component :
@@ -263,6 +275,7 @@ void MPMMaterial::calculate_strain_rate()
 void MPMMaterial::calculate_incremental_strain_rate()
 {
   // calculate particle strain-rate tensor commponents :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     // we always have at least one component :
@@ -294,6 +307,7 @@ void MPMMaterial::initialize_tensors(double dt)
   printf("--- C++ initialize_tensors() ---\n");
 
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // we always have at least one component :
@@ -336,6 +350,7 @@ void MPMMaterial::calculate_initial_volume()
 {
   printf("--- C++ calculate_initial_volume() ---\n");
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // calculate inital volume from particle mass and density :
@@ -346,8 +361,8 @@ void MPMMaterial::calculate_initial_volume()
 
 void MPMMaterial::update_deformation_gradient(double dt)
 {
-
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // we always have at least one component :
@@ -387,6 +402,7 @@ void MPMMaterial::update_deformation_gradient(double dt)
 void MPMMaterial::calculate_determinant_dF()
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // first calculate the determinant :
@@ -400,17 +416,20 @@ void MPMMaterial::calculate_determinant_dF()
 
     // three dimensions :
     if (gdim == 3)
-      det_dF[i] = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
-                  + dF_xy[i] * dF_yz[i] * dF_zx[i] 
-                  - dF_xz[i] * dF_yy[i] * dF_zx[i] 
-                  - dF_xy[i] * dF_yx[i] * dF_zz[i] 
+      det_dF[i] = + dF_xx[i] * dF_yy[i] * dF_zz[i]
+                  + dF_xy[i] * dF_yz[i] * dF_zx[i]
+                  + dF_xz[i] * dF_yx[i] * dF_zy[i]
+                  - dF_xz[i] * dF_yy[i] * dF_zx[i]
+                  - dF_xy[i] * dF_yx[i] * dF_zz[i]
                   - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
   }
 }
 
 void MPMMaterial::update_density()
 {
+  double det_dF = 0;
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // first calculate the determinant :
@@ -424,11 +443,12 @@ void MPMMaterial::update_density()
 
     // three dimensions :
     if (gdim == 3)
-      det_dF = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
-               + dF_xy[i] * dF_yz[i] * dF_zx[i] 
-               - dF_xz[i] * dF_yy[i] * dF_zx[i] 
-               - dF_xy[i] * dF_yx[i] * dF_zz[i] 
-               - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
+      det_dF = + dF_xx[i] * dF_yy[i] * dF_zz[i]
+               + dF_xy[i] * dF_yz[i] * dF_zx[i]
+               + dF_xz[i] * dF_yx[i] * dF_zy[i]
+               - dF_xz[i] * dF_yy[i] * dF_zx[i]
+               - dF_xy[i] * dF_yx[i] * dF_zz[i]
+               - dF_xx[i] * dF_yz[i] * dF_zy[i];
 
     rho[i] /= det_dF;
   }
@@ -436,27 +456,30 @@ void MPMMaterial::update_density()
 
 void MPMMaterial::update_volume()
 {
+  double det_dF = 0;
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // first calculate the determinant :
     // one dimension :
     if (gdim == 1)
-      det = dF_xx[i];
+      det_dF = dF_xx[i];
     
     // two dimensions :
     if (gdim == 2)
-      det = dF_xx[i] * dF_yy[i] - dF_yx[i] * dF_xy[i];
+      det_dF = dF_xx[i] * dF_yy[i] - dF_yx[i] * dF_xy[i];
 
     // three dimensions :
     if (gdim == 3)
-      det = + dF_xx[i] * dF_yy[i] * dF_zz[i] 
-            + dF_xy[i] * dF_yz[i] * dF_zx[i] 
-            - dF_xz[i] * dF_yy[i] * dF_zx[i] 
-            - dF_xy[i] * dF_yx[i] * dF_zz[i] 
-            - dF_xx[i] * dF_yz[i] * dF_zy[i]; 
+      det_dF = + dF_xx[i] * dF_yy[i] * dF_zz[i]
+               + dF_xy[i] * dF_yz[i] * dF_zx[i]
+               + dF_xz[i] * dF_yx[i] * dF_zy[i]
+               - dF_xz[i] * dF_yy[i] * dF_zx[i]
+               - dF_xy[i] * dF_yx[i] * dF_zz[i]
+               - dF_xx[i] * dF_yz[i] * dF_zy[i];
 
-    V[i] *= det;
+    V[i] *= det_dF;
   }
 }
 
@@ -465,6 +488,7 @@ void MPMMaterial::update_stress(double dt)
   calculate_incremental_strain_rate();  // calculate depsilon
   
   // calculate particle strain-rate tensor commponents :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     // we always have at least one component :
@@ -475,7 +499,7 @@ void MPMMaterial::update_stress(double dt)
     if (gdim == 2 or gdim == 3)
     {
       // two extra tensor components :
-      epsilon_xy[i] += depsilon_yx[i] * dt;
+      epsilon_xy[i] += depsilon_xy[i] * dt;
       epsilon_yy[i] += depsilon_yy[i] * dt;
     }
 
@@ -484,8 +508,8 @@ void MPMMaterial::update_stress(double dt)
     if (gdim == 3)
     {
       // three extra tensor components :
-      epsilon_xz[i] += depsilon_zx[i] * dt;
-      epsilon_yz[i] += depsilon_zy[i] * dt;
+      epsilon_xz[i] += depsilon_xz[i] * dt;
+      epsilon_yz[i] += depsilon_yz[i] * dt;
       epsilon_zz[i] += depsilon_zz[i] * dt;
     }
   }
@@ -495,6 +519,7 @@ void MPMMaterial::update_stress(double dt)
 void MPMMaterial::advect_particles(double dt)
 {
   // iterate through particles :
+  # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++) 
   {
     // we always have at least one component :
