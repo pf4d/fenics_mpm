@@ -1,8 +1,8 @@
 from fenics_mpm import *
-from mshr       import *
 
 #===============================================================================
 # model properties :
+in_dir     = 'data/'     # input directory
 out_dir    = 'output/'   # output directory
 n_x        = 100         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
@@ -21,19 +21,13 @@ save_int   = int(dt_save / dt)
 r_max      = 0.15        # disk radius          [m]
 res        = 1000        # disk mesh resolution
 
-# upper-right disk :
-domain1    = Circle(Point(0.66, 0.66), r_max)
-mesh1      = generate_mesh(domain1, res)
-X1,V1      = calculate_mesh_midpoints_and_volumes(mesh1)
-n1         = np.shape(X1)[0]
-U1         = -u_mag * np.ones([n1,2])
-
-# lower-left disk : 
-domain2    = Circle(Point(0.34, 0.34), r_max)
-mesh2      = generate_mesh(domain2, res)
-X2,V2      = calculate_mesh_midpoints_and_volumes(mesh2)
-n2         = np.shape(X2)[0]
-U2         =  u_mag * np.ones([n2,2])
+# load the data created by the "gen_data.py" script :
+X1 = np.loadtxt(in_dir + 'X1.txt')
+X2 = np.loadtxt(in_dir + 'X2.txt')
+V1 = np.loadtxt(in_dir + 'V1.txt')
+V2 = np.loadtxt(in_dir + 'V2.txt')
+U1 = np.loadtxt(in_dir + 'U1.txt')
+U2 = np.loadtxt(in_dir + 'U2.txt')
 
 # corresponding Material objects : 
 disk1      = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)

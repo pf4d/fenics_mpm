@@ -12,6 +12,7 @@ MPMModel::MPMModel(const FunctionSpace& V,
   Q       = &V;
   mesh    = V.mesh();
   element = V.element();
+  bbt     = mesh->bounding_box_tree();
   
   gdim    = mesh->geometry().dim();
   sdim    = element->space_dimension();
@@ -142,23 +143,22 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
   // vector of Dolfin Points :
   std::vector<Point*>& x_pt        = M->get_x_pt();
 
-  /*
   # pragma omp parallel
   {
+    unsigned int        c_id;
     std::vector<double> phi_temp;
     std::vector<double> grad_phi_temp;
     std::vector<double> vertex_coordinates;
     std::unique_ptr<Cell> cell;
     phi_temp.resize(sdim);
     grad_phi_temp.resize(gdim*sdim);
-  */
 
   // iterate through particle positions :
+  # pragma omp for schedule(auto)
   for (unsigned int i = 0; i < M->get_num_particles(); i++) 
   {
-
     // update the grid node indices, basis values, and basis gradient values :
-    c_id = mesh->bounding_box_tree()->compute_first_entity_collision(*x_pt[i]);
+    c_id = bbt->compute_first_entity_collision(*x_pt[i]);
     cell.reset(new Cell( *mesh, c_id));
 
     //printf("phi_temp[0]: %g\n", phi_temp[0]);
@@ -231,6 +231,7 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
       grad_phi_4y[i] = grad_phi_temp[10];
       grad_phi_4z[i] = grad_phi_temp[11];
     }
+  }
   }
 }
 

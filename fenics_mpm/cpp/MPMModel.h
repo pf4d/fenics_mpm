@@ -72,9 +72,10 @@ namespace dolfin
       unsigned int                         c_id;
       std::size_t                          gdim;
       std::size_t                          sdim;
-      std::shared_ptr<const dolfin::Mesh>  mesh;
-      std::vector<double>                  vertex_coordinates;
-      std::vector<MPMMaterial*>            materials;
+      std::shared_ptr<const dolfin::Mesh>             mesh;
+      std::shared_ptr<const dolfin::BoundingBoxTree>  bbt;
+      std::vector<double>                             vertex_coordinates;
+      std::vector<MPMMaterial*>                       materials;
  
       // temporary basis vectors : 
       std::vector<double>       phi_temp;
