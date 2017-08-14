@@ -2,7 +2,7 @@ from fenics_mpm import *
 
 #===============================================================================
 # model properties :
-in_dir     = 'data/'     # input directory
+in_dir     = 'data/high/'# input directory
 out_dir    = 'output/'   # output directory
 n_x        = 100         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
@@ -17,17 +17,19 @@ tf         = 1.5         # ending time          [s]
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
 
-# create a material :
-r_max      = 0.15        # disk radius          [m]
-res        = 1000        # disk mesh resolution
-
 # load the data created by the "gen_data.py" script :
 X1 = np.loadtxt(in_dir + 'X1.txt')
 X2 = np.loadtxt(in_dir + 'X2.txt')
 V1 = np.loadtxt(in_dir + 'V1.txt')
 V2 = np.loadtxt(in_dir + 'V2.txt')
-U1 = np.loadtxt(in_dir + 'U1.txt')
-U2 = np.loadtxt(in_dir + 'U2.txt')
+
+# disk one velocity :
+n1 = np.shape(X1)[0]
+U1 = -u_mag * np.ones([n1,2])
+
+# disk two velocity :
+n2 = np.shape(X2)[0]
+U2 =  u_mag * np.ones([n2,2])
 
 # corresponding Material objects : 
 disk1      = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)
@@ -49,7 +51,7 @@ grid_model = GridModel(mesh, out_dir, verbose=False)
 grid_model.set_boundary_conditions(boundary, 0.0)
 
 # create the main model to perform MPM calculations :
-model      = Model(out_dir, grid_model, dt, verbose=True)
+model      = Model(out_dir, grid_model, dt, verbose=False)
 
 # add the materials to the model :
 model.add_material(disk1)
@@ -74,7 +76,7 @@ def cb_ftn():
     grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
-model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)
+model.mpm(t_start = t0, t_end = tf, cb_ftn = None)
 
 
 

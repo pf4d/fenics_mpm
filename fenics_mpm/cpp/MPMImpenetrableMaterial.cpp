@@ -9,7 +9,8 @@ MPMImpenetrableMaterial::MPMImpenetrableMaterial(const std::string&   name,
                                                  const FiniteElement& element) :
                     MPMMaterial(name, n, x_a, u_a, element)
 {
-  for (unsigned int i = 0; i < n_p; i++)
+  # pragma omp parallel for schedule(auto)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     // we always have at least one component :
     epsilon_xx[i]  = 0.0;

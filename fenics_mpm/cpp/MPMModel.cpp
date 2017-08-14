@@ -7,34 +7,52 @@ MPMModel::MPMModel(const FunctionSpace& V,
                    const Array<int>& coords,
                    double time_step,
                    bool verbosity) :
-                   dofs(num_dofs), dt(time_step), verbose(verbosity)
+
+                   Q(&V),
+                   dofs(num_dofs),
+                   dt(time_step),
+                   verbose(verbosity),
+                   gdim(V.mesh()->geometry().dim()),
+                   sdim(V.element()->space_dimension()),
+                   num_cells(V.mesh()->num_cells()),
+                   element(V.element()),
+                   mesh(V.mesh()),
+                   bbt(V.mesh()->bounding_box_tree())
 {
-  Q       = &V;
-  mesh    = V.mesh();
-  element = V.element();
-  bbt     = mesh->bounding_box_tree();
-  
-  gdim    = mesh->geometry().dim();
-  sdim    = element->space_dimension();
-  
-  printf("::: initializing MPMModelcpp with gDim = %zu,  sDim = %zu,"
-         " dt = %f :::\n", gdim, sdim, dt);
+  printf("::: initializing MPMModelcpp with gDim = %u,  sDim = %u,"
+         " num_cells = %u, dt = %f :::\n", gdim, sdim, num_cells, dt);
 
   // basis function variables :
-  phi_temp.resize(sdim);
-  grad_phi_temp.resize(gdim*sdim);
+  vertex_coordinates.resize(num_cells);
+  cell_dofs.resize(num_cells);
+  cells.resize(num_cells);
+
+  // create mini-continguous arrays for each vertex index, and 
+  // create a vector of Cells in advance to save considerable 
+  // time during formulate_material_basis_functions() :
+  # pragma omp for schedule(auto)
+  for (unsigned int i = 0; i < num_cells; ++i)
+  {
+    vertex_coordinates[i].resize(sdim);
+    cell_dofs[i].resize(sdim);
+    Cell cell(*mesh, i);
+    cells[i] = cell;
+    cell.get_vertex_coordinates(vertex_coordinates[i]);
+    for (unsigned int j = 0; j < sdim; ++j)
+      cell_dofs[i][j] = Q->dofmap()->cell_dofs(i)[j];
+  }
 
   // scalars :
-  h_grid.resize(dofs);             // cell diameter at node
-  m_grid.resize(dofs);             // mass
-  V_grid.resize(dofs);             // volume
-
-  // vectors :
-  u_x_grid.resize(dofs);           // velocity vector
-  u_x_grid_new.resize(dofs);       // next velocity vector
-  a_x_grid.resize(dofs);           // acceleration vector
-  a_x_grid_new.resize(dofs);       // next acceleration vector
-  f_int_x_grid.resize(dofs);       // internal force vector
+  h_grid.resize(dofs);               // cell diameter at node
+  m_grid.resize(dofs);               // mass
+  V_grid.resize(dofs);               // volume
+                                     
+  // vectors :                       
+  u_x_grid.resize(dofs);             // velocity vector
+  u_x_grid_new.resize(dofs);         // next velocity vector
+  a_x_grid.resize(dofs);             // acceleration vector
+  a_x_grid_new.resize(dofs);         // next acceleration vector
+  f_int_x_grid.resize(dofs);         // internal force vector
 
   // in two or three dimensions, need y components :
   if (gdim == 2 or gdim == 3)
@@ -57,17 +75,31 @@ MPMModel::MPMModel(const FunctionSpace& V,
   }
 }
 
+// zero the vector in parallel :
+void MPMModel::init_vector(std::vector<double> vec)
+{
+  #pragma omp parallel
+  {   
+    auto tid       = omp_get_thread_num();
+    auto chunksize = vec.size() / omp_get_num_threads();
+    auto begin     = vec.begin() + chunksize * tid;
+    auto end       = (tid == omp_get_num_threads()-1 ?
+                      vec.end() : begin + chunksize);
+    std::fill(begin, end, 0);
+  }
+}
+
 void MPMModel::set_h(const Array<double>& h_a)
 {
   # pragma omp parallel for schedule(auto)
-  for (std::size_t i = 0; i < h_a.size(); i++)
+  for (std::size_t i = 0; i < h_a.size(); ++i)
     h_grid[i] = h_a[i];
 }
 
 void MPMModel::set_V(const Array<double>& V_a)
 {
   # pragma omp parallel for schedule(auto)
-  for (std::size_t i = 0; i < V_a.size(); i++)
+  for (std::size_t i = 0; i < V_a.size(); ++i)
     V_grid[i] = V_a[i];
 }
 
@@ -79,22 +111,22 @@ void MPMModel::add_material(MPMMaterial& M)
 void MPMModel::set_boundary_conditions(const Array<int>& vertices,
                                        const Array<double>& values)
 {
-  for (unsigned int i = 0; i < vertices.size(); i++)
+  for (unsigned int i = 0; i < vertices.size(); ++i)
     bc_vrt.push_back(vertices[i]);
-  for (unsigned int i = 0; i < values.size(); i++)
+  for (unsigned int i = 0; i < values.size(); ++i)
     bc_val.push_back(values[i]);
 }
 
 void MPMModel::update_points()
 {
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     std::vector<Point*>& pt_i = materials[i]->get_x_pt(); // the particle Points
 
     // iterate through particle positions :
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++)
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
     {
       // always have an x component :
       pt_i[j]->coordinates()[0] = materials[i]->get_x()[j];
@@ -143,42 +175,37 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
   // vector of Dolfin Points :
   std::vector<Point*>& x_pt        = M->get_x_pt();
 
-  # pragma omp parallel
-  {
-    unsigned int        c_id;
-    std::vector<double> phi_temp;
-    std::vector<double> grad_phi_temp;
-    std::vector<double> vertex_coordinates;
-    std::unique_ptr<Cell> cell;
-    phi_temp.resize(sdim);
-    grad_phi_temp.resize(gdim*sdim);
+  // temporary variables :
+  unsigned int          c_id;                      // cell index of point
+  std::vector<double>   phi_temp(sdim);            // basis values for point
+  std::vector<double>   grad_phi_temp(gdim*sdim);  // basis grad. vals. for pt.
 
-  // iterate through particle positions :
-  # pragma omp for schedule(auto)
-  for (unsigned int i = 0; i < M->get_num_particles(); i++) 
+  // iterate through particle positions and update the 
+  // grid node indices, basis values, and basis gradient values :
+  # pragma omp parallel for schedule(auto) \
+    firstprivate(c_id, phi_temp, grad_phi_temp)
+  for (unsigned int i = 0; i < M->get_num_particles(); ++i) 
   {
-    // update the grid node indices, basis values, and basis gradient values :
+    // first find the cell that the particle is in :
     c_id = bbt->compute_first_entity_collision(*x_pt[i]);
-    cell.reset(new Cell( *mesh, c_id));
-
-    //printf("phi_temp[0]: %g\n", phi_temp[0]);
-
-    cell->get_vertex_coordinates(vertex_coordinates);
+  
+    // compute the basis values at the point :
     element->evaluate_basis_all(&phi_temp[0],
                                 x_pt[i]->coordinates(),
-                                vertex_coordinates.data(),
+                                vertex_coordinates[c_id].data(),
                                 cell_orientation);
- 
+  
+    // compute the basis gradient values at the point :
     element->evaluate_basis_derivatives_all(deriv_order,
                                             &grad_phi_temp[0],
                                             x_pt[i]->coordinates(),
-                                            vertex_coordinates.data(),
+                                            vertex_coordinates[c_id].data(),
                                             cell_orientation);
-
+  
     // all cells have at least two vertices :
-    vrt_1[i] = Q->dofmap()->cell_dofs(cell->index())[0];
-    vrt_2[i] = Q->dofmap()->cell_dofs(cell->index())[1];
-
+    vrt_1[i] = cell_dofs[c_id][0];
+    vrt_2[i] = cell_dofs[c_id][2];
+  
     // two basis functions :
     phi_1[i] = phi_temp[0];
     phi_2[i] = phi_temp[1];
@@ -186,24 +213,24 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
     // two or three dimensions have a third basis function : 
     if (gdim == 2 or gdim == 3)
     {
-      vrt_3[i] = Q->dofmap()->cell_dofs(cell->index())[2];
+      vrt_3[i] = cell_dofs[c_id][2];
       phi_3[i] = phi_temp[2];
     }
     
     // three dimensions another :
     if (gdim == 3)
     {
-      vrt_4[i] = Q->dofmap()->cell_dofs(cell->index())[3];
+      vrt_4[i] = cell_dofs[c_id][3];
       phi_4[i] = phi_temp[3];
     }
-
+  
     // one dimension has two basis function derivatives :
     if (gdim == 1)
     {
       grad_phi_1x[i] = grad_phi_temp[0];
       grad_phi_2x[i] = grad_phi_temp[1];
     }
-
+  
     // two dimensions have six : 
     else if (gdim == 2)
     {
@@ -232,7 +259,7 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
       grad_phi_4z[i] = grad_phi_temp[11];
     }
   }
-  }
+  
 }
 
 void MPMModel::formulate_material_basis_functions()
@@ -240,7 +267,7 @@ void MPMModel::formulate_material_basis_functions()
   if (verbose == true)
     printf("--- C++ formulate_material_basis_functions() ---\n");
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     update_particle_basis_functions(materials[i]);
   }
@@ -252,10 +279,10 @@ void MPMModel::interpolate_material_mass_to_grid()
     printf("--- C++ interpolate_material_mass_to_grid() ---\n");
 
   // first reset the mass to zero :
-  std::fill(m_grid.begin(), m_grid.end(), 0.0);
+  init_vector(m_grid);
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1 = materials[i]->get_vrt_1();
@@ -274,8 +301,9 @@ void MPMModel::interpolate_material_mass_to_grid()
 
     // iterate through particles and interpolate the 
     // particle mass to each node of its cell :
+    // FIXME: this is not thread-safe
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // in one dimension, two vertices :
       m_grid[vrt_1[j]] += phi_1[j] * m[j];
@@ -298,19 +326,18 @@ void MPMModel::interpolate_material_velocity_to_grid()
     printf("--- C++ interpolate_material_velocity_to_grid() ---\n");
 
   // first reset the velocity to zero :
-  std::fill(u_x_grid.begin(), u_x_grid.end(), 0.0);
+  init_vector(u_x_grid);
   
   // y-component :    
   if (gdim == 2 or gdim == 3)
-    std::fill(u_y_grid.begin(), u_y_grid.end(), 0.0);
+    init_vector(u_y_grid);
   
   // z-component :    
   if (gdim == 3)
-    std::fill(u_z_grid.begin(), u_z_grid.end(), 0.0);
+    init_vector(u_z_grid);
 
   // iterate through all materials :
-  # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1 = materials[i]->get_vrt_1();
@@ -333,7 +360,9 @@ void MPMModel::interpolate_material_velocity_to_grid()
     std::vector<double>& m           = materials[i]->get_m();
 
     // iterate through particles :
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    // FIXME: this is not thread-safe
+    # pragma omp parallel for schedule(auto)
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // in one dimension, two vertices, one component of velocity :
       u_x_grid[vrt_1[j]] += u_x[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
@@ -374,7 +403,7 @@ void MPMModel::calculate_grid_volume()
     printf("--- C++ calculate_grid_volume() ---\n");
 
   # pragma omp parallel for schedule(auto)
-  for (std::size_t i = 0; i < dofs; i++)
+  for (std::size_t i = 0; i < dofs; ++i)
     V_grid[i] = 4.0/3.0 * M_PI * pow(h_grid[i]/2.0, 3);
 }
 
@@ -384,7 +413,7 @@ void MPMModel::calculate_material_initial_density()
   printf("--- C++ calculate_material_initial_density() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     if (materials[i]->get_mass_init() == true)
     {
@@ -410,7 +439,7 @@ void MPMModel::calculate_material_initial_density()
 
       // iterate through particles :
       # pragma omp parallel for schedule(auto)
-      for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+      for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
       {
         // in one dimension, two nodes :
         rho0[j] += m_grid[vrt_1[j]] * phi_1[j] / V_grid[vrt_1[j]];
@@ -440,7 +469,7 @@ void MPMModel::calculate_material_initial_volume()
   printf("--- C++ calculate_material_initial_volume() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     if (materials[i]->get_mass_init() == true)
     {
@@ -462,7 +491,7 @@ void MPMModel::initialize_material_tensors()
     printf("--- C++ initialize_material_tensors() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->initialize_tensors(dt);
   }
@@ -474,19 +503,19 @@ void MPMModel::calculate_grid_internal_forces()
     printf("--- C++ update_grid_internal_forces() ---\n");
 
   // first reset the forces to zero :
-  std::fill(f_int_x_grid.begin(), f_int_x_grid.end(), 0.0);
+  init_vector(f_int_x_grid);
   
   // y-component :    
   if (gdim == 2 or gdim == 3)
-    std::fill(f_int_y_grid.begin(), f_int_y_grid.end(), 0.0);
+    init_vector(f_int_y_grid);
   
   // z-component :    
   if (gdim == 3)
-    std::fill(f_int_z_grid.begin(), f_int_z_grid.end(), 0.0);
+    init_vector(f_int_z_grid);
       
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1 = materials[i]->get_vrt_1();
@@ -520,8 +549,9 @@ void MPMModel::calculate_grid_internal_forces()
     std::vector<double>& V           = materials[i]->get_V();
     
     // iterate through particles :
+    // FIXME: this is not thread-safe
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++)
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
     {
       // in one dimension, two vertices, one component of force :
       f_int_x_grid[vrt_1[j]] -= sigma_xx[j] * grad_phi_1x[j] * V[j];
@@ -595,7 +625,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
 
   // iterate through each node :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < dofs; i++)
+  for (unsigned int i = 0; i < dofs; ++i)
   {
     a_x_grid[i] = a_x_grid_new[i];
     
@@ -610,7 +640,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
 
   // iterate through each node :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < dofs; i++)
+  for (unsigned int i = 0; i < dofs; ++i)
   {
     // if there is a mass on the grid node :
     if (m_grid[i] > 0)
@@ -661,7 +691,7 @@ void MPMModel::update_grid_velocity()
 
   // iterate through each node :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < dofs; i++)
+  for (unsigned int i = 0; i < dofs; ++i)
   {
     // always at least one component of velocity :
     u_x_grid_new[i]   = u_x_grid[i] + 0.5*(a_x_grid[i] + a_x_grid_new[i]) * dt;
@@ -678,9 +708,9 @@ void MPMModel::update_grid_velocity()
   /*
   // TODO: set boolean flag for using Dirichlet or not : 
   // apply boundary conditions if present :
-  for (unsigned int i = 0; i < bc_val.size(); i++)
+  for (unsigned int i = 0; i < bc_val.size(); ++i)
   {
-    for (unsigned int j = 0; j < bc_vrt.size(); j++)
+    for (unsigned int j = 0; j < bc_vrt.size(); ++j)
     {
       u_x_grid[bc_vrt[j]] = 0.0;
       u_y_grid[bc_vrt[j]] = 0.0;
@@ -696,7 +726,7 @@ void MPMModel::calculate_material_velocity_gradient()
     printf("--- C++ calculate_material_velocity_gradient() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1    = materials[i]->get_vrt_1();
@@ -742,7 +772,7 @@ void MPMModel::calculate_material_velocity_gradient()
 
     // iterate through particles :
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous velocity gradient :
       grad_u_xx[j]      = grad_u_xx_star[j];
@@ -834,7 +864,7 @@ void MPMModel::update_material_deformation_gradient()
     printf("--- C++ update_material_deformation_gradient() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->update_deformation_gradient(dt);
   }
@@ -846,7 +876,7 @@ void MPMModel::update_material_density()
     printf("--- C++ update_material_density() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->update_density();
   }
@@ -858,7 +888,7 @@ void MPMModel::update_material_volume()
     printf("--- C++ update_material_volume() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->update_volume();
   }
@@ -870,7 +900,7 @@ void MPMModel::update_material_stress()
     printf("--- C++ update_material_stress() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->update_stress(dt);
   }
@@ -882,7 +912,7 @@ void MPMModel::interpolate_grid_velocity_to_material()
     printf("--- C++ interpolate_grid_velocity_to_material() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1 = materials[i]->get_vrt_1();
@@ -904,7 +934,7 @@ void MPMModel::interpolate_grid_velocity_to_material()
     // iterate through particles and interpolate grid velocity 
     // back to particles from each node :
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first reset the velocity :
       u_x_star[j] = 0.0;
@@ -954,7 +984,7 @@ void MPMModel::interpolate_grid_acceleration_to_material()
     printf("--- C++ interpolate_grid_acceleration_to_material() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     // node index :
     std::vector<unsigned int>& vrt_1 = materials[i]->get_vrt_1();
@@ -981,7 +1011,7 @@ void MPMModel::interpolate_grid_acceleration_to_material()
     // iterate through particles and interpolate grid accleration 
     // to particles at each node :
     # pragma omp parallel for schedule(auto)
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); j++) 
+    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous acceleration :
       a_x[j]      = a_x_star[j];
@@ -1035,11 +1065,45 @@ void MPMModel::advect_material_particles()
     printf("--- C++ advect_material_particles() ---\n");
 
   // iterate through all materials :
-  for (unsigned int i = 0; i < materials.size(); i++)
+  for (unsigned int i = 0; i < materials.size(); ++i)
   {
     materials[i]->advect_particles(dt);
   }
 }
+  
+void MPMModel::mpm(bool initialize)
+{
+  if (verbose == true)
+    printf("--- C++ mpm() ---\n");
 
+  // get basis function values at material point locations :
+  formulate_material_basis_functions();
+  
+  // interpolation from particle stage :
+  interpolate_material_mass_to_grid();
+  interpolate_material_velocity_to_grid();
+  
+  // initialization step :
+  if (initialize)
+  {
+    initialize_material_tensors();
+    calculate_material_initial_density();
+    calculate_material_initial_volume();
+  }
+    
+  // grid calculation stage : 
+  calculate_grid_internal_forces();
+  calculate_grid_acceleration();
+  update_grid_velocity();
+
+  // particle calculation stage :
+  calculate_material_velocity_gradient();
+  update_material_deformation_gradient();
+  update_material_volume();
+  update_material_stress();
+  interpolate_grid_acceleration_to_material();
+  interpolate_grid_velocity_to_material();
+  advect_material_particles();
+}
 
 

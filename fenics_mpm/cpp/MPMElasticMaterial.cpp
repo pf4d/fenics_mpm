@@ -36,7 +36,7 @@ void MPMElasticMaterial::calculate_stress()
 
   // calculate particle strain-rate tensors :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     
     // there is always one component of epsilon :

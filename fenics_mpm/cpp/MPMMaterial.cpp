@@ -165,7 +165,7 @@ MPMMaterial::MPMMaterial(const std::string&   name,
  
   // initialize the positions, Points, and velocities :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     unsigned int idx = 0;                        // index variable
     std::vector<double> x_t = {0.0, 0.0, 0.0};   // the vector to make a Point
@@ -211,7 +211,7 @@ void MPMMaterial::initialize_mass(const Array<double>& m_a)
   printf("--- C++ initialize_mass() ---\n");
   // resize each of the vectors :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     m[i] = m_a[i];  // initalize the mass
   }
@@ -222,7 +222,7 @@ void MPMMaterial::initialize_volume(const Array<double>& V_a)
   printf("--- C++ initialize_volume() ---\n");
   // resize each of the vectors :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     V0[i] = V_a[i];  // initalize the initial volume
     V[i]  = V_a[i];  // initalize the current volume
@@ -234,7 +234,7 @@ void MPMMaterial::initialize_mass_from_density(const double rho_a)
   printf("--- C++ initialize_mass_from_density(%g) ---\n", rho_a);
   // resize each of the vectors :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     m[i]    = rho_a * V0[i];;    // initialize the mass
     rho[i]  = rho_a;             // initialize the current denisty
@@ -246,7 +246,7 @@ void MPMMaterial::calculate_strain_rate()
 {
   // calculate particle strain-rate tensor commponents :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     // we always have at least one component :
     epsilon_xx[i] = grad_u_xx[i];
@@ -276,7 +276,7 @@ void MPMMaterial::calculate_incremental_strain_rate()
 {
   // calculate particle strain-rate tensor commponents :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     // we always have at least one component :
     depsilon_xx[i] = grad_u_xx[i];
@@ -308,7 +308,7 @@ void MPMMaterial::initialize_tensors(double dt)
 
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // we always have at least one component :
     dF_xx[i] = 1.0 + grad_u_xx[i] * dt;
@@ -351,7 +351,7 @@ void MPMMaterial::calculate_initial_volume()
   printf("--- C++ calculate_initial_volume() ---\n");
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // calculate inital volume from particle mass and density :
     V0[i] = m[i] / rho[i];
@@ -363,7 +363,7 @@ void MPMMaterial::update_deformation_gradient(double dt)
 {
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // we always have at least one component :
     dF_xx[i]  = 1.0 + 0.5 * (grad_u_xx[i] + grad_u_xx_star[i]) * dt;
@@ -403,7 +403,7 @@ void MPMMaterial::calculate_determinant_dF()
 {
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // first calculate the determinant :
     // one dimension :
@@ -430,7 +430,7 @@ void MPMMaterial::update_density()
   double det_dF = 0;
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // first calculate the determinant :
     // one dimension :
@@ -459,7 +459,7 @@ void MPMMaterial::update_volume()
   double det_dF = 0;
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // first calculate the determinant :
     // one dimension :
@@ -489,7 +489,7 @@ void MPMMaterial::update_stress(double dt)
   
   // calculate particle strain-rate tensor commponents :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++)
+  for (unsigned int i = 0; i < n_p; ++i)
   {
     // we always have at least one component :
     epsilon_xx[i] += depsilon_xx[i] * dt;
@@ -520,7 +520,7 @@ void MPMMaterial::advect_particles(double dt)
 {
   // iterate through particles :
   # pragma omp parallel for schedule(auto)
-  for (unsigned int i = 0; i < n_p; i++) 
+  for (unsigned int i = 0; i < n_p; ++i) 
   {
     // we always have at least one component :
     u_x[i]   += 0.5 * (a_x[i] + a_x_star[i]) * dt;
@@ -557,7 +557,7 @@ void MPMMaterial::calc_pi()
     double x = 0.0;                  // the part for this thread
                                     
     # pragma omp for reduction (+:pi) schedule(guided) nowait
-    for (i = 0; i < n_stp; i++)    
+    for (i = 0; i < n_stp; ++i)    
     {                               
       x   = (i + 0.5) * dx;          // midpoint rule
       pi += 4.0 / (1.0 + x*x);       // increment the thread sum

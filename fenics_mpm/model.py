@@ -512,40 +512,44 @@ class Model(object):
 
       #=========================================================================
       # begin MPM algorithm :
+      if self.t == t_start:
+        self.mpm_cpp.mpm(True)
+      else:
+        self.mpm_cpp.mpm(False)
 
-      # get basis function values at material point locations :
-      self.formulate_material_basis_functions()
-      
+      ## get basis function values at material point locations :
+      #self.formulate_material_basis_functions()
+      #
+      ### initialization step :
+      ##if self.t == t_start:
+      ##  self.initialize_material_tensors()
+      ##  self.calculate_material_initial_density()
+      ##  self.calculate_material_initial_volume()
+      ##  #self.calculate_material_initial_mass()
+
+      ## interpolation from particle stage :
+      #self.interpolate_material_mass_to_grid()
+      #self.interpolate_material_velocity_to_grid()
+      #
       ## initialization step :
       #if self.t == t_start:
       #  self.initialize_material_tensors()
       #  self.calculate_material_initial_density()
       #  self.calculate_material_initial_volume()
-      #  #self.calculate_material_initial_mass()
+      #  
+      ## grid calculation stage : 
+      #self.calculate_grid_internal_forces()
+      #self.calculate_grid_acceleration()
+      #self.update_grid_velocity()
 
-      # interpolation from particle stage :
-      self.interpolate_material_mass_to_grid()
-      self.interpolate_material_velocity_to_grid()
-      
-      # initialization step :
-      if self.t == t_start:
-        self.initialize_material_tensors()
-        self.calculate_material_initial_density()
-        self.calculate_material_initial_volume()
-        
-      # grid calculation stage : 
-      self.calculate_grid_internal_forces()
-      self.calculate_grid_acceleration()
-      self.update_grid_velocity()
-
-      # particle calculation stage :
-      self.calculate_material_velocity_gradient()
-      self.update_material_deformation_gradient()
-      self.update_material_volume()
-      self.update_material_stress()
-      self.interpolate_grid_acceleration_to_material()
-      self.interpolate_grid_velocity_to_material()
-      self.advect_material_particles()
+      ## particle calculation stage :
+      #self.calculate_material_velocity_gradient()
+      #self.update_material_deformation_gradient()
+      #self.update_material_volume()
+      #self.update_material_stress()
+      #self.interpolate_grid_acceleration_to_material()
+      #self.interpolate_grid_velocity_to_material()
+      #self.advect_material_particles()
       
       # : end MPM algorithm
       #=========================================================================

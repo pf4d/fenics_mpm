@@ -133,7 +133,7 @@ namespace dolfin
       void         calc_pi();
       
     protected:
-      std::string                name;        // name of material
+      const std::string          name;        // name of material
       bool                       mass_init;   // initialized via mass
       unsigned int               n_p;         // number of particles
       const unsigned int         gdim;        // topological dimension

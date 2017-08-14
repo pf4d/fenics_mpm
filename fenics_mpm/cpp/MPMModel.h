@@ -23,6 +23,7 @@ namespace dolfin
       void add_material(MPMMaterial& M);
       void set_boundary_conditions(const Array<int>& vertices,
                                    const Array<double>& values);
+      void init_vector(std::vector<double> vec);
       void update_points();
       void update_particle_basis_functions(MPMMaterial* M);
       void formulate_material_basis_functions();
@@ -43,6 +44,7 @@ namespace dolfin
       void update_grid_velocity();
       void calculate_grid_acceleration(double m_min = 1e-2);
       void advect_material_particles();
+      void mpm(bool initialize);
       
       void set_h(const Array<double>& h_a);
       void set_V(const Array<double>& V_a);
@@ -59,28 +61,27 @@ namespace dolfin
       std::vector<double> get_f_int_z() {return f_int_z_grid;};
 
     private:
-      double                               dt               = 0;
-      bool                                 verbose          = true;
+      const double                         dt               = 0;
+      const unsigned int                   gdim             = 0;
+      const unsigned int                   sdim             = 0;
+      const bool                           verbose          = true;
       const unsigned int                   dofs             = 0;
+      const unsigned int                   num_cells        = 0;
       const unsigned int                   cell_orientation = 0;
       const unsigned int                   deriv_order      = 1; 
+      const FunctionSpace*                 Q;
+      const std::shared_ptr<const FiniteElement>            element;
+      const std::shared_ptr<const dolfin::Mesh>             mesh;
+      const std::shared_ptr<const dolfin::BoundingBoxTree>  bbt;
       std::vector<unsigned int>            bc_vrt;
       std::vector<double>                  bc_val;
-      const FunctionSpace*                 Q;
-      std::shared_ptr<const FiniteElement> element;
-      std::unique_ptr<Cell>                cell;
-      unsigned int                         c_id;
-      std::size_t                          gdim;
-      std::size_t                          sdim;
-      std::shared_ptr<const dolfin::Mesh>             mesh;
-      std::shared_ptr<const dolfin::BoundingBoxTree>  bbt;
-      std::vector<double>                             vertex_coordinates;
-      std::vector<MPMMaterial*>                       materials;
+      std::vector<MPMMaterial*>            materials;
+    
+      // cell information for update_particle_basis_functions() :
+      std::vector<std::vector<double>>     vertex_coordinates;
+      std::vector<std::vector<double>>     cell_dofs;
+      std::vector<Cell>                    cells;
  
-      // temporary basis vectors : 
-      std::vector<double>       phi_temp;
-      std::vector<double>       grad_phi_temp;
-
       // grid variables :
       std::vector<double>       h_grid;
       std::vector<double>       m_grid;
