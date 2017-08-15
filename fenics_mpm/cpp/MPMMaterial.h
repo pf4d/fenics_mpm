@@ -120,7 +120,7 @@ namespace dolfin
       void         initialize_mass(const Array<double>& m_a);
       void         initialize_volume(const Array<double>& V_a);
       void         initialize_mass_from_density(const double rho_a);
-      unsigned int get_num_particles() const {return n_p;};
+      unsigned int get_num_particles() const {return n_p_end;};
       void         calculate_strain_rate();
       void         calculate_incremental_strain_rate();
       virtual void calculate_stress() = 0;
@@ -137,7 +137,7 @@ namespace dolfin
       
     protected:
       unsigned int               n_p_end;
-      const std::string          name;        // name of material
+      std::string                name;        // name of material
       bool                       mass_init;   // initialized via mass
       unsigned int               n_p;         // number of particles
       const unsigned int         gdim;        // topological dimension

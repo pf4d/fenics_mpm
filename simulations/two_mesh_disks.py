@@ -2,9 +2,9 @@ from fenics_mpm import *
 
 #===============================================================================
 # model properties :
-in_dir     = 'data/low/'# input directory
+in_dir     = 'data/low/' # input directory
 out_dir    = 'output/'   # output directory
-n_x        = 20         # number of grid x- and y-divisions
+n_x        = 20          # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 rho        = 1000.0      # material density     [kg/m^3]
@@ -16,6 +16,10 @@ tf         = 1.5         # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
+
+# create a material :
+r_max      = 0.15        # disk radius          [m]
+res        = 1000        # disk mesh resolution
 
 # load the data created by the "gen_data.py" script :
 X1 = np.loadtxt(in_dir + 'X1.txt')
@@ -30,6 +34,7 @@ U1 = -u_mag * np.ones([n1,2])
 # disk two velocity :
 n2 = np.shape(X2)[0]
 U2 =  u_mag * np.ones([n2,2])
+
 
 # corresponding Material objects : 
 disk1      = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)

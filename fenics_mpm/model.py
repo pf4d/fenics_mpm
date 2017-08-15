@@ -520,13 +520,6 @@ class Model(object):
       ## get basis function values at material point locations :
       #self.formulate_material_basis_functions()
       #
-      ### initialization step :
-      ##if self.t == t_start:
-      ##  self.initialize_material_tensors()
-      ##  self.calculate_material_initial_density()
-      ##  self.calculate_material_initial_volume()
-      ##  #self.calculate_material_initial_mass()
-
       ## interpolation from particle stage :
       #self.interpolate_material_mass_to_grid()
       #self.interpolate_material_velocity_to_grid()

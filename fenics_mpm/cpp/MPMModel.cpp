@@ -7,7 +7,6 @@ MPMModel::MPMModel(const FunctionSpace& V,
                    const Array<int>& coords,
                    double time_step,
                    bool verbosity) :
-
                    Q(&V),
                    dofs(num_dofs),
                    dt(time_step),
@@ -30,7 +29,7 @@ MPMModel::MPMModel(const FunctionSpace& V,
   // create mini-continguous arrays for each vertex index, and 
   // create a vector of Cells in advance to save considerable 
   // time during formulate_material_basis_functions() :
-  # pragma omp parallel for simd
+  # pragma omp for schedule(auto)
   for (unsigned int i = 0; i < num_cells; ++i)
   {
     vertex_coordinates[i].resize(sdim);
@@ -43,16 +42,16 @@ MPMModel::MPMModel(const FunctionSpace& V,
   }
 
   // scalars :
-  h_grid.resize(dofs);               // cell diameter at node
-  m_grid.resize(dofs);               // mass
-  V_grid.resize(dofs);               // volume
-                                     
-  // vectors :                       
-  u_x_grid.resize(dofs);             // velocity vector
-  u_x_grid_new.resize(dofs);         // next velocity vector
-  a_x_grid.resize(dofs);             // acceleration vector
-  a_x_grid_new.resize(dofs);         // next acceleration vector
-  f_int_x_grid.resize(dofs);         // internal force vector
+  h_grid.resize(dofs);             // cell diameter at node
+  m_grid.resize(dofs);             // mass
+  V_grid.resize(dofs);             // volume
+
+  // vectors :
+  u_x_grid.resize(dofs);           // velocity vector
+  u_x_grid_new.resize(dofs);       // next velocity vector
+  a_x_grid.resize(dofs);           // acceleration vector
+  a_x_grid_new.resize(dofs);       // next acceleration vector
+  f_int_x_grid.resize(dofs);       // internal force vector
 
   // in two or three dimensions, need y components :
   if (gdim == 2 or gdim == 3)
@@ -76,30 +75,29 @@ MPMModel::MPMModel(const FunctionSpace& V,
 }
 
 // zero the vector in parallel :
-void MPMModel::init_vector(std::vector<double> vec)
+void MPMModel::init_vector(std::vector<double>& vec)
 {
-  std::fill(vec.begin(), vec.end(), 0.0);
-  //#pragma omp parallel
-  //{   
-  //  auto tid       = omp_get_thread_num();
-  //  auto chunksize = vec.size() / omp_get_num_threads();
-  //  auto begin     = vec.begin() + chunksize * tid;
-  //  auto end       = (tid == omp_get_num_threads()-1 ?
-  //                    vec.end() : begin + chunksize);
-  //  std::fill(begin, end, 0);
-  //}
+  #pragma omp parallel
+  {   
+    auto tid       = omp_get_thread_num();
+    auto chunksize = vec.size() / omp_get_num_threads();
+    auto begin     = vec.begin() + chunksize * tid;
+    auto end       = (tid == omp_get_num_threads()-1 ?
+                      vec.end() : begin + chunksize);
+    std::fill(begin, end, 0);
+  }
 }
 
 void MPMModel::set_h(const Array<double>& h_a)
 {
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (std::size_t i = 0; i < h_a.size(); ++i)
     h_grid[i] = h_a[i];
 }
 
 void MPMModel::set_V(const Array<double>& V_a)
 {
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (std::size_t i = 0; i < V_a.size(); ++i)
     V_grid[i] = V_a[i];
 }
@@ -126,7 +124,7 @@ void MPMModel::update_points()
     std::vector<Point*>& pt_i = materials[i]->get_x_pt(); // the particle Points
 
     // iterate through particle positions :
-    # pragma omp parallel for simd
+    # pragma omp parallel for simd schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
     {
       // always have an x component :
@@ -260,7 +258,6 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
       grad_phi_4z[i] = grad_phi_temp[11];
     }
   }
-  
 }
 
 void MPMModel::formulate_material_basis_functions()
@@ -300,23 +297,31 @@ void MPMModel::interpolate_material_mass_to_grid()
     // mass :
     std::vector<double>& m           = materials[i]->get_m();
 
-    // iterate through particles and interpolate the 
-    // particle mass to each node of its cell :
-    // FIXME: this is not thread-safe
-    # pragma omp parallel for simd
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
+    # pragma omp parallel
     {
-      // in one dimension, two vertices :
-      m_grid[vrt_1[j]] += phi_1[j] * m[j];
-      m_grid[vrt_2[j]] += phi_2[j] * m[j];
+      std::vector<double> m_grid_lcl(dofs);
 
-      // in two or three dimensions, one more :
-      if (gdim == 2 or gdim == 3)
-        m_grid[vrt_3[j]] += phi_3[j] * m[j];
+      // iterate through particles and interpolate the 
+      // particle mass to each node of its cell :
+      # pragma omp for simd schedule(auto) nowait
+      for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
+      {
+        // in one dimension, two vertices :
+        m_grid_lcl[vrt_1[j]] += phi_1[j] * m[j];
+        m_grid_lcl[vrt_2[j]] += phi_2[j] * m[j];
       
-      // in three dimensions, one more :
-      if (gdim == 3)
-        m_grid[vrt_4[j]] += phi_4[j] * m[j];
+        // in two or three dimensions, one more :
+        if (gdim == 2 or gdim == 3)
+          m_grid_lcl[vrt_3[j]] += phi_3[j] * m[j];
+        
+        // in three dimensions, one more :
+        if (gdim == 3)
+          m_grid_lcl[vrt_4[j]] += phi_4[j] * m[j];
+      }
+      
+      # pragma omp critical
+      for (unsigned int j = 0; j < dofs; ++j)
+        m_grid[j] += m_grid_lcl[j];
     }
   }
 }
@@ -360,39 +365,60 @@ void MPMModel::interpolate_material_velocity_to_grid()
     // mass :
     std::vector<double>& m           = materials[i]->get_m();
 
-    // iterate through particles :
-    // FIXME: this is not thread-safe
-    # pragma omp parallel for simd
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
+    # pragma omp parallel
     {
-      // in one dimension, two vertices, one component of velocity :
-      u_x_grid[vrt_1[j]] += u_x[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
-      u_x_grid[vrt_2[j]] += u_x[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
+      std::vector<double> u_x_grid_lcl(dofs);
+      std::vector<double> u_y_grid_lcl(dofs);
+      std::vector<double> u_z_grid_lcl(dofs);
 
-      // in two or three dimensions, one more component and vertex :
-      if (gdim == 2 or gdim == 3)
+      // iterate through particles :
+      # pragma omp for simd schedule(auto) nowait
+      for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
       {
-        // extra node for x-velocity component :
-        u_x_grid[vrt_3[j]] += u_x[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
-
-        // new y-component of velocity :
-        u_y_grid[vrt_1[j]] += u_y[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
-        u_y_grid[vrt_2[j]] += u_y[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
-        u_y_grid[vrt_3[j]] += u_y[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
-      }
+        // in one dimension, two vertices, one component of velocity :
+        u_x_grid_lcl[vrt_1[j]] += u_x[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+        u_x_grid_lcl[vrt_2[j]] += u_x[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
       
-      // in three dimensions, one more component and vertex :
-      if (gdim == 3)
-      {
-        // extra node for x- and y-velocity components :
-        u_x_grid[vrt_4[j]] += u_x[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
-        u_y_grid[vrt_4[j]] += u_y[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+        // in two or three dimensions, one more component and vertex :
+        if (gdim == 2 or gdim == 3)
+        {
+          // extra node for x-velocity component :
+          u_x_grid_lcl[vrt_3[j]] += u_x[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+      
+          // new y-component of velocity :
+          u_y_grid_lcl[vrt_1[j]] += u_y[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+          u_y_grid_lcl[vrt_2[j]] += u_y[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
+          u_y_grid_lcl[vrt_3[j]] += u_y[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+        }
+        
+        // in three dimensions, one more component and vertex :
+        if (gdim == 3)
+        {
+          // extra node for x- and y-velocity components :
+          u_x_grid_lcl[vrt_4[j]] += u_x[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+          u_y_grid_lcl[vrt_4[j]] += u_y[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+      
+          // new z-component of velocity :
+          u_z_grid_lcl[vrt_1[j]] += u_z[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
+          u_z_grid_lcl[vrt_2[j]] += u_z[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
+          u_z_grid_lcl[vrt_3[j]] += u_z[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
+          u_z_grid_lcl[vrt_4[j]] += u_z[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+        }
+      }
 
-        // new z-component of velocity :
-        u_z_grid[vrt_1[j]] += u_z[j] * phi_1[j] * m[j] / m_grid[vrt_1[j]];
-        u_z_grid[vrt_2[j]] += u_z[j] * phi_2[j] * m[j] / m_grid[vrt_2[j]];
-        u_z_grid[vrt_3[j]] += u_z[j] * phi_3[j] * m[j] / m_grid[vrt_3[j]];
-        u_z_grid[vrt_4[j]] += u_z[j] * phi_4[j] * m[j] / m_grid[vrt_4[j]];
+      # pragma omp critical
+      for (unsigned int j = 0; j < dofs; ++j)
+      {
+        // always an x-component :
+        u_x_grid[j] += u_x_grid_lcl[j];
+      
+        // y-component :    
+        if (gdim == 2 or gdim == 3)
+          u_y_grid[j] += u_y_grid_lcl[j];
+        
+        // z-component :    
+        if (gdim == 3)
+          u_z_grid[j] += u_z_grid_lcl[j];
       }
     }
   }
@@ -403,7 +429,7 @@ void MPMModel::calculate_grid_volume()
   if (verbose == true)
     printf("--- C++ calculate_grid_volume() ---\n");
 
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (std::size_t i = 0; i < dofs; ++i)
     V_grid[i] = 4.0/3.0 * M_PI * pow(h_grid[i]/2.0, 3);
 }
@@ -439,7 +465,7 @@ void MPMModel::calculate_material_initial_density()
       std::vector<double>& rho0        = materials[i]->get_rho0();
 
       // iterate through particles :
-      # pragma omp parallel for simd
+      # pragma omp parallel for simd schedule(auto)
       for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
       {
         // in one dimension, two nodes :
@@ -513,7 +539,6 @@ void MPMModel::calculate_grid_internal_forces()
   // z-component :    
   if (gdim == 3)
     init_vector(f_int_z_grid);
-      
 
   // iterate through all materials :
   for (unsigned int i = 0; i < materials.size(); ++i)
@@ -548,72 +573,93 @@ void MPMModel::calculate_grid_internal_forces()
 
     // volume :
     std::vector<double>& V           = materials[i]->get_V();
-    
-    // iterate through particles :
-    // FIXME: this is not thread-safe
-    # pragma omp parallel for simd
-    for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
+
+    # pragma omp parallel
     {
-      // in one dimension, two vertices, one component of force :
-      f_int_x_grid[vrt_1[j]] -= sigma_xx[j] * grad_phi_1x[j] * V[j];
-      f_int_x_grid[vrt_2[j]] -= sigma_xx[j] * grad_phi_2x[j] * V[j];
-
-      // in two or three dimensions, one more component and vertex :
-      if (gdim == 2 or gdim == 3)
+      std::vector<double> f_int_x_grid_lcl(dofs);
+      std::vector<double> f_int_y_grid_lcl(dofs);
+      std::vector<double> f_int_z_grid_lcl(dofs);
+    
+      // iterate through particles :
+      # pragma omp for simd schedule(auto) nowait
+      for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
       {
-        // extra node for x-force diagonal component :
-        f_int_x_grid[vrt_3[j]] -= sigma_xx[j] * grad_phi_3x[j] * V[j];
-
-        // off-diagonal terms :
-        f_int_x_grid[vrt_1[j]] -= sigma_xy[j] * grad_phi_1y[j] * V[j];
-        f_int_x_grid[vrt_2[j]] -= sigma_xy[j] * grad_phi_2y[j] * V[j];
-        f_int_x_grid[vrt_3[j]] -= sigma_xy[j] * grad_phi_3y[j] * V[j];
-
-        // new diagonal y-component of velocity :
-        f_int_y_grid[vrt_1[j]] -= sigma_yy[j] * grad_phi_1y[j] * V[j];
-        f_int_y_grid[vrt_2[j]] -= sigma_yy[j] * grad_phi_2y[j] * V[j];
-        f_int_y_grid[vrt_3[j]] -= sigma_yy[j] * grad_phi_3y[j] * V[j];
-
-        // and off-diagonal terms :
-        f_int_y_grid[vrt_1[j]] -= sigma_xy[j] * grad_phi_1x[j] * V[j];
-        f_int_y_grid[vrt_2[j]] -= sigma_xy[j] * grad_phi_2x[j] * V[j];
-        f_int_y_grid[vrt_3[j]] -= sigma_xy[j] * grad_phi_3x[j] * V[j];
-      }
+        // in one dimension, two vertices, one component of force :
+        f_int_x_grid_lcl[vrt_1[j]] -= sigma_xx[j] * grad_phi_1x[j] * V[j];
+        f_int_x_grid_lcl[vrt_2[j]] -= sigma_xx[j] * grad_phi_2x[j] * V[j];
       
-      // in three dimensions, one more component and vertex :
-      if (gdim == 3)
+        // in two or three dimensions, one more component and vertex :
+        if (gdim == 2 or gdim == 3)
+        {
+          // extra node for x-force diagonal component :
+          f_int_x_grid_lcl[vrt_3[j]] -= sigma_xx[j] * grad_phi_3x[j] * V[j];
+      
+          // off-diagonal terms :
+          f_int_x_grid_lcl[vrt_1[j]] -= sigma_xy[j] * grad_phi_1y[j] * V[j];
+          f_int_x_grid_lcl[vrt_2[j]] -= sigma_xy[j] * grad_phi_2y[j] * V[j];
+          f_int_x_grid_lcl[vrt_3[j]] -= sigma_xy[j] * grad_phi_3y[j] * V[j];
+      
+          // new diagonal y-component of velocity :
+          f_int_y_grid_lcl[vrt_1[j]] -= sigma_yy[j] * grad_phi_1y[j] * V[j];
+          f_int_y_grid_lcl[vrt_2[j]] -= sigma_yy[j] * grad_phi_2y[j] * V[j];
+          f_int_y_grid_lcl[vrt_3[j]] -= sigma_yy[j] * grad_phi_3y[j] * V[j];
+      
+          // and off-diagonal terms :
+          f_int_y_grid_lcl[vrt_1[j]] -= sigma_xy[j] * grad_phi_1x[j] * V[j];
+          f_int_y_grid_lcl[vrt_2[j]] -= sigma_xy[j] * grad_phi_2x[j] * V[j];
+          f_int_y_grid_lcl[vrt_3[j]] -= sigma_xy[j] * grad_phi_3x[j] * V[j];
+        }
+        
+        // in three dimensions, one more component and vertex :
+        if (gdim == 3)
+        {
+          // extra node for x- and y-force diagonal components :
+          f_int_x_grid_lcl[vrt_4[j]] -= sigma_xx[j] * grad_phi_4x[j] * V[j];
+          f_int_y_grid_lcl[vrt_4[j]] -= sigma_yy[j] * grad_phi_4y[j] * V[j];
+      
+          // and off-diagonal terms :
+          f_int_x_grid_lcl[vrt_1[j]] -= sigma_xz[j] * grad_phi_1z[j] * V[j];
+          f_int_x_grid_lcl[vrt_2[j]] -= sigma_xz[j] * grad_phi_2z[j] * V[j];
+          f_int_x_grid_lcl[vrt_3[j]] -= sigma_xz[j] * grad_phi_3z[j] * V[j];
+          f_int_x_grid_lcl[vrt_4[j]] -= sigma_xz[j] * grad_phi_4z[j] * V[j];
+          
+          f_int_y_grid_lcl[vrt_1[j]] -= sigma_yz[j] * grad_phi_1z[j] * V[j];
+          f_int_y_grid_lcl[vrt_2[j]] -= sigma_yz[j] * grad_phi_2z[j] * V[j];
+          f_int_y_grid_lcl[vrt_3[j]] -= sigma_yz[j] * grad_phi_3z[j] * V[j];
+          f_int_y_grid_lcl[vrt_4[j]] -= sigma_yz[j] * grad_phi_4z[j] * V[j];
+      
+          // new diagonal z-component of force :
+          f_int_z_grid_lcl[vrt_1[j]] -= sigma_zz[j] * grad_phi_1z[j] * V[j];
+          f_int_z_grid_lcl[vrt_2[j]] -= sigma_zz[j] * grad_phi_2z[j] * V[j];
+          f_int_z_grid_lcl[vrt_3[j]] -= sigma_zz[j] * grad_phi_3z[j] * V[j];
+          f_int_z_grid_lcl[vrt_4[j]] -= sigma_zz[j] * grad_phi_4z[j] * V[j];
+          
+          // and two off-diagonal terms :
+          f_int_z_grid_lcl[vrt_1[j]] -= sigma_xz[j] * grad_phi_1x[j] * V[j];
+          f_int_z_grid_lcl[vrt_2[j]] -= sigma_xz[j] * grad_phi_2x[j] * V[j];
+          f_int_z_grid_lcl[vrt_3[j]] -= sigma_xz[j] * grad_phi_3x[j] * V[j];
+          f_int_z_grid_lcl[vrt_4[j]] -= sigma_xz[j] * grad_phi_4x[j] * V[j];
+          
+          f_int_z_grid_lcl[vrt_1[j]] -= sigma_yz[j] * grad_phi_1y[j] * V[j];
+          f_int_z_grid_lcl[vrt_2[j]] -= sigma_yz[j] * grad_phi_2y[j] * V[j];
+          f_int_z_grid_lcl[vrt_3[j]] -= sigma_yz[j] * grad_phi_3y[j] * V[j];
+          f_int_z_grid_lcl[vrt_4[j]] -= sigma_yz[j] * grad_phi_4y[j] * V[j];
+        }
+      }
+
+      # pragma omp critical
+      for (unsigned int j = 0; j < dofs; ++j)
       {
-        // extra node for x- and y-force diagonal components :
-        f_int_x_grid[vrt_4[j]] -= sigma_xx[j] * grad_phi_4x[j] * V[j];
-        f_int_y_grid[vrt_4[j]] -= sigma_yy[j] * grad_phi_4y[j] * V[j];
-
-        // and off-diagonal terms :
-        f_int_x_grid[vrt_1[j]] -= sigma_xz[j] * grad_phi_1z[j] * V[j];
-        f_int_x_grid[vrt_2[j]] -= sigma_xz[j] * grad_phi_2z[j] * V[j];
-        f_int_x_grid[vrt_3[j]] -= sigma_xz[j] * grad_phi_3z[j] * V[j];
-        f_int_x_grid[vrt_4[j]] -= sigma_xz[j] * grad_phi_4z[j] * V[j];
+        // always an x-component :
+        f_int_x_grid[j] += f_int_x_grid_lcl[j];
+      
+        // y-component :    
+        if (gdim == 2 or gdim == 3)
+          f_int_y_grid[j] += f_int_y_grid_lcl[j];
         
-        f_int_y_grid[vrt_1[j]] -= sigma_yz[j] * grad_phi_1z[j] * V[j];
-        f_int_y_grid[vrt_2[j]] -= sigma_yz[j] * grad_phi_2z[j] * V[j];
-        f_int_y_grid[vrt_3[j]] -= sigma_yz[j] * grad_phi_3z[j] * V[j];
-        f_int_y_grid[vrt_4[j]] -= sigma_yz[j] * grad_phi_4z[j] * V[j];
-
-        // new diagonal z-component of force :
-        f_int_z_grid[vrt_1[j]] -= sigma_zz[j] * grad_phi_1z[j] * V[j];
-        f_int_z_grid[vrt_2[j]] -= sigma_zz[j] * grad_phi_2z[j] * V[j];
-        f_int_z_grid[vrt_3[j]] -= sigma_zz[j] * grad_phi_3z[j] * V[j];
-        f_int_z_grid[vrt_4[j]] -= sigma_zz[j] * grad_phi_4z[j] * V[j];
-        
-        // and two off-diagonal terms :
-        f_int_z_grid[vrt_1[j]] -= sigma_xz[j] * grad_phi_1x[j] * V[j];
-        f_int_z_grid[vrt_2[j]] -= sigma_xz[j] * grad_phi_2x[j] * V[j];
-        f_int_z_grid[vrt_3[j]] -= sigma_xz[j] * grad_phi_3x[j] * V[j];
-        f_int_z_grid[vrt_4[j]] -= sigma_xz[j] * grad_phi_4x[j] * V[j];
-        
-        f_int_z_grid[vrt_1[j]] -= sigma_yz[j] * grad_phi_1y[j] * V[j];
-        f_int_z_grid[vrt_2[j]] -= sigma_yz[j] * grad_phi_2y[j] * V[j];
-        f_int_z_grid[vrt_3[j]] -= sigma_yz[j] * grad_phi_3y[j] * V[j];
-        f_int_z_grid[vrt_4[j]] -= sigma_yz[j] * grad_phi_4y[j] * V[j];
+        // z-component :    
+        if (gdim == 3)
+          f_int_z_grid[j] += f_int_z_grid_lcl[j];
       }
     }
   }
@@ -625,7 +671,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
     printf("--- C++ calculate_grid_acceleration() ---\n");
 
   // iterate through each node :
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (unsigned int i = 0; i < dofs; ++i)
   {
     a_x_grid[i] = a_x_grid_new[i];
@@ -640,7 +686,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
   }
 
   // iterate through each node :
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (unsigned int i = 0; i < dofs; ++i)
   {
     // if there is a mass on the grid node :
@@ -691,7 +737,7 @@ void MPMModel::update_grid_velocity()
     printf("--- C++ update_grid_velocity() ---\n");
 
   // iterate through each node :
-  # pragma omp parallel for simd
+  # pragma omp parallel for simd schedule(auto)
   for (unsigned int i = 0; i < dofs; ++i)
   {
     // always at least one component of velocity :
@@ -772,7 +818,7 @@ void MPMModel::calculate_material_velocity_gradient()
     std::vector<double>& grad_u_zz_star = materials[i]->get_grad_u_zz_star();
 
     // iterate through particles :
-    # pragma omp parallel for simd
+    # pragma omp parallel for simd schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous velocity gradient :
@@ -934,7 +980,7 @@ void MPMModel::interpolate_grid_velocity_to_material()
 
     // iterate through particles and interpolate grid velocity 
     // back to particles from each node :
-    # pragma omp parallel for simd
+    # pragma omp parallel for simd schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first reset the velocity :
@@ -1011,7 +1057,7 @@ void MPMModel::interpolate_grid_acceleration_to_material()
 
     // iterate through particles and interpolate grid accleration 
     // to particles at each node :
-    # pragma omp parallel for simd
+    # pragma omp parallel for simd schedule(auto)
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous acceleration :
@@ -1071,7 +1117,7 @@ void MPMModel::advect_material_particles()
     materials[i]->advect_particles(dt);
   }
 }
-  
+
 void MPMModel::mpm(bool initialize)
 {
   if (verbose == true)
@@ -1106,5 +1152,6 @@ void MPMModel::mpm(bool initialize)
   interpolate_grid_velocity_to_material();
   advect_material_particles();
 }
+
 
 
