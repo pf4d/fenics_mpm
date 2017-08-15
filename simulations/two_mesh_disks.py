@@ -2,9 +2,9 @@ from fenics_mpm import *
 
 #===============================================================================
 # model properties :
-in_dir     = 'data/high/'# input directory
+in_dir     = 'data/low/'# input directory
 out_dir    = 'output/'   # output directory
-n_x        = 100         # number of grid x- and y-divisions
+n_x        = 20         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 rho        = 1000.0      # material density     [kg/m^3]
@@ -76,7 +76,7 @@ def cb_ftn():
     grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
-model.mpm(t_start = t0, t_end = tf, cb_ftn = None)
+model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)
 
 
 

@@ -19,6 +19,11 @@ MPMMaterial::MPMMaterial(const std::string&   name,
   printf("::: initializing MPMMaterialcpp `%s` with n_p = %u,  gdim = %u,"
          "  sdim = %u :::\n", name.c_str(), n_p, gdim, sdim);
 
+  # pragma omp parallel for
+  for (unsigned int i = 0; i < n_p; i += 1024)
+    n_p_end = min(i+1024, n_p);
+
+
   // one component for each particle :
   m.resize(n_p);
   rho0.resize(n_p);

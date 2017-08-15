@@ -8,6 +8,9 @@
 #include <omp.h>
 #include <math.h>
 
+inline unsigned int min( int a, int b ) { return a < b ? a : b; }
+inline unsigned int max( int a, int b ) { return a > b ? a : b; }
+
 namespace dolfin
 {
   class MPMMaterial
@@ -133,6 +136,7 @@ namespace dolfin
       void         calc_pi();
       
     protected:
+      unsigned int               n_p_end;
       const std::string          name;        // name of material
       bool                       mass_init;   // initialized via mass
       unsigned int               n_p;         // number of particles

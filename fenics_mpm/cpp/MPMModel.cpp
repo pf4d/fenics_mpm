@@ -30,7 +30,7 @@ MPMModel::MPMModel(const FunctionSpace& V,
   // create mini-continguous arrays for each vertex index, and 
   // create a vector of Cells in advance to save considerable 
   // time during formulate_material_basis_functions() :
-  # pragma omp for schedule(auto)
+  # pragma omp parallel for simd
   for (unsigned int i = 0; i < num_cells; ++i)
   {
     vertex_coordinates[i].resize(sdim);
@@ -78,27 +78,28 @@ MPMModel::MPMModel(const FunctionSpace& V,
 // zero the vector in parallel :
 void MPMModel::init_vector(std::vector<double> vec)
 {
-  #pragma omp parallel
-  {   
-    auto tid       = omp_get_thread_num();
-    auto chunksize = vec.size() / omp_get_num_threads();
-    auto begin     = vec.begin() + chunksize * tid;
-    auto end       = (tid == omp_get_num_threads()-1 ?
-                      vec.end() : begin + chunksize);
-    std::fill(begin, end, 0);
-  }
+  std::fill(vec.begin(), vec.end(), 0.0);
+  //#pragma omp parallel
+  //{   
+  //  auto tid       = omp_get_thread_num();
+  //  auto chunksize = vec.size() / omp_get_num_threads();
+  //  auto begin     = vec.begin() + chunksize * tid;
+  //  auto end       = (tid == omp_get_num_threads()-1 ?
+  //                    vec.end() : begin + chunksize);
+  //  std::fill(begin, end, 0);
+  //}
 }
 
 void MPMModel::set_h(const Array<double>& h_a)
 {
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (std::size_t i = 0; i < h_a.size(); ++i)
     h_grid[i] = h_a[i];
 }
 
 void MPMModel::set_V(const Array<double>& V_a)
 {
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (std::size_t i = 0; i < V_a.size(); ++i)
     V_grid[i] = V_a[i];
 }
@@ -125,7 +126,7 @@ void MPMModel::update_points()
     std::vector<Point*>& pt_i = materials[i]->get_x_pt(); // the particle Points
 
     // iterate through particle positions :
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
     {
       // always have an x component :
@@ -182,7 +183,7 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
 
   // iterate through particle positions and update the 
   // grid node indices, basis values, and basis gradient values :
-  # pragma omp parallel for schedule(auto) \
+  # pragma omp parallel for simd schedule(auto) \
     firstprivate(c_id, phi_temp, grad_phi_temp)
   for (unsigned int i = 0; i < M->get_num_particles(); ++i) 
   {
@@ -204,7 +205,7 @@ void MPMModel::update_particle_basis_functions(MPMMaterial* M)
   
     // all cells have at least two vertices :
     vrt_1[i] = cell_dofs[c_id][0];
-    vrt_2[i] = cell_dofs[c_id][2];
+    vrt_2[i] = cell_dofs[c_id][1];
   
     // two basis functions :
     phi_1[i] = phi_temp[0];
@@ -302,7 +303,7 @@ void MPMModel::interpolate_material_mass_to_grid()
     // iterate through particles and interpolate the 
     // particle mass to each node of its cell :
     // FIXME: this is not thread-safe
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // in one dimension, two vertices :
@@ -361,7 +362,7 @@ void MPMModel::interpolate_material_velocity_to_grid()
 
     // iterate through particles :
     // FIXME: this is not thread-safe
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // in one dimension, two vertices, one component of velocity :
@@ -402,7 +403,7 @@ void MPMModel::calculate_grid_volume()
   if (verbose == true)
     printf("--- C++ calculate_grid_volume() ---\n");
 
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (std::size_t i = 0; i < dofs; ++i)
     V_grid[i] = 4.0/3.0 * M_PI * pow(h_grid[i]/2.0, 3);
 }
@@ -438,7 +439,7 @@ void MPMModel::calculate_material_initial_density()
       std::vector<double>& rho0        = materials[i]->get_rho0();
 
       // iterate through particles :
-      # pragma omp parallel for schedule(auto)
+      # pragma omp parallel for simd
       for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
       {
         // in one dimension, two nodes :
@@ -550,7 +551,7 @@ void MPMModel::calculate_grid_internal_forces()
     
     // iterate through particles :
     // FIXME: this is not thread-safe
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j)
     {
       // in one dimension, two vertices, one component of force :
@@ -624,7 +625,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
     printf("--- C++ calculate_grid_acceleration() ---\n");
 
   // iterate through each node :
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (unsigned int i = 0; i < dofs; ++i)
   {
     a_x_grid[i] = a_x_grid_new[i];
@@ -639,7 +640,7 @@ void MPMModel::calculate_grid_acceleration(double m_min)
   }
 
   // iterate through each node :
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (unsigned int i = 0; i < dofs; ++i)
   {
     // if there is a mass on the grid node :
@@ -690,7 +691,7 @@ void MPMModel::update_grid_velocity()
     printf("--- C++ update_grid_velocity() ---\n");
 
   // iterate through each node :
-  # pragma omp parallel for schedule(auto)
+  # pragma omp parallel for simd
   for (unsigned int i = 0; i < dofs; ++i)
   {
     // always at least one component of velocity :
@@ -771,7 +772,7 @@ void MPMModel::calculate_material_velocity_gradient()
     std::vector<double>& grad_u_zz_star = materials[i]->get_grad_u_zz_star();
 
     // iterate through particles :
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous velocity gradient :
@@ -933,7 +934,7 @@ void MPMModel::interpolate_grid_velocity_to_material()
 
     // iterate through particles and interpolate grid velocity 
     // back to particles from each node :
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first reset the velocity :
@@ -1010,7 +1011,7 @@ void MPMModel::interpolate_grid_acceleration_to_material()
 
     // iterate through particles and interpolate grid accleration 
     // to particles at each node :
-    # pragma omp parallel for schedule(auto)
+    # pragma omp parallel for simd
     for (unsigned int j = 0; j < materials[i]->get_num_particles(); ++j) 
     {
       // first, set the previous acceleration :
