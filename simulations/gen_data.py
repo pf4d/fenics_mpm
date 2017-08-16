@@ -3,11 +3,11 @@ from mshr       import *
 
 #===============================================================================
 # model properties :
-out_dir    = 'data/low/'     # output directory
+out_dir    = 'data/high/'# output directory
 
 # create a material :
 r_max      = 0.15        # disk radius          [m]
-res        = 10          # disk mesh resolution
+res        = 100         # disk mesh resolution
 
 # upper-right disk :
 domain1    = Circle(Point(0.66, 0.66), r_max)

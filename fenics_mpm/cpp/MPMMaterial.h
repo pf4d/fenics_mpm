@@ -120,7 +120,7 @@ namespace dolfin
       void         initialize_mass(const Array<double>& m_a);
       void         initialize_volume(const Array<double>& V_a);
       void         initialize_mass_from_density(const double rho_a);
-      unsigned int get_num_particles() const {return n_p_end;};
+      unsigned int get_num_particles() const {return n_p;};
       void         calculate_strain_rate();
       void         calculate_incremental_strain_rate();
       virtual void calculate_stress() = 0;

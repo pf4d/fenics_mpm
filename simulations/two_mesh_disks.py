@@ -4,11 +4,10 @@ from fenics_mpm import *
 # model properties :
 in_dir     = 'data/low/' # input directory
 out_dir    = 'output/'   # output directory
-n_x        = 20          # number of grid x- and y-divisions
+n_x        = 100         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
 nu         = 0.3         # Poisson's ratio
 rho        = 1000.0      # material density     [kg/m^3]
-u_mag      = 0.1         # velocity magnitude   [m/s]
 dt_save    = 0.01        # time between saves   [s]
 dt         = 0.0002      # time-step            [s]
 t0         = 0.0         # starting time        [s]
@@ -19,7 +18,7 @@ save_int   = int(dt_save / dt)
 
 # create a material :
 r_max      = 0.15        # disk radius          [m]
-res        = 1000        # disk mesh resolution
+u_mag      = 0.1         # velocity magnitude   [m/s]
 
 # load the data created by the "gen_data.py" script :
 X1 = np.loadtxt(in_dir + 'X1.txt')
@@ -37,11 +36,11 @@ U2 =  u_mag * np.ones([n2,2])
 
 
 # corresponding Material objects : 
-disk1      = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)
-disk2      = ElasticMaterial('disk2', X2, U2, E, nu, V=V2, rho=rho)
+disk1 = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)
+disk2 = ElasticMaterial('disk2', X2, U2, E, nu, V=V2, rho=rho)
 
 # the finite-element mesh used :    
-mesh       = UnitSquareMesh(n_x, n_x)
+mesh  = UnitSquareMesh(n_x, n_x)
 
 # the exterior boundary :
 class Boundary(SubDomain):
