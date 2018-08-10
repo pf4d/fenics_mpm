@@ -1,13 +1,18 @@
 from fenics_mpm import *
 from mshr       import *
+import os
 
 #===============================================================================
 # model properties :
-out_dir    = 'data/high/'# output directory
+out_dir    = 'data/'# output directory
+
+# create the output directory if it does not exist :
+d = os.path.dirname(out_dir)
+if not os.path.exists(d):  os.makedirs(d)
 
 # create a material :
 r_max      = 0.15        # disk radius          [m]
-res        = 100         # disk mesh resolution
+res        = 25          # disk mesh resolution
 
 # upper-right disk :
 domain1    = Circle(Point(0.66, 0.66), r_max)

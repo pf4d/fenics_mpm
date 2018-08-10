@@ -88,7 +88,7 @@ additional_decl = """
 inst_params = {'code'                      : code,
                'module_name'               : module_name,
                'source_directory'          : cpp_src_dir,
-               'cppargs'                   : '-O3',
+               'cppargs'                   : '-O3 -fopenmp',
                'sources'                   : sources,
                'additional_system_headers' : [],
                'include_dirs'              : include_dirs}

@@ -2,7 +2,7 @@ from fenics_mpm import *
 
 #===============================================================================
 # model properties :
-in_dir     = 'data/low/' # input directory
+in_dir     = 'data/'     # input directory
 out_dir    = 'output/'   # output directory
 n_x        = 100         # number of grid x- and y-divisions
 E          = 1000.0      # Young's modulus
