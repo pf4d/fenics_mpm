@@ -38,7 +38,7 @@ m_mag      = 0.012       # particle mass        [kg]
 dt_save    = 0.01        # time between saves   [s]
 dt         = 0.0002      # time-step            [s]
 t0         = 0.0         # starting time        [s]
-tf         = 1.5         # ending time          [s]
+tf         = 10.0        # ending time          [s]
 
 # calculate the number of iterations between saves :
 save_int   = int(dt_save / dt)
@@ -88,10 +88,6 @@ n_wall     = ImpenetrableMaterial('n_wall', X_north, U_wall, m=M_wall)
 s_wall     = ImpenetrableMaterial('s_wall', X_south, U_wall, m=M_wall)
 e_wall     = ImpenetrableMaterial('e_wall', X_east,  U_wall, m=M_wall)
 w_wall     = ImpenetrableMaterial('w_wall', X_west,  U_wall, m=M_wall)
-#n_wall     = ElasticMaterial(X_north, U_wall, E, nu, M_wall)
-#s_wall     = ElasticMaterial(X_south, U_wall, E, nu, M_wall)
-#e_wall     = ElasticMaterial(X_east,  U_wall, E, nu, M_wall)
-#w_wall     = ElasticMaterial(X_west,  U_wall, E, nu, M_wall)
 
 # the finite-element mesh used :    
 mesh       = UnitSquareMesh(n_x, n_x)
@@ -106,6 +102,7 @@ boundary = Boundary()
 grid_model = GridModel(mesh, out_dir, verbose=False)
 
 # set the velocity along the entire boundary to 0.0 :
+# TODO: this is a work in progress to avoid the creation of walls above.
 grid_model.set_boundary_conditions(boundary, 0.0)
 
 # create the main model to perform MPM calculations :
@@ -114,10 +111,10 @@ model      = Model(out_dir, grid_model, dt, verbose=False)
 # add the materials to the model :
 model.add_material(M1)
 model.add_material(M2)
-#model.add_material(n_wall)
-#model.add_material(s_wall)
-#model.add_material(e_wall)
-#model.add_material(w_wall)
+model.add_material(n_wall)
+model.add_material(s_wall)
+model.add_material(e_wall)
+model.add_material(w_wall)
 
 # files for saving grid variables :
 m_file = File(out_dir + '/m.pvd')

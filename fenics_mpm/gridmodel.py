@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-15 -*-
 
-from   fenics            import *
+from   dolfin            import *
 from   fenics_mpm.helper import print_text, print_min_max
 import numpy                 as np
 
@@ -12,7 +12,7 @@ class GridModel(object):
   :param out_dir: directory to save results, defalult is ``./output/``.
   :param mesh: the finite-element mesh.
   :type out_dir: string
-  :type mesh: :class:`~fenics.Mesh`
+  :type mesh: :class:`~dolfin.cpp.mesh.Mesh`
   """
 
   def __init__(self, mesh, out_dir='./output/', verbose=True):
@@ -61,8 +61,8 @@ class GridModel(object):
 
     * ``self.Q``  -- :math:`\mathcal{H}^k(\Omega)`
     * ``self.Q3`` -- :math:`[\mathcal{H}^k(\Omega)]^3`
-    * ``self.V``  -- :math:`[\mathcal{H}^k(\Omega)]^d`  formed using :class:`~fenics.VectorFunctionSpace`
-    * ``self.T``  -- :math:`[\mathcal{H}^k(\Omega)]^{d \times d}` formed using :class:`~fenics.TensorFunctionSpace`
+    * ``self.V``  -- :math:`[\mathcal{H}^k(\Omega)]^d`  formed using :func:`~dolfin.functions.functionspace.VectorFunctionSpace`
+    * ``self.T``  -- :math:`[\mathcal{H}^k(\Omega)]^{d \times d}` formed using :func:`~dolfin.functions.functionspace.TensorFunctionSpace`
     """
     s = "::: generating fundamental function spaces of order %i :::" % order
     print_text(s, cls=self.this)
@@ -92,8 +92,8 @@ class GridModel(object):
     
     * ``self.element``    -- the finite-element
     * ``self.top_dim``    -- the topological dimension
-    * ``self.dofmap``     -- :class:`~fenics.DofMap` for converting between vertex to nodal indicies
-    * ``self.h``          -- :class:`~fenics.CellSize` for ``self.mesh``
+    * ``self.dofmap``     -- :class:`~dolfin.cpp.fem.DofMap` for converting between vertex to nodal indicies
+    * ``self.h``          -- Cell diameter formed by calling :func:`~dolfin.functions.specialfunctions.CellDiameter` with ``self.mesh``
     
     Grid velocity vector :math:`\mathbf{u}_i = [u\ v\ w]^{\intercal}`:
 
@@ -144,10 +144,10 @@ class GridModel(object):
     self.bc_val  = None
 
     # cell diameter :
-    self.h       = project(CellSize(self.mesh), self.Q)  # cell diameter vector
+    self.h       = project(CellDiameter(self.mesh), self.Q)
 
     # cell volume :
-    self.Ve      = project(CellVolume(self.mesh), self.Q) # cell volume vector
+    self.Ve      = project(CellVolume(self.mesh), self.Q)
     
     # grid velocity :
     self.U_mag                = Function(self.Q,  name='U_mag')
@@ -234,7 +234,7 @@ class GridModel(object):
     Update the grid mass :math:`m_i`, ``self.m`` to parameter ``m``.
     
     :param m: grid mass
-    :type m: :class:`~fenics.Function`,
+    :type m: :class:`~dolfin.functions.function.Function`,
     """
     # assign the mass to the model variable :
     self.assm.assign(self.m, m)
@@ -246,7 +246,7 @@ class GridModel(object):
     Update the grid velocity :math:`\mathbf{u}_i = [u\ v\ w]^{\intercal}`, ``self.U3`` to parameter ``U``.
     
     :param U: grid velocity
-    :type U: list of :class:`~fenics.Function`\s
+    :type U: list of :class:`~dolfin.functions.function.Function`\s
     """
     # assign the variables to the functions :
     assign(self.u, U[0])
@@ -260,7 +260,7 @@ class GridModel(object):
     Update the grid acceleration :math:`\mathbf{a}_i = [a_x\ a_y\ a_z]^{\intercal}`, ``self.a3`` to parameter ``a``.
     
     :param a: grid acceleration
-    :type a: list of :class:`~fenics.Function`\s
+    :type a: list of :class:`~dolfin.functions.function.Function`\s
     """
     # assign the variables to the functions :
     self.assa_x.assign(self.a_x, a[0])
@@ -274,7 +274,7 @@ class GridModel(object):
     Update the grid acceleration :math:`\mathbf{f}_i^{\mathrm{int}} = [f_x^{\mathrm{int}}\ f_y^{\mathrm{int}}\ f_z^{\mathrm{int}}]^{\intercal}` to paramter ``f_int``.
     
     :param f_int: grid internal force
-    :type f_int: list of :class:`~fenics.Function`\s
+    :type f_int: list of :class:`~dolfin.functions.function.Function`\s
     """
     # assign the variables to the functions :
     self.assf_int_x.assign(self.f_int_x, f_int[0])
@@ -286,17 +286,14 @@ class GridModel(object):
   def assign_variable(self, u, var):
     r"""
     Manually assign the values from ``var`` to ``u``.  The parameter ``var``
-    may be a string pointing to the location of an :class:`~fenics.XDMFFile`, 
-    :class:`~fenics.HDF5File`, or an xml file.
+    may be a string pointing to the location of an :class:`~dolfin.cpp.io.XDMFFile`, 
+    :class:`~dolfin.cpp.io.HDF5File`, or an xml file.
 
-    :param u:        FEniCS :class:`~fenics.Function` assigning to
+    :param u:        FEniCS :class:`~dolfin.functions.function.Function` assigning to
     :param var:      value assigning from
-    :param annotate: allow Dolfin-Adjoint annotation
-    :type var:       float, int, :class:`~fenics.Expression`,
-                     :class:`~fenics.Constant`, :class:`~fenics.GenericVector`,
-                     string, :class:`~fenics.HDF5File`
-    :type u:         :class:`~fenics.Function`, :class:`~fenics.GenericVector`,
-                     :class:`~fenics.Constant`, float, int
+    :param annotate: allow ``dolfin_adjoint`` annotation
+    :type var:       float, int, :class:`~dolfin.functions.expression.Expression`, :class:`~dolfin.functions.constant.Constant`, :class:`~dolfin.cpp.la.GenericVector`, string, :class:`~dolfin.cpp.io.HDF5File`, :class:`~numpy.ndarray`
+    :type u:         :class:`~dolfin.functions.function.Function`, :class:`~dolfin.cpp.la.GenericVector`, :class:`~dolfin.Constant`, float, int
     """
     if isinstance(var, float) or isinstance(var, int):
       if    isinstance(u, GenericVector) or isinstance(u, Function) \
@@ -335,29 +332,28 @@ class GridModel(object):
       s =  "*************************************************************\n" + \
            "assign_variable() function requires a Function, array, float,\n" + \
            " int, Vector, Expression, Constant, or string path to .xml,\n"   + \
-           "not %s.  Replacing object entirely\n" + \
+           "not %s."                                                         + \
            "*************************************************************"
       print_text(s % type(var) , 'red', 1)
-      u = var
     if self.verbose:
       print_min_max(u, u.name())
 
   def save_pvd(self, u, name, f=None, t=0.0):
     r"""
-    Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
-    :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
+    Save a :class:`~dolfin.cpp.io.XDMFFile` with name ``name`` of the 
+    :class:`~dolfin.functions.function.Function` ``u`` to the ``xdmf`` directory specified by 
     ``self.out_dir``.
     
-    If ``f`` is a :class:`~fenics.XDMFFile` object, save to this instead.
+    If ``f`` is a :class:`~dolfin.cpp.io.XDMFFile` object, save to this instead.
 
     If ``t`` is a float or an int, mark the file with the timestep ``t``.
 
     :param u:    the function to save
-    :param name: the name of the .xdmf file to save
+    :param name: the name of the ``.xdmf`` file to save
     :param f:    the file to save to
     :param t:    the timestep to mark the file with
-    :type f:     :class:`~fenics.XDMFFile`
-    :type u:     :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type f:     :class:`~dolfin.cpp.io.XDMFFile`
+    :type u:     :class:`~dolfin.functions.function.Function` or :class:`~dolfin.cpp.la.GenericVector`
     :type t:     int or float
     """
     if f != None:
@@ -372,11 +368,11 @@ class GridModel(object):
 
   def save_xdmf(self, u, name, f=None, t=0.0):
     r"""
-    Save a :class:`~fenics.XDMFFile` with name ``name`` of the 
-    :class:`~fenics.Function` ``u`` to the ``xdmf`` directory specified by 
+    Save a :class:`~dolfin.cpp.io.XDMFFile` with name ``name`` of the 
+    :class:`~dolfin.functions.function.Function` ``u`` to the ``xdmf`` directory specified by 
     ``self.out_dir``.
     
-    If ``f`` is a :class:`~fenics.XDMFFile` object, save to this instead.
+    If ``f`` is a :class:`~dolfin.cpp.io.XDMFFile` object, save to this instead.
 
     If ``t`` is a float or an int, mark the file with the timestep ``t``.
 
@@ -384,8 +380,8 @@ class GridModel(object):
     :param name: the name of the .xdmf file to save
     :param f:    the file to save to
     :param t:    the timestep to mark the file with
-    :type f:     :class:`~fenics.XDMFFile`
-    :type u:     :class:`~fenics.Function` or :class:`~fenics.GenericVector`
+    :type f:     :class:`~dolfin.cpp.io.XDMFFile`
+    :type u:     :class:`~dolfin.functions.function.Function` or :class:`~dolfin.cpp.la.GenericVector`
     :type t:     int or float
     """
     if f != None:
@@ -397,3 +393,6 @@ class GridModel(object):
       f.write(u)
     if self.verbose:
       print_text(s, 'green')#cls=self.this)
+
+
+

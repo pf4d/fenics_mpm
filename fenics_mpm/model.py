@@ -48,13 +48,13 @@ class Model(object):
                                        np.array([1,1,0], dtype='intc'),
                                        dt, verbose)
     # intialize the cell diameter :
-    self.mpm_cpp.set_h(self.grid_model.h.vector().array())
+    self.mpm_cpp.set_h(self.grid_model.h.vector().get_local())
     
     # intialize the cell volume :
-    self.mpm_cpp.set_V(self.grid_model.Ve.vector().array())
+    self.mpm_cpp.set_V(self.grid_model.Ve.vector().get_local())
   
-    # set the boundary conditions for C++ code :
-    self.set_boundary_conditions()
+    # TODO: set the boundary conditions for C++ code :
+    #self.set_boundary_conditions()
   
   def color(self):
     return 'cyan'
@@ -362,6 +362,7 @@ class Model(object):
   
   def retrieve_cpp_grid_m(self):
     """
+    Get the mass vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.m``.
     """
     #FIXME: figure out a way to directly update grid_model.m :
     m = Function(self.grid_model.Q, name='m')
@@ -372,6 +373,7 @@ class Model(object):
 
   def retrieve_cpp_grid_U3(self):
     """
+    Get the velocity vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.u`` and ``self.grid_model.v``.
     """
     #FIXME: figure out a way to directly update grid_model.U3 :
     u = Function(self.grid_model.Q, name='u')
@@ -385,6 +387,7 @@ class Model(object):
 
   def retrieve_cpp_grid_f_int(self):
     """
+    Get the internal force vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.f_int_x`` and ``self.grid_model.f_int_y``.
     """
     #FIXME: figure out a way to directly update grid_model.f_int :
     f_int_x  = Function(self.grid_model.Q, name='f_int_x')
@@ -397,6 +400,7 @@ class Model(object):
     
   def retrieve_cpp_grid_a3(self):
     """
+    Get the acceleration vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.a_x`` and ``self.grid_model.a_y``.
     """
     #FIXME: figure out a way to directly update grid_model.a3 :
     a_x = Function(self.grid_model.Q, name='a_x')
@@ -458,7 +462,7 @@ class Model(object):
     :type t_start: float
     :type t_end: float
     :type cb_ftn: function
-    
+  
     For any given time-step, the algorithm consists of:
 
     * :func:`~model.Model.formulate_material_basis_functions`
@@ -471,11 +475,13 @@ class Model(object):
     * :func:`~model.Model.calculate_material_density`
     * :func:`~model.Model.calculate_material_initial_volume`
 
-    Then continue :
+    Then continue the grid calculation stage :
     
     * :func:`~model.Model.calculate_grid_internal_forces`
     * :func:`~model.Model.calculate_grid_acceleration`
     * :func:`~model.Model.update_grid_velocity`
+  
+    Then the particle calculation stage :
 
     * :func:`~model.Model.calculate_material_velocity_gradient`
     * :func:`~model.Model.update_material_deformation_gradient`
@@ -484,6 +490,12 @@ class Model(object):
     * :func:`~model.model.interpolate_grid_acceleration_to_material`
     * :func:`~model.model.interpolate_grid_velocity_to_material`
     * :func:`~model.Model.advect_material_particles`
+
+    At the end of the algorithm, the grid properties are made available from the C++ backend : 
+
+    * :func:`~model.Model.retrieve_cpp_material_properties`
+    * :func:`~model.Model.retrieve_cpp_grid_properties`
+    
     """
     s = "::: BEGIN MPM ALGORITHM :::"
     print_text(s, cls=self.this)

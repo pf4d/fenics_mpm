@@ -44,6 +44,7 @@ class Material(object):
   * ``self.sigma``    -- :math:`n_p \times (d \times d)` stress tensors :math:`\sigma_p`
   * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`
   * ``self.I``        -- :math:`n_p \times (d \times d)` identity tensors :math:`I`
+  * ``self.vrt``      -- :math:`n_p \times n_v` nodal vertex indices for each particle
   """
   def __init__(self, name, x, u, m=None, V=None, rho=None):
     """
@@ -63,7 +64,7 @@ class Material(object):
 
     # cpp arguments, if needed these are set in child classes
     # (find example child classes after this class) :
-    self.cpp_args = None
+    self.cpp_args = ()
 
     self.n        = len(x[:,0])        # number of particles
     self.d        = len(x[0])          # topological dimension
@@ -180,6 +181,7 @@ class Material(object):
 
   def retrieve_cpp_vrt(self):
     """
+    Get the nodal indices at each particle's position from the C++ model.
     """
     self.vrt_1    = np.array(self.cpp_mat.get_vrt_1(),    dtype=int)
     self.vrt_2    = np.array(self.cpp_mat.get_vrt_2(),    dtype=int)
@@ -188,6 +190,7 @@ class Material(object):
 
   def retrieve_cpp_phi(self):
     """
+    Get the grid basis function values evaluated at each particle's current position from the C++ model.
     """
     self.phi_1    = np.array(self.cpp_mat.get_phi_1(),    dtype=float)
     self.phi_2    = np.array(self.cpp_mat.get_phi_2(),    dtype=float)
@@ -196,6 +199,7 @@ class Material(object):
 
   def retrieve_cpp_grad_phi(self):
     """
+    Get the particle basis function gradient values from the C++ model.
     """
     self.grad_phi_1x   = np.array(self.cpp_mat.get_grad_phi_1x(),  dtype=float)
     self.grad_phi_1y   = np.array(self.cpp_mat.get_grad_phi_1y(),  dtype=float)
@@ -212,6 +216,7 @@ class Material(object):
 
   def retrieve_cpp_grad_u(self):
     """
+    Get the particle velocity gradient from the C++ model.
     """
     self.grad_u_xx = np.array(self.cpp_mat.get_grad_u_xx(), dtype=float)
     self.grad_u_xy = np.array(self.cpp_mat.get_grad_u_xy(), dtype=float)
@@ -225,6 +230,7 @@ class Material(object):
 
   def retrieve_cpp_x(self):
     """
+    Get the particle position vector from the C++ model.
     """
     self.x = np.array(self.cpp_mat.get_x(), dtype=float)
     self.y = np.array(self.cpp_mat.get_y(), dtype=float)
@@ -232,6 +238,7 @@ class Material(object):
 
   def retrieve_cpp_u(self):
     """
+    Get the particle velocity vector from the C++ model.
     """
     self.u_x = np.array(self.cpp_mat.get_u_x(), dtype=float)
     self.u_y = np.array(self.cpp_mat.get_u_y(), dtype=float)
@@ -239,6 +246,7 @@ class Material(object):
 
   def retrieve_cpp_a(self):
     """
+    Get the particle acceleration vector from the C++ model.
     """
     self.a_x = np.array(self.cpp_mat.get_a_x(), dtype=float)
     self.a_y = np.array(self.cpp_mat.get_a_y(), dtype=float)
@@ -246,6 +254,7 @@ class Material(object):
 
   def retrieve_cpp_F(self):
     """
+    Get the particle deformation gradient from the C++ model.
     """
     self.F_xx = np.array(self.cpp_mat.get_F_xx(), dtype=float)
     self.F_xy = np.array(self.cpp_mat.get_F_xy(), dtype=float)
@@ -259,6 +268,7 @@ class Material(object):
 
   def retrieve_cpp_epsilon(self):
     """
+    Get the particle strain tensor from the C++ model.
     """
     self.epsilon_xx = np.array(self.cpp_mat.get_epsilon_xx(), dtype=float)
     self.epsilon_xy = np.array(self.cpp_mat.get_epsilon_xy(), dtype=float)
@@ -269,6 +279,7 @@ class Material(object):
 
   def retrieve_cpp_sigma(self):
     """
+    Get the particle stress tensor from the C++ model.
     """
     self.sigma_xx = np.array(self.cpp_mat.get_sigma_xx(), dtype=float)
     self.sigma_xy = np.array(self.cpp_mat.get_sigma_xy(), dtype=float)
@@ -279,23 +290,29 @@ class Material(object):
     
   def retrieve_cpp_rho0(self):
     """
+    Get the initial particle density vector from the C++ model.
     """
     self.rho0 = np.array(self.cpp_mat.get_rho0(), dtype=float)
     
   def retrieve_cpp_rho(self):
     """
+    Get the current particle density vector from the C++ model.
     """
     self.rho  = np.array(self.cpp_mat.get_rho(),  dtype=float)
 
   def retrieve_cpp_V(self):
     """
+    Get the current particle volume vector from the C++ model.
     """
     self.V    = np.array(self.cpp_mat.get_V(),    dtype=float)
 
   def retrieve_cpp_V0(self):
     """
+    Get the initial particle volume vector from the C++ model.
     """
     self.V0   = np.array(self.cpp_mat.get_V0(),   dtype=float)
+
+
 
 
 class ElasticMaterial(Material):
@@ -369,6 +386,8 @@ class ElasticMaterial(Material):
     
     # return particle Cauchy stress tensors :
     return np.array(sigma, dtype=float)
+
+
 
 
 class ImpenetrableMaterial(Material):

@@ -22,10 +22,15 @@ sys.path.insert(0, os.path.abspath('../fenics_mpm/'))
 
 # -- General configuration ------------------------------------------------
 
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
-                       'numpy': ('http://docs.scipy.org/doc/numpy/', None),
-                       'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
-                       'matplotlib': ('http://matplotlib.sourceforge.net/', None)}
+intersphinx_mapping = \
+{
+  'python'    : ('http://docs.python.org/2.7', None),
+  'numpy'     : ('http://docs.scipy.org/doc/numpy/', None),
+  'scipy'     : ('http://docs.scipy.org/doc/scipy/reference/', None),
+  'matplotlib': ('http://matplotlib.sourceforge.net/', None),
+  'dolfin'    : ('https://fenics.readthedocs.io/en/latest/',
+                 None)
+}
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
@@ -42,7 +47,7 @@ class Mock(MagicMock):
     return Mock()
 
 MOCK_MODULES = ['fenics', 'ufl']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 #if os.environ.get('READTHEDOCS', None) == 'True':
 #  sys.path.insert(0,'.')
@@ -149,9 +154,9 @@ todo_include_todos = False
 #
 #html_theme = 'alabaster'
 
-import sphinx_rtd_theme
-html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+#import sphinx_rtd_theme
+#html_theme = 'sphinx_rtd_theme'
+#html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -185,7 +190,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

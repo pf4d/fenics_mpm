@@ -3,21 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-fenics_mpm 1.0
+The material-point method
 *******************************
 
-This first release of an implementation of the `material point method` as initial designed by [sulsky_1994]_, [sulsky_1995]_.  Currently, particles are represented with ``NumPy`` arrays and are integrated with a finite-element grid and basis functions provided by ``FEniCS``.  
-
-Work remaining:
-
-1. Parallelize the code to use ``MPI``.  This could be accomplished with ``PETSc`` or ``NumPy`` alone.  It would also be intersting to offload all the particle calculations to the graphics process using ``PyCUDA`` or something similar, and use the processor CPUs for grid calculations alone.
-2. Design an efficient way to communicate between the particles and grid in parallel.  This is difficult because particles move from one grid domain to the next, and as such change processors due to the grid partitioning used by ``FEniCS``, ``ParMETIS``.
-3. Create new finite-element basis functions with ``FIAT`` such as cubic splines.
-4. Perform `method of manufactured solutions` verification tests in 1D.
-5. Improve documentation.
-6. All those other ideas that I don't want to discuss yet.
-
-Documentation will be updated at each design iteration in order to remain relavent with the code.
+This is a parallel implementation of written in C++ with OpenMP using a Python front end of the `material-point method` as originally designed by [sulsky_1994]_, [sulsky_1995]_.  Particles are represented with ``NumPy`` arrays and are integrated with a finite-element grid and basis functions provided by ``FEniCS``.
 
 .. _first:
 

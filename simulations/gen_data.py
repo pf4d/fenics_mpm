@@ -12,7 +12,7 @@ if not os.path.exists(d):  os.makedirs(d)
 
 # create a material :
 r_max      = 0.15        # disk radius          [m]
-res        = 25          # disk mesh resolution
+res        = 100         # disk mesh resolution
 
 # upper-right disk :
 domain1    = Circle(Point(0.66, 0.66), r_max)
