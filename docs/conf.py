@@ -38,16 +38,16 @@ intersphinx_mapping = \
 
 # mock out packages for autodock
 
-from mock import Mock as MagicMock
-
-class Mock(MagicMock):
-  __all__ = []
-  @classmethod
-  def __getattr__(cls, name):
-    return Mock()
-
-MOCK_MODULES = ['fenics', 'ufl']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+#from mock import Mock as MagicMock
+#
+#class Mock(MagicMock):
+#  __all__ = []
+#  @classmethod
+#  def __getattr__(cls, name):
+#    return Mock()
+#
+#MOCK_MODULES = ['fenics', 'ufl']
+#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 #if os.environ.get('READTHEDOCS', None) == 'True':
 #  sys.path.insert(0,'.')
