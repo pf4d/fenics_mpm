@@ -50,7 +50,7 @@ Next, we can define some model parameters::
   # calculate the number of iterations between saves :
   save_int   = int(dt_save / dt)
 
-New we can create two elastic :class:`~material.Material` s using the :class:`~material.ElasticMaterial` class.
+Next we can create two elastic :class:`~material.Material` s using the :class:`~material.ElasticMaterial` class.
 First generate coordinate vector :math:`\mathbf{x}^{\mathrm{p}}`, mass :math:`m^{\mathrm{p}}`, and velocity vector :math:`\mathbf{u}^{\mathrm{p}}` for the upper-right disk::
 
   X1         = sunflower(n, 2, 0.66, 0.66, r_max)
