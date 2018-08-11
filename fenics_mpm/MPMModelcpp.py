@@ -1,26 +1,6 @@
-__version__    = '1.0'
-__author__     = 'Evan M. Cummings'
-__license__    = 'LGPL-3'
-__maintainer__ = 'Evan M. Cummings'
-__email__      = 'evan.cummings@aalto.fi'
-
-__all__ = []
-
-import pkgutil
-import inspect
-import matplotlib as mpl
-#mpl.use('Agg')
-mpl.rcParams['font.family']          = 'serif'
-mpl.rcParams['legend.fontsize']      = 'medium'
-mpl.rcParams['text.usetex']          = True
-mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
-#mpl.rcParams['contour.negative_linestyle']   = 'solid'
-
 # open the cpp code :
 import os
-from   fenics  import compile_extension_module, parameters
-
-parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
+from   fenics  import compile_extension_module
 
 cpp_src_dir     = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
 headers         = ["MPMMaterial.h",
@@ -42,7 +22,7 @@ cmake_packages  = ['DOLFIN']
 module_name     = "MPMModelcpp"
 sources         = ["MPMMaterial.cpp",
                    "MPMElasticMaterial.cpp",
-                   "MPMImpenetrableMaterial.cpp",
+                   "MsdfPMImpenetrableMaterial.cpp",
                    "MPMModel.cpp"]
 source_dir      = cpp_src_dir
 include_dirs    = [".", cpp_src_dir, 
@@ -88,31 +68,11 @@ additional_decl = """
 inst_params = {'code'                      : code,
                'module_name'               : module_name,
                'source_directory'          : cpp_src_dir,
-               'cppargs'                   : '-O3 -fopenmp',
                'sources'                   : sources,
                'additional_system_headers' : [],
                'include_dirs'              : include_dirs}
-mpm_module = compile_extension_module(**inst_params)
 
-# conditional fix (issue #107) :
-import ufl
-ufl.algorithms.apply_derivatives.CONDITIONAL_WORKAROUND = True
-
-for loader, name, is_pkg in pkgutil.walk_packages(__path__):
-  module = loader.find_module(name).load_module(name)
-  for name, value in inspect.getmembers(module):
-    if name.startswith('__'):
-      continue
-
-    globals()[name] = value
-    __all__.append(name)
-
-from helper      import *
-from model       import *
-from material    import *
-from gridmodel   import *
-
-#mpm_module = MPMModelcpp.get_compile_cpp_code()
-
+def get_compile_cpp_code():
+  return compile_extension_module(**inst_params)
 
 

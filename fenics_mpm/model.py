@@ -1,7 +1,11 @@
 # -*- coding: iso-8859-15 -*-
 
-from   fenics import *
-import numpy  as np
+from   fenics              import *
+from   fenics_mpm          import mpm_module
+from   fenics_mpm.helper   import print_text, get_text, print_min_max
+from   time                import time
+import numpy                   as np
+import sys
 
 
 class Model(object):
@@ -22,46 +26,66 @@ class Model(object):
   * ``self.materials`` -- an initially empty :py:obj:`list` of materials
   """
 
-  def __init__(self, out_dir, grid_model, dt):
+  def __init__(self, out_dir, grid_model, dt, verbose=True):
     """
     This class connects the grid to each material.
     """
+    self.this = self
+
+    s = "::: INITIALIZING MPM MODEL :::"
+    print_text(s, cls=self.this)
+
     self.out_dir    = out_dir      # output directory
     self.grid_model = grid_model   # grid model
     self.dt         = dt           # time step
+    self.t          = None         # starting time, set by self.mpm()
+    self.iter       = 0            # the timestep iteration
+    self.verbose    = verbose      # print stuff or not
     self.materials  = []           # list of Material objects, initially none
+    
+    # create an MPMMaterial instance from the module just created :
+    self.mpm_cpp = mpm_module.MPMModel(self.grid_model.Q, self.grid_model.dofs,
+                                       np.array([1,1,0], dtype='intc'),
+                                       dt, verbose)
+    # intialize the cell diameter :
+    self.mpm_cpp.set_h(self.grid_model.h.vector().get_local())
+    
+    # intialize the cell volume :
+    self.mpm_cpp.set_V(self.grid_model.Ve.vector().get_local())
+  
+    # TODO: set the boundary conditions for C++ code :
+    #self.set_boundary_conditions()
+  
+  def color(self):
+    return 'cyan'
 
   def add_material(self, M):
     r"""
     Add :class:`~material.Material` ``M`` to the list of materials ``self.materials``.
     """
-    self.materials.append(M)
+    s = "::: ADDING MATERIAL :::"
+    print_text(s, cls=self.this)
+
+    cpp_mat = M.get_cpp_material(self.grid_model.element)
+    M.set_cpp_material(cpp_mat)           # give the material a cpp class
+    self.mpm_cpp.add_material(cpp_mat)    # add it to MPMModel.cpp
+    self.materials.append(M)              # keep track in Python
+
+  def set_boundary_conditions(self):
+    """
+    """
+    self.mpm_cpp.set_boundary_conditions(self.grid_model.bc_vrt,
+                                         self.grid_model.bc_val)
 
   def formulate_material_basis_functions(self):
     r"""
     Iterate through each particle for each material ``M`` in :py:obj:`list` ``self.materials`` and calculate the particle interpolation function :math:`\phi_i(\mathbf{x}_p)` and gradient function :math:`\nabla \phi_i(\mathbf{x}_p)` values for each of the :math:`n_n` nodes of the corresponding grid cell.  This overwrites each :class:`~material.Material`\s ``M.vrt``, ``M.phi``, and ``M.grad_phi`` values.
     """
-    # iterate through all materials :
-    for M in self.materials:
+    if self.verbose:
+      s = "::: FORMULATING BASIS FUNCTIONS :::"
+      print_text(s, cls=self.this)
 
-      vrt      = []  # grid nodal indicies for points
-      phi      = []  # grid basis values at points
-      grad_phi = []  # grid basis gradient values at points
-
-      # iterate through particle positions :
-      for x_p in M.x: 
-        # get the grid node indices, basis values, and basis gradient values :
-        out = self.grid_model.get_particle_basis_functions(x_p)
-      
-        # append these to a list corresponding with particles : 
-        vrt.append(out[0])
-        phi.append(out[1])
-        grad_phi.append(out[2])
-
-      # save as array within each material :
-      M.vrt      = np.array(vrt)
-      M.phi      = np.array(phi, dtype=float)
-      M.grad_phi = np.array(grad_phi, dtype=float)
+    self.mpm_cpp.formulate_material_basis_functions()
 
   def interpolate_material_mass_to_grid(self):
     r"""
@@ -70,18 +94,11 @@ class Model(object):
     .. math::
       m_i = \sum_{p=1}^{n_p} \phi_p(\mathbf{x}_p) m_p
     """
-    # new mass must start at zero :
-    m    = Function(self.grid_model.Q)
+    if self.verbose:
+      s = "::: INTERPOLATING MATERIAL MASS TO GRID  :::"
+      print_text(s, cls=self.this)
 
-    # iterate through all materials :
-    for M in self.materials:
-
-      # interpolation of mass to the grid :
-      for p, phi_p, m_p in zip(M.vrt, M.phi, M.m):
-        m.vector()[p] += phi_p * m_p
-      
-    # assign the new mass to the grid model variable :
-    self.grid_model.update_mass(m)
+    self.mpm_cpp.interpolate_material_mass_to_grid()
 
   def interpolate_material_velocity_to_grid(self):
     r"""
@@ -92,49 +109,42 @@ class Model(object):
 
     Note that this requires that :math:`m_i` be calculated by calling :meth:`~model.Model.interpolate_material_mass_to_grid`.
     """
-    # new velocity must start at zero :
-    #model.assign_variable(self.U3, DOLFIN_EPS)
-    #u,v = self.U3.split(True)
-    u    = Function(self.grid_model.Q)
-    v    = Function(self.grid_model.Q)
-    
-    # iterate through all materials :
-    for M in self.materials:
+    if self.verbose:
+      s = "::: INTERPOLATING MATERIAL VELOCITY TO GRID :::"
+      print_text(s, cls=self.this)
 
-      # interpolation of mass-conserving velocity to the grid :
-      for p, phi_p, m_p, u_p in zip(M.vrt, M.phi, M.m, M.u):
-        m_i = self.grid_model.m.vector()[p]
-        u.vector()[p] += u_p[0] * phi_p * m_p / m_i
-        v.vector()[p] += u_p[1] * phi_p * m_p / m_i
+    self.mpm_cpp.interpolate_material_velocity_to_grid()
 
-    # assign the variables to the functions
-    self.grid_model.update_velocity([u,v])
+  def calculate_material_initial_mass(self):
+    r"""
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle masses :math:`m_p` given by ``M.m`` using particle volume :math:`V_p` and constant material density :math:`\rho` :
 
-  def calculate_material_density(self):
+    .. math::
+      m_p = \frac{V_p}{\rho}.
+    """
+    if self.verbose:
+      s = "::: CALCULATING MATERIAL INITIAL MASS :::"
+      print_text(s, cls=self.this)
+
+    # calculate particle masses :
+    self.mpm_cpp.calculate_material_initial_mass()
+
+  def calculate_material_initial_density(self):
     r"""
     Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities :math:`\rho_p` given by ``M.rho`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal masses :math:`m_i` and nodal cell diameter volume estimates :math:`v_i = \frac{4}{3} \pi \left(\frac{h_i}{2}\right)^3` using approximate nodal cell diameter :math:`h_i`.  That is,
 
     .. math::
       \rho_p = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \frac{m_i}{v_i}
     
-    Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.
+    Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve thereafter with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.
     """
-    h   = self.grid_model.h.vector().array()    # cell diameter
-    m   = self.grid_model.m.vector().array()
+    if self.verbose:
+      s = "::: CALCULATING MATERIAL INITIAL DENSITY :::"
+      print_text(s, cls=self.this)
 
-    # iterate through all materials :
-    for M in self.materials:
-
-      rho = []
-
-      # calculate particle densities :
-      for i, phi_i in zip(M.vrt, M.phi):
-        v_i   = 4.0/3.0 * pi * (h[i]/2.0)**3
-        rho_p = np.sum( m[i] * phi_i / v_i )
-        rho.append(rho_p)
-      
-      # update material density :
-      M.rho = np.array(rho, dtype=float)
+    # calculate particle densities :
+    #NOTE: this is not needed now -> self.mpm_cpp.calculate_grid_volume()
+    self.mpm_cpp.calculate_material_initial_density()
 
   def calculate_material_initial_volume(self):
     r"""
@@ -145,12 +155,12 @@ class Model(object):
     
     Note that this is useful only for the initial particle volume :math:`V_p^0` calculation and aftwards should evolve with :math:`V_p = V_p^0 \mathrm{det}(F_p)`.  Also, this requires that the particle density be initialized by calling :meth:`~model.Model.calculate_material_density`.
     """
-    # iterate through all materials :
-    for M in self.materials:
+    if self.verbose:
+      s = "::: CALCULATING MATERIAL INITIAL VOLUME :::"
+      print_text(s, cls=self.this)
 
-      # calculate inital volume from particle mass and density :
-      M.V0 = np.array(M.m / M.rho, dtype=float)
-      M.V  = M.V0
+    # calculate particle densities :
+    self.mpm_cpp.calculate_material_initial_volume()
 
   def calculate_material_velocity_gradient(self):
     r"""
@@ -159,26 +169,12 @@ class Model(object):
     .. math::
       \nabla \mathbf{u}_p = \sum_{i=1}^{n_n} \nabla \phi_i(\mathbf{x}_p) \mathbf{u}_i.
     """
-    # recover the grid nodal velocities :
-    u,v = self.grid_model.U3.split(True)
+    if self.verbose:
+      s = "::: CALCULATING MATERIAL VELOCITY GRADIENT :::"
+      print_text(s, cls=self.this)
 
-    # iterate through all materials :
-    for M in self.materials:
-
-      grad_U_p_v = []
-      
-      # calculate particle velocity gradients :
-      for i, grad_phi_i in zip(M.vrt, M.grad_phi):
-        u_i    = u.vector()[i]
-        v_i    = v.vector()[i]
-        dudx_p = np.sum(grad_phi_i[:,0] * u.vector()[i])
-        dudy_p = np.sum(grad_phi_i[:,1] * u.vector()[i])
-        dvdx_p = np.sum(grad_phi_i[:,0] * v.vector()[i])
-        dvdy_p = np.sum(grad_phi_i[:,1] * v.vector()[i])
-        grad_U_p_v.append(np.array( [[dudx_p, dudy_p], [dvdx_p, dvdy_p]] ))
-      
-      # update the particle velocity gradients :
-      M.grad_u = np.array(grad_U_p_v, dtype=float)
+    # calculate particle velocity gradients :
+    self.mpm_cpp.calculate_material_velocity_gradient()
 
   def interpolate_grid_velocity_to_material(self):
     r"""
@@ -189,21 +185,11 @@ class Model(object):
     
     Note that this is an intermediate step used by :meth:`~model.Model.advect_material_particles`.
     """
-    u, v  = self.grid_model.U3.split(True)
-
-    # iterate through all materials :
-    for M in self.materials:
-
-      v_p_v = []
-
-      # iterate through each particle :
-      for i, phi_i in zip(M.vrt, M.phi):
-        u_p = np.sum(phi_i * u.vector()[i])
-        v_p = np.sum(phi_i * v.vector()[i])
-        v_p_v.append(np.array([u_p, v_p]))
-
-      # update material velocity :
-      M.u_star = np.array(v_p_v, dtype=float)
+    if self.verbose:
+      s = "::: INTERPOLATING GRID VELOCITY TO MATERIAL :::"
+      print_text(s, cls=self.this)
+    
+    self.mpm_cpp.interpolate_grid_velocity_to_material()
 
   def interpolate_grid_acceleration_to_material(self):
     r"""
@@ -214,20 +200,11 @@ class Model(object):
     
     These particle accelerations are used to calculate the new particle velocities by :meth:`~model.Model.advect_material_particles`.
     """
-    a_x, a_y = self.grid_model.a3.split(True)
-
-    # iterate through all materials :
-    for M in self.materials:
-
-      a_p_v = []
-
-      for i, phi_i in zip(M.vrt, M.phi):
-        a_x_p = np.sum(phi_i * a_x.vector()[i])
-        a_y_p = np.sum(phi_i * a_y.vector()[i])
-        a_p_v.append(np.array([a_x_p, a_y_p]))
-
-      # update material acceleration :
-      M.a = np.array(a_p_v, dtype=float)
+    if self.verbose:
+      s = "::: INTERPOLATING GRID ACCELERATION TO MATERIAL :::"
+      print_text(s, cls=self.this)
+  
+    self.mpm_cpp.interpolate_grid_acceleration_to_material()
 
   def initialize_material_tensors(self):
     r"""
@@ -243,14 +220,32 @@ class Model(object):
 
     set to ``M.F``; strain-rate tensor :math:`\dot{\epsilon}_p` given by :func:`~material.Material.calculate_strain_rate` set to ``M.epsilon``; and Cauchy-stress tensor :math:`\sigma_p` given by :func:`~material.Material.calculate_stress` set to ``M.sigma``.
     """
-    self.calculate_material_velocity_gradient()
+    if self.verbose:
+      s = "::: INITIALIZING MATERIAL TENSORS :::"
+      print_text(s, cls=self.this)
 
-    # iterate through all materials :
-    for M in self.materials:
-      M.dF      = M.I + M.grad_u * self.dt
-      M.F       = M.dF
-      M.epsilon = M.calculate_strain_rate()
-      M.sigma   = M.calculate_stress()
+    self.calculate_material_velocity_gradient()
+    self.mpm_cpp.initialize_material_tensors()
+
+  def update_material_density(self):
+    r"""
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities from the incremental particle deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula
+
+    .. math::
+      \rho_p^t = \mathrm{det}(\mathrm{d}F_p)^{-1} \rho_p^{t-1}.
+
+    This is equivalent to the operation
+
+    .. math::
+      V_p^t = \mathrm{det}(F_p)^{-1} \rho_p^0,
+
+    with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial density :math:`\rho_p^0` calculated by :func:`~model.Model.calculate_material_initial_density` and set to ``M.rho0``.
+    """
+    if self.verbose:
+      s = "::: UPDATING MATERIAL VOLUME :::"
+      print_text(s, cls=self.this)
+    
+    self.mpm_cpp.update_material_density()
 
   def update_material_volume(self):
     r"""
@@ -266,12 +261,11 @@ class Model(object):
 
     with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial volume :math:`V_p^0` calculated by :func:`~model.Model.calculate_material_initial_volume` and set to ``M.V0``.
     """
-    # iterate through all materials :
-    # NOTE: the new volume can be calculated using either the differential 
-    #       deformation gradient or current deformation gradient :
-    for M in self.materials:
-      M.V = (M.dF[:,0,0] * M.dF[:,1,1] + M.dF[:,1,0] * M.dF[:,0,1]) * M.V
-      #M.V = (M.F[:,0,0] * M.F[:,1,1] + M.F[:,1,0] * M.F[:,0,1]) * M.V0
+    if self.verbose:
+      s = "::: UPDATING MATERIAL VOLUME :::"
+      print_text(s, cls=self.this)
+    
+    self.mpm_cpp.update_material_volume()
 
   def update_material_deformation_gradient(self):
     r"""
@@ -287,10 +281,11 @@ class Model(object):
 
     set to ``M.F``.  Here, :math:`\circ` is the element-wise Hadamard product.
     """
-    # iterate through all materials :
-    for M in self.materials:
-      M.dF = M.I + M.grad_u * self.dt
-      M.F *= M.dF
+    if self.verbose:
+      s = "::: UPDATING MATERIAL DEFORMATION GRADIENT :::"
+      print_text(s, cls=self.this)
+
+    self.mpm_cpp.update_material_deformation_gradient()
 
   def update_material_stress(self):
     r"""
@@ -301,11 +296,11 @@ class Model(object):
 
     with time-step :math:`\Delta t` from ``self.dt``.  This updated strain-rate tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. 
     """
-    # iterate through all materials :
-    for M in self.materials:
-      epsilon_n  = M.calculate_strain_rate()
-      M.epsilon += epsilon_n * self.dt
-      M.sigma    = M.calculate_stress()
+    if self.verbose:
+      s = "::: UPDATING MATERIAL STRESS :::"
+      print_text(s, cls=self.this)
+
+    self.mpm_cpp.update_material_stress()
 
   def calculate_grid_internal_forces(self):
     r"""
@@ -316,27 +311,11 @@ class Model(object):
 
     This is the weak-stress-divergence volume integral.
     """
-    # new internal forces start at zero :
-    f_int_x  = Function(self.grid_model.Q)
-    f_int_y  = Function(self.grid_model.Q)
+    if self.verbose:
+      s = "::: CALCULATING GRID INTERNAL FORCES :::"
+      print_text(s, cls=self.this)
 
-    # iterate through all materials :
-    for M in self.materials:
-
-      # interpolation particle internal forces to grid :
-      for p, grad_phi_p, F_p, sig_p, V_p in zip(M.vrt, M.grad_phi,
-                                                M.F, M.sigma,
-                                                M.V):
-        f_int = []
-        for grad_phi_i in grad_phi_p:
-          f_int.append(- np.dot(sig_p, grad_phi_i) * V_p)
-        f_int = np.array(f_int, dtype=float)
-        
-        f_int_x.vector()[p] += f_int[:,0].astype(float)
-        f_int_y.vector()[p] += f_int[:,1].astype(float)
-      
-    # assign the variables to the functions
-    self.grid_model.update_internal_force_vector([f_int_x, f_int_y])
+    self.mpm_cpp.calculate_grid_internal_forces()
 
   def update_grid_velocity(self):
     r"""
@@ -345,13 +324,11 @@ class Model(object):
     .. math::
       \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \mathbf{a}_i \Delta t.
     """
-    # calculate the new grid velocity :
-    u_i   = self.grid_model.U3.vector().array()
-    a_i   = self.grid_model.a3.vector().array()
-    u_i_n = u_i + a_i * self.dt
-    
-    # assign the new velocity vector :
-    self.grid_model.assign_variable(self.grid_model.U3, u_i_n)
+    if self.verbose:
+      s = "::: UPDATING GRID VELOCITY :::"
+      print_text(s, cls=self.this)
+
+    self.mpm_cpp.update_grid_velocity()
 
   def calculate_grid_acceleration(self):
     r"""
@@ -362,22 +339,11 @@ class Model(object):
 
     where the grid mass :math:`m_i` has been limited to be :math:`\geq \varepsilon = 1 \times 10^{-2}`, and external forces are currently only :math:`\mathbf{f}_i^{\mathrm{ext}} = \mathbf{0}`.
     """
-    f_int_x, f_int_y = self.grid_model.f_int.split(True)
-    f_int_x_a = f_int_x.vector().array()
-    f_int_y_a = f_int_y.vector().array()
-    m_a       = self.grid_model.m.vector().array()
+    if self.verbose:
+      s = "::: CALCULATING GRID ACCELERATIONS :::"
+      print_text(s, cls=self.this)
 
-    eps_m               = 1e-2
-    f_int_x_a[m_a == 0] = 0.0
-    f_int_y_a[m_a == 0] = 0.0
-    m_a[m_a < eps_m]    = eps_m
-    
-    a_x    = Function(self.grid_model.Q)
-    a_y    = Function(self.grid_model.Q)
-
-    a_x.vector().set_local(f_int_x_a / m_a)
-    a_y.vector().set_local(f_int_y_a / m_a)
-    self.grid_model.update_acceleration([a_x, a_y])
+    self.mpm_cpp.calculate_grid_acceleration()
 
   def advect_material_particles(self):
     r"""
@@ -387,30 +353,116 @@ class Model(object):
       \mathbf{u}_p^t &= \mathbf{u}_p^{t-1} + \mathbf{a}_p \Delta t \\
       \mathbf{x}_p^t &= \mathbf{x}_p^{t-1} + \mathbf{u}_p^* \Delta t.
     """
-    # interpolate the grid acceleration from the grid to the particles : 
-    self.interpolate_grid_acceleration_to_material()
+    if self.verbose:
+      s = "::: ADVECTING MATERIAL PARTICLES :::"
+      print_text(s, cls=self.this)
 
-    # interpolate the velocities from the grid back to the particles :
-    self.interpolate_grid_velocity_to_material()
+    # advect the material particles :
+    self.mpm_cpp.advect_material_particles()
+  
+  def retrieve_cpp_grid_m(self):
+    """
+    Get the mass vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.m``.
+    """
+    #FIXME: figure out a way to directly update grid_model.m :
+    m = Function(self.grid_model.Q, name='m')
+    self.grid_model.assign_variable(m, self.mpm_cpp.get_m())
+      
+    # assign the new mass to the grid model variable :
+    self.grid_model.update_mass(m)
 
+  def retrieve_cpp_grid_U3(self):
+    """
+    Get the velocity vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.u`` and ``self.grid_model.v``.
+    """
+    #FIXME: figure out a way to directly update grid_model.U3 :
+    u = Function(self.grid_model.Q, name='u')
+    v = Function(self.grid_model.Q, name='v')
+    self.grid_model.assign_variable(u, self.mpm_cpp.get_u_x())
+    self.grid_model.assign_variable(v, self.mpm_cpp.get_u_y())
+
+    # assign the variables to the functions
+    self.grid_model.assu.assign(self.grid_model.u, u)
+    self.grid_model.assv.assign(self.grid_model.v, v)
+
+  def retrieve_cpp_grid_f_int(self):
+    """
+    Get the internal force vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.f_int_x`` and ``self.grid_model.f_int_y``.
+    """
+    #FIXME: figure out a way to directly update grid_model.f_int :
+    f_int_x  = Function(self.grid_model.Q, name='f_int_x')
+    f_int_y  = Function(self.grid_model.Q, name='f_int_y')
+    self.grid_model.assign_variable(f_int_x, self.mpm_cpp.get_f_int_x())
+    self.grid_model.assign_variable(f_int_y, self.mpm_cpp.get_f_int_y())
+
+    # assign the variables to the functions
+    self.grid_model.update_internal_force_vector([f_int_x, f_int_y])
+    
+  def retrieve_cpp_grid_a3(self):
+    """
+    Get the acceleration vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.a_x`` and ``self.grid_model.a_y``.
+    """
+    #FIXME: figure out a way to directly update grid_model.a3 :
+    a_x = Function(self.grid_model.Q, name='a_x')
+    a_y = Function(self.grid_model.Q, name='a_y')
+    self.grid_model.assign_variable(a_x, self.mpm_cpp.get_a_x())
+    self.grid_model.assign_variable(a_y, self.mpm_cpp.get_a_y())
+    self.grid_model.update_acceleration([a_x, a_y])
+
+  def retrieve_cpp_grid_properties(self):
+    """
+    Transfer grid properties from C++ back to python for further analysis
+    with PyLab.
+    """
+    self.retrieve_cpp_grid_m()
+    self.retrieve_cpp_grid_U3()
+    self.retrieve_cpp_grid_f_int()
+    self.retrieve_cpp_grid_a3()
+  
+  def retrieve_cpp_material_properties(self):
+    """
+    Transfer material properties from C++ back to python for further analysis
+    with PyLab.
+    """
     # iterate through all materials :
     for M in self.materials:
+      M.retrieve_cpp_vrt()
+      M.retrieve_cpp_phi()
+      M.retrieve_cpp_grad_phi()
+      M.retrieve_cpp_grad_u()
+      M.retrieve_cpp_x()
+      M.retrieve_cpp_u()
+      M.retrieve_cpp_a()
+      M.retrieve_cpp_F()
+      M.retrieve_cpp_epsilon()
+      M.retrieve_cpp_sigma()
+      M.retrieve_cpp_rho()
+      M.retrieve_cpp_V()
+      M.retrieve_cpp_V0()
 
-      # calculate the new material velocity :
-      M.u += M.a * self.dt
+      if self.verbose:
+        print_min_max(M.grad_u,  'M.grad_u')
+        print_min_max(M.x,       'M.x')
+        print_min_max(M.u,       'M.u')
+        print_min_max(M.a,       'M.a')
+        print_min_max(M.F,       'M.F_0')
+        print_min_max(M.epsilon, 'M.epsilon_0')
+        print_min_max(M.sigma,   'M.sigma_0')
+        print_min_max(M.rho,     'M.rho_0')
+        print_min_max(M.V,       'M.V')
+        print_min_max(M.V0,      'M.V_0')
 
-      # advect the material :
-      M.x += M.u_star * self.dt
-
-  def mpm(self, t_start, t_end):
+  def mpm(self, t_start, t_end, cb_ftn=None):
     r"""
     The material point method algorithm performed from time ``t_start`` to ``t_end``.
 
     :param t_start: starting time of the simulation
     :param t_end: ending time of the simulation
+    :param cb_ftn: callback function
     :type t_start: float
     :type t_end: float
-    
+    :type cb_ftn: function
+  
     For any given time-step, the algorithm consists of:
 
     * :func:`~model.Model.formulate_material_basis_functions`
@@ -423,58 +475,126 @@ class Model(object):
     * :func:`~model.Model.calculate_material_density`
     * :func:`~model.Model.calculate_material_initial_volume`
 
-    Then continue :
+    Then continue the grid calculation stage :
     
     * :func:`~model.Model.calculate_grid_internal_forces`
     * :func:`~model.Model.calculate_grid_acceleration`
     * :func:`~model.Model.update_grid_velocity`
+  
+    Then the particle calculation stage :
 
     * :func:`~model.Model.calculate_material_velocity_gradient`
     * :func:`~model.Model.update_material_deformation_gradient`
     * :func:`~model.Model.update_material_volume`
-    * :func:`~model.Model.update_material_stress`
+    * :func:`~model.model.update_material_stress`
+    * :func:`~model.model.interpolate_grid_acceleration_to_material`
+    * :func:`~model.model.interpolate_grid_velocity_to_material`
     * :func:`~model.Model.advect_material_particles`
 
-    There are ``pvd`` files saved each time-step to ``self.out_dir``.
+    At the end of the algorithm, the grid properties are made available from the C++ backend : 
+
+    * :func:`~model.Model.retrieve_cpp_material_properties`
+    * :func:`~model.Model.retrieve_cpp_grid_properties`
+    
     """
-    t = t_start
-      
-    # files for saving :
-    m_file = File(self.out_dir + '/m.pvd')
-    u_file = File(self.out_dir + '/u.pvd')
-    a_file = File(self.out_dir + '/a.pvd')
-    f_file = File(self.out_dir + '/f.pvd')
+    s = "::: BEGIN MPM ALGORITHM :::"
+    print_text(s, cls=self.this)
 
-    while t <= t_end:
-      self.formulate_material_basis_functions()
-      self.interpolate_material_mass_to_grid()
-      self.interpolate_material_velocity_to_grid()
-      
-      # initialization step :
-      if t == t_start:
-        self.initialize_material_tensors()
-        self.calculate_material_density()
-        self.calculate_material_initial_volume()
-     
-      self.calculate_grid_internal_forces()
-      self.calculate_grid_acceleration()
-      self.update_grid_velocity()
+    # initialize counter :
+    self.t = t_start
 
-      self.calculate_material_velocity_gradient()
-      self.update_material_deformation_gradient()
-      self.update_material_volume()
-      self.update_material_stress()
+    # starting time :
+    t0 = time()
+
+    # set up screen printing :
+    s0    = '\r>>> simulation time: '
+    s2    = ' s, CPU time for last dt: '
+    s4    = ' s <<<'
+    text0 = get_text(s0, 'red')
+    text2 = get_text(s2, 'red')
+    text4 = get_text(s4, 'red')
       
-      # save the result :
-      self.grid_model.save_pvd(self.grid_model.m,   'm', f=m_file, t=t)
-      self.grid_model.save_pvd(self.grid_model.U3, 'U3', f=u_file, t=t)
-      self.grid_model.save_pvd(self.grid_model.a3, 'a3', f=a_file, t=t)
-      self.grid_model.save_pvd(self.grid_model.f_int, 'f_int', f=f_file, t=t)
+    while self.t < t_end - self.dt:
+
+      # we are now on the next iteration :
+      self.iter += 1
+
+      # start time over :
+      tic = time()
+
+      #=========================================================================
+      # begin MPM algorithm :
+      if self.t == t_start:
+        self.mpm_cpp.mpm(True)
+      else:
+        self.mpm_cpp.mpm(False)
+
+      ## get basis function values at material point locations :
+      #self.formulate_material_basis_functions()
+      #
+      ## interpolation from particle stage :
+      #self.interpolate_material_mass_to_grid()
+      #self.interpolate_material_velocity_to_grid()
+      #
+      ## initialization step :
+      #if self.t == t_start:
+      #  self.initialize_material_tensors()
+      #  self.calculate_material_initial_density()
+      #  self.calculate_material_initial_volume()
+      #  
+      ## grid calculation stage : 
+      #self.calculate_grid_internal_forces()
+      #self.calculate_grid_acceleration()
+      #self.update_grid_velocity()
+
+      ## particle calculation stage :
+      #self.calculate_material_velocity_gradient()
+      #self.update_material_deformation_gradient()
+      #self.update_material_volume()
+      #self.update_material_stress()
+      #self.interpolate_grid_acceleration_to_material()
+      #self.interpolate_grid_velocity_to_material()
+      #self.advect_material_particles()
       
-      # move the model forward in time :
-      self.advect_material_particles()
+      # : end MPM algorithm
+      #=========================================================================
+      
+      # call the callback function, if desired :
+      if cb_ftn is not None:
+        if self.verbose :
+          s    = "::: calling callback function :::"
+          print_text(s, cls=self.this)
+        cb_ftn()
 
       # increment time step :
-      t += self.dt
+      self.t += self.dt
+
+      # print the time to the screen :
+      s1    = '%.3e' % self.t
+      s3    = '%.3e' % (time() - tic)
+      text1 = get_text(s1, 'red', 1)
+      text3 = get_text(s3, 'red', 1)
+      text  = text0 + text1 + text2 + text3 + text4
+
+      # don't continue to fill the screen with numbers if verbosity is off :
+      if self.verbose == False and self.grid_model.verbose == False: 
+        sys.stdout.write(text)
+        sys.stdout.flush()
+      else:
+        print text
+
+    # calculate total time to compute
+    dt = time() - t0
+    m  = dt / 60.0
+    h  = m / 60.0
+    s  = dt % 60
+    m  = m % 60
+    text = "\ntotal time to perform transient run: %02d:%02d:%02d (%.3e s)"
+    print_text(text % (h,m,s,dt), 'red', 1)
+   
+    # always get the properties back from C++ land : 
+    self.retrieve_cpp_material_properties()
+    self.retrieve_cpp_grid_properties()
+
 
 
