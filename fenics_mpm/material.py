@@ -126,7 +126,7 @@ class Material(object):
     to ``cpp_mat``.
     
     :param element: The FEniCS element used.
-    :type element: :class:`~fenics.FiniteElement`
+    :type element: :class:`~ufl.finiteelement.finiteelement.FiniteElement`
     """
     self.cpp_mat = cpp_mat 
 

@@ -18,6 +18,7 @@
 
 import os
 import sys
+import subprocess
 sys.path.insert(0, os.path.abspath('../fenics_mpm/'))
 
 # -- General configuration ------------------------------------------------
@@ -28,8 +29,9 @@ intersphinx_mapping = \
   'numpy'     : ('http://docs.scipy.org/doc/numpy/', None),
   'scipy'     : ('http://docs.scipy.org/doc/scipy/reference/', None),
   'matplotlib': ('http://matplotlib.sourceforge.net/', None),
-  'dolfin'    : ('https://fenics.readthedocs.io/en/latest/',
-                 None)
+  'dolfin'    : ('https://fenics.readthedocs.io/en/latest/', None),
+  'ufl'       : ('https://fenics.readthedocs.io/projects/ufl/en/latest/', None)
+
 }
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -374,4 +376,31 @@ texinfo_documents = [
 #
 # texinfo_no_detailmenu = False
 
+# Automate building apidoc when building with readthedocs
+# https://github.com/rtfd/readthedocs.org/issues/1139
+def run_apidoc(_):
+    ignore_paths = [
+    ]
 
+    argv = [
+        "-f",
+        "-T",
+        "-e",
+        "-M",
+        "-o", ".",
+        "../fenics_mpm"
+    ] + ignore_paths
+
+    try:
+        # Sphinx 1.7+
+        from sphinx.ext import apidoc
+        apidoc.main(argv)
+    except ImportError:
+        # Sphinx 1.6 (and earlier)
+        from sphinx import apidoc
+        argv.insert(0, apidoc.__file__)
+        apidoc.main(argv)
+
+
+def setup(app):
+    app.connect('builder-inited', run_apidoc)
