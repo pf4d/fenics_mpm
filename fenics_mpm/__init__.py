@@ -18,7 +18,7 @@ mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 
 # open the cpp code :
 import os
-from   fenics  import compile_extension_module, parameters
+from   dolfin  import compile_extension_module, parameters
 
 parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
 
