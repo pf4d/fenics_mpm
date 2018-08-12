@@ -1,6 +1,6 @@
 # open the cpp code :
 import os
-from   fenics  import compile_extension_module
+from   dolfin  import compile_extension_module
 
 cpp_src_dir     = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
 headers         = ["MPMMaterial.h",

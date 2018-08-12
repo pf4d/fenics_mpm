@@ -1,7 +1,7 @@
 # -*- coding: iso-8859-15 -*-
 
 import inspect
-from   fenics   import *
+from   dolfin   import *
 from   colored  import fg, attr
 import numpy        as np
 

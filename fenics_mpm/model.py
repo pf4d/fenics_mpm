@@ -1,6 +1,6 @@
 # -*- coding: iso-8859-15 -*-
 
-from   fenics              import *
+from   dolfin              import *
 from   fenics_mpm          import mpm_module
 from   fenics_mpm.helper   import print_text, get_text, print_min_max
 from   time                import time
