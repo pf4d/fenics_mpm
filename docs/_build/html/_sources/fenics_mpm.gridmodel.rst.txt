@@ -1,0 +1,7 @@
+fenics\_mpm.gridmodel module
+============================
+
+.. automodule:: fenics_mpm.gridmodel
+    :members:
+    :undoc-members:
+    :show-inheritance:

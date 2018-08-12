@@ -1,0 +1,482 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>colored.colored &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for colored.colored</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+
+<span class="kn">from</span> <span class="nn">.hex</span> <span class="k">import</span> <span class="n">HEX</span>
+
+
+<span class="k">class</span> <span class="nc">colored</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">END</span> <span class="o">=</span> <span class="s2">&quot;m&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">color</span>
+
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">HEX</span> <span class="o">=</span> <span class="n">HEX</span><span class="p">(</span><span class="n">color</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">HEX</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">paint</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;black&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;red&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow&quot;</span><span class="p">:</span> <span class="s2">&quot;3&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blue&quot;</span><span class="p">:</span> <span class="s2">&quot;4&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cyan&quot;</span><span class="p">:</span> <span class="s2">&quot;6&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_gray&quot;</span><span class="p">:</span> <span class="s2">&quot;7&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_gray&quot;</span><span class="p">:</span> <span class="s2">&quot;8&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_red&quot;</span><span class="p">:</span> <span class="s2">&quot;9&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_green&quot;</span><span class="p">:</span> <span class="s2">&quot;10&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_yellow&quot;</span><span class="p">:</span> <span class="s2">&quot;11&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;12&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_magenta&quot;</span><span class="p">:</span> <span class="s2">&quot;13&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_cyan&quot;</span><span class="p">:</span> <span class="s2">&quot;14&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;white&quot;</span><span class="p">:</span> <span class="s2">&quot;15&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_0&quot;</span><span class="p">:</span> <span class="s2">&quot;16&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;navy_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;17&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;18&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blue_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;19&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blue_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;20&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;21&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_green&quot;</span><span class="p">:</span> <span class="s2">&quot;22&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;23&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;24&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_4c&quot;</span><span class="p">:</span> <span class="s2">&quot;25&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dodger_blue_3&quot;</span><span class="p">:</span> <span class="s2">&quot;26&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dodger_blue_2&quot;</span><span class="p">:</span> <span class="s2">&quot;27&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green_4&quot;</span><span class="p">:</span> <span class="s2">&quot;28&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_4&quot;</span><span class="p">:</span> <span class="s2">&quot;29&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;turquoise_4&quot;</span><span class="p">:</span> <span class="s2">&quot;30&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;31&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;32&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dodger_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;33&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;34&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;35&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_cyan&quot;</span><span class="p">:</span> <span class="s2">&quot;36&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_sea_green&quot;</span><span class="p">:</span> <span class="s2">&quot;37&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_2&quot;</span><span class="p">:</span> <span class="s2">&quot;38&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_sky_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;39&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;40&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;41&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_2a&quot;</span><span class="p">:</span> <span class="s2">&quot;42&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cyan_3&quot;</span><span class="p">:</span> <span class="s2">&quot;43&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_turquoise&quot;</span><span class="p">:</span> <span class="s2">&quot;44&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;turquoise_2&quot;</span><span class="p">:</span> <span class="s2">&quot;45&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green_1&quot;</span><span class="p">:</span> <span class="s2">&quot;46&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_2b&quot;</span><span class="p">:</span> <span class="s2">&quot;47&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;spring_green_1&quot;</span><span class="p">:</span> <span class="s2">&quot;48&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_spring_green&quot;</span><span class="p">:</span> <span class="s2">&quot;49&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cyan_2&quot;</span><span class="p">:</span> <span class="s2">&quot;50&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cyan_1&quot;</span><span class="p">:</span> <span class="s2">&quot;51&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_red_1&quot;</span><span class="p">:</span> <span class="s2">&quot;52&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;53&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;purple_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;54&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;purple_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;55&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;purple_3&quot;</span><span class="p">:</span> <span class="s2">&quot;56&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;blue_violet&quot;</span><span class="p">:</span> <span class="s2">&quot;57&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orange_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;58&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_37&quot;</span><span class="p">:</span> <span class="s2">&quot;59&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_4&quot;</span><span class="p">:</span> <span class="s2">&quot;60&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;slate_blue_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;61&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;slate_blue_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;62&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;royal_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;63&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_4&quot;</span><span class="p">:</span> <span class="s2">&quot;64&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;65&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_turquoise_4&quot;</span><span class="p">:</span> <span class="s2">&quot;66&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;steel_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;67&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;steel_blue_3&quot;</span><span class="p">:</span> <span class="s2">&quot;68&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cornflower_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;69&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;70&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;71&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cadet_blue_2&quot;</span><span class="p">:</span> <span class="s2">&quot;72&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cadet_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;73&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sky_blue_3&quot;</span><span class="p">:</span> <span class="s2">&quot;74&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;steel_blue_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;75&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;76&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_green_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;77&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sea_green_3&quot;</span><span class="p">:</span> <span class="s2">&quot;78&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;aquamarine_3&quot;</span><span class="p">:</span> <span class="s2">&quot;79&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_turquoise&quot;</span><span class="p">:</span> <span class="s2">&quot;80&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;steel_blue_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;81&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_2a&quot;</span><span class="p">:</span> <span class="s2">&quot;82&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sea_green_2&quot;</span><span class="p">:</span> <span class="s2">&quot;83&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sea_green_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;84&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sea_green_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;85&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;aquamarine_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;86&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_slate_gray_2&quot;</span><span class="p">:</span> <span class="s2">&quot;87&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_red_2&quot;</span><span class="p">:</span> <span class="s2">&quot;88&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;89&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_magenta_1&quot;</span><span class="p">:</span> <span class="s2">&quot;90&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_magenta_2&quot;</span><span class="p">:</span> <span class="s2">&quot;91&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_violet_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;92&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;purple_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;93&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orange_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;94&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_pink_4&quot;</span><span class="p">:</span> <span class="s2">&quot;95&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;plum_4&quot;</span><span class="p">:</span> <span class="s2">&quot;96&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;97&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;98&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;slate_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;99&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_4a&quot;</span><span class="p">:</span> <span class="s2">&quot;100&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;wheat_4&quot;</span><span class="p">:</span> <span class="s2">&quot;101&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_53&quot;</span><span class="p">:</span> <span class="s2">&quot;102&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_slate_grey&quot;</span><span class="p">:</span> <span class="s2">&quot;103&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple&quot;</span><span class="p">:</span> <span class="s2">&quot;104&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_slate_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;105&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_4b&quot;</span><span class="p">:</span> <span class="s2">&quot;106&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;107&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_green_sea&quot;</span><span class="p">:</span> <span class="s2">&quot;108&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_sky_blue_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;109&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_sky_blue_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;110&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sky_blue_2&quot;</span><span class="p">:</span> <span class="s2">&quot;111&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_2b&quot;</span><span class="p">:</span> <span class="s2">&quot;112&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;113&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_green_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;114&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;115&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_slate_gray_3&quot;</span><span class="p">:</span> <span class="s2">&quot;116&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sky_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;117&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;chartreuse_1&quot;</span><span class="p">:</span> <span class="s2">&quot;118&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_green_2&quot;</span><span class="p">:</span> <span class="s2">&quot;119&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_green_3&quot;</span><span class="p">:</span> <span class="s2">&quot;120&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_green_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;121&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;aquamarine_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;122&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_slate_gray_1&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;red_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;124&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_4c&quot;</span><span class="p">:</span> <span class="s2">&quot;125&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_violet_red&quot;</span><span class="p">:</span> <span class="s2">&quot;126&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;127&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_violet_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;128&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;purple_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;129&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_orange_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;130&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;indian_red_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;131&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hot_pink_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;132&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_orchid_3&quot;</span><span class="p">:</span> <span class="s2">&quot;133&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_orchid&quot;</span><span class="p">:</span> <span class="s2">&quot;134&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_2a&quot;</span><span class="p">:</span> <span class="s2">&quot;135&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_goldenrod&quot;</span><span class="p">:</span> <span class="s2">&quot;136&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_salmon_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;137&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;rosy_brown&quot;</span><span class="p">:</span> <span class="s2">&quot;138&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_63&quot;</span><span class="p">:</span> <span class="s2">&quot;139&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_2b&quot;</span><span class="p">:</span> <span class="s2">&quot;140&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_purple_1&quot;</span><span class="p">:</span> <span class="s2">&quot;141&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gold_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;142&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_khaki&quot;</span><span class="p">:</span> <span class="s2">&quot;143&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;navajo_white_3&quot;</span><span class="p">:</span> <span class="s2">&quot;144&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_69&quot;</span><span class="p">:</span> <span class="s2">&quot;145&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_steel_blue_3&quot;</span><span class="p">:</span> <span class="s2">&quot;146&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_steel_blue&quot;</span><span class="p">:</span> <span class="s2">&quot;147&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;148&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_3&quot;</span><span class="p">:</span> <span class="s2">&quot;149&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;150&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_2&quot;</span><span class="p">:</span> <span class="s2">&quot;151&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_cyan_3&quot;</span><span class="p">:</span> <span class="s2">&quot;152&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_sky_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;153&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;green_yellow&quot;</span><span class="p">:</span> <span class="s2">&quot;154&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_2&quot;</span><span class="p">:</span> <span class="s2">&quot;155&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_green_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;156&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_5b&quot;</span><span class="p">:</span> <span class="s2">&quot;157&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_5a&quot;</span><span class="p">:</span> <span class="s2">&quot;158&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_turquoise_1&quot;</span><span class="p">:</span> <span class="s2">&quot;159&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;red_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;160&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_3a&quot;</span><span class="p">:</span> <span class="s2">&quot;161&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;162&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;163&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_3c&quot;</span><span class="p">:</span> <span class="s2">&quot;164&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_2a&quot;</span><span class="p">:</span> <span class="s2">&quot;165&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_orange_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;166&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;indian_red_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;167&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hot_pink_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;168&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hot_pink_2&quot;</span><span class="p">:</span> <span class="s2">&quot;169&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orchid&quot;</span><span class="p">:</span> <span class="s2">&quot;170&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_orchid_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;171&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orange_3&quot;</span><span class="p">:</span> <span class="s2">&quot;172&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_salmon_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;173&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_pink_3&quot;</span><span class="p">:</span> <span class="s2">&quot;174&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pink_3&quot;</span><span class="p">:</span> <span class="s2">&quot;175&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;plum_3&quot;</span><span class="p">:</span> <span class="s2">&quot;176&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;violet&quot;</span><span class="p">:</span> <span class="s2">&quot;177&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gold_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;178&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_goldenrod_3&quot;</span><span class="p">:</span> <span class="s2">&quot;179&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;tan&quot;</span><span class="p">:</span> <span class="s2">&quot;180&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;misty_rose_3&quot;</span><span class="p">:</span> <span class="s2">&quot;181&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;thistle_3&quot;</span><span class="p">:</span> <span class="s2">&quot;182&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;plum_2&quot;</span><span class="p">:</span> <span class="s2">&quot;183&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_3b&quot;</span><span class="p">:</span> <span class="s2">&quot;184&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;khaki_3&quot;</span><span class="p">:</span> <span class="s2">&quot;185&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_goldenrod_2a&quot;</span><span class="p">:</span> <span class="s2">&quot;186&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_yellow_3&quot;</span><span class="p">:</span> <span class="s2">&quot;187&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_84&quot;</span><span class="p">:</span> <span class="s2">&quot;188&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_steel_blue_1&quot;</span><span class="p">:</span> <span class="s2">&quot;189&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_2&quot;</span><span class="p">:</span> <span class="s2">&quot;190&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;191&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_olive_green_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;192&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_sea_green_1&quot;</span><span class="p">:</span> <span class="s2">&quot;193&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;honeydew_2&quot;</span><span class="p">:</span> <span class="s2">&quot;194&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_cyan_1&quot;</span><span class="p">:</span> <span class="s2">&quot;195&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;red_1&quot;</span><span class="p">:</span> <span class="s2">&quot;196&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_2&quot;</span><span class="p">:</span> <span class="s2">&quot;197&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;198&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;deep_pink_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;199&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_2b&quot;</span><span class="p">:</span> <span class="s2">&quot;200&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;magenta_1&quot;</span><span class="p">:</span> <span class="s2">&quot;201&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orange_red_1&quot;</span><span class="p">:</span> <span class="s2">&quot;202&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;indian_red_1c&quot;</span><span class="p">:</span> <span class="s2">&quot;203&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;indian_red_1d&quot;</span><span class="p">:</span> <span class="s2">&quot;204&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hot_pink_1a&quot;</span><span class="p">:</span> <span class="s2">&quot;205&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;hot_pink_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;206&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;medium_orchid_1b&quot;</span><span class="p">:</span> <span class="s2">&quot;207&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;dark_orange&quot;</span><span class="p">:</span> <span class="s2">&quot;208&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;salmon_1&quot;</span><span class="p">:</span> <span class="s2">&quot;209&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_coral&quot;</span><span class="p">:</span> <span class="s2">&quot;210&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pale_violet_red_1&quot;</span><span class="p">:</span> <span class="s2">&quot;211&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orchid_2&quot;</span><span class="p">:</span> <span class="s2">&quot;212&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orchid_1&quot;</span><span class="p">:</span> <span class="s2">&quot;213&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;orange_1&quot;</span><span class="p">:</span> <span class="s2">&quot;214&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sandy_brown&quot;</span><span class="p">:</span> <span class="s2">&quot;215&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_salmon_1&quot;</span><span class="p">:</span> <span class="s2">&quot;216&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_pink_1&quot;</span><span class="p">:</span> <span class="s2">&quot;217&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;pink_1&quot;</span><span class="p">:</span> <span class="s2">&quot;218&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;plum_1&quot;</span><span class="p">:</span> <span class="s2">&quot;219&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;gold_1&quot;</span><span class="p">:</span> <span class="s2">&quot;220&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_goldenrod_2b&quot;</span><span class="p">:</span> <span class="s2">&quot;221&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_goldenrod_2c&quot;</span><span class="p">:</span> <span class="s2">&quot;222&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;navajo_white_1&quot;</span><span class="p">:</span> <span class="s2">&quot;223&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;misty_rose1&quot;</span><span class="p">:</span> <span class="s2">&quot;224&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;thistle_1&quot;</span><span class="p">:</span> <span class="s2">&quot;225&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;yellow_1&quot;</span><span class="p">:</span> <span class="s2">&quot;226&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;light_goldenrod_1&quot;</span><span class="p">:</span> <span class="s2">&quot;227&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;khaki_1&quot;</span><span class="p">:</span> <span class="s2">&quot;228&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;wheat_1&quot;</span><span class="p">:</span> <span class="s2">&quot;229&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;cornsilk_1&quot;</span><span class="p">:</span> <span class="s2">&quot;230&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_100&quot;</span><span class="p">:</span> <span class="s2">&quot;231&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_3&quot;</span><span class="p">:</span> <span class="s2">&quot;232&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_7&quot;</span><span class="p">:</span> <span class="s2">&quot;233&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_11&quot;</span><span class="p">:</span> <span class="s2">&quot;234&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_15&quot;</span><span class="p">:</span> <span class="s2">&quot;235&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_19&quot;</span><span class="p">:</span> <span class="s2">&quot;236&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_23&quot;</span><span class="p">:</span> <span class="s2">&quot;237&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_27&quot;</span><span class="p">:</span> <span class="s2">&quot;238&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_30&quot;</span><span class="p">:</span> <span class="s2">&quot;239&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_35&quot;</span><span class="p">:</span> <span class="s2">&quot;240&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_39&quot;</span><span class="p">:</span> <span class="s2">&quot;241&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_42&quot;</span><span class="p">:</span> <span class="s2">&quot;242&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_46&quot;</span><span class="p">:</span> <span class="s2">&quot;243&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_50&quot;</span><span class="p">:</span> <span class="s2">&quot;244&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_54&quot;</span><span class="p">:</span> <span class="s2">&quot;245&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_58&quot;</span><span class="p">:</span> <span class="s2">&quot;246&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_62&quot;</span><span class="p">:</span> <span class="s2">&quot;247&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_66&quot;</span><span class="p">:</span> <span class="s2">&quot;248&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_70&quot;</span><span class="p">:</span> <span class="s2">&quot;249&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_74&quot;</span><span class="p">:</span> <span class="s2">&quot;250&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_78&quot;</span><span class="p">:</span> <span class="s2">&quot;251&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_82&quot;</span><span class="p">:</span> <span class="s2">&quot;252&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_85&quot;</span><span class="p">:</span> <span class="s2">&quot;253&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_89&quot;</span><span class="p">:</span> <span class="s2">&quot;254&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;grey_93&quot;</span><span class="p">:</span> <span class="s2">&quot;255&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set or reset attributes&quot;&quot;&quot;</span>
+
+        <span class="n">paint</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;bold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;1&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;1&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;dim&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;2&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;2&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;underlined&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;4&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;4&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;blink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;5&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">5</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;5&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;reverse&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;7&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">7</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;7&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;hidden&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;8&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">8</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;8&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;reset&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;0&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">0</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;0&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_bold&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;21&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">21</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;21&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_dim&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;22&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">22</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;22&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_underlined&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;24&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">24</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;24&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_blink&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;25&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">25</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;25&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_reverse&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;27&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">27</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;27&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="s2">&quot;res_hidden&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;28&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+            <span class="mi">28</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;28&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">paint</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">foreground</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print 256 foreground colors&quot;&quot;&quot;</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;38;5;&quot;</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reverse_dict</span><span class="p">()</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reserve_paint</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="p">[</span><span class="n">color</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">HEX</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+
+    <span class="k">def</span> <span class="nf">background</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print 256 background colors&quot;&quot;&quot;</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ESC</span> <span class="o">+</span> <span class="s2">&quot;48;5;&quot;</span>
+        <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reverse_dict</span><span class="p">()</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reserve_paint</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">)]</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="p">[</span><span class="n">color</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">HEX</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">code</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">color</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">END</span>
+
+    <span class="k">def</span> <span class="nf">reverse_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;reverse dictionary&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reserve_paint</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">paint</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+
+
+<div class="viewcode-block" id="attr"><a class="viewcode-back" href="../../fenics_mpm.html#fenics_mpm.attr">[docs]</a><span class="k">def</span> <span class="nf">attr</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;alias for colored().attribute()&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">colored</span><span class="p">(</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">attribute</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="fg"><a class="viewcode-back" href="../../fenics_mpm.html#fenics_mpm.fg">[docs]</a><span class="k">def</span> <span class="nf">fg</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;alias for colored().foreground()&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">colored</span><span class="p">(</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">foreground</span><span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">bg</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;alias for colored().background()&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">colored</span><span class="p">(</span><span class="n">color</span><span class="p">)</span><span class="o">.</span><span class="n">background</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">stylize</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">styles</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;conveniently styles your text as and resets ANSI codes at its end.&quot;&quot;&quot;</span>
+    <span class="n">terminator</span> <span class="o">=</span> <span class="n">attr</span><span class="p">(</span><span class="s2">&quot;reset&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">reset</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}{}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">styles</span><span class="p">),</span> <span class="n">text</span><span class="p">,</span> <span class="n">terminator</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_c0wrap</span><span class="p">(</span><span class="n">styles</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;wrap a set of ANSI styles in C0 control codes for readline safety.&quot;&quot;&quot;</span>
+    <span class="n">C0_SOH</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\x01</span><span class="s1">&#39;</span>   <span class="c1"># mark the beginning of nonprinting characters</span>
+    <span class="n">C0_STX</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\x02</span><span class="s1">&#39;</span>   <span class="c1"># mark the end of nonprinting characters</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}{}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">C0_SOH</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">styles</span><span class="p">),</span> <span class="n">C0_STX</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">stylize_interactive</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">styles</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;stylize() variant that adds C0 control codes (SOH/STX) for readline</span>
+<span class="sd">    safety.&quot;&quot;&quot;</span>
+    <span class="c1"># problem: readline includes bare ANSI codes in width calculations.</span>
+    <span class="c1"># solution: wrap nonprinting codes in SOH/STX when necessary.</span>
+    <span class="c1"># see: https://gitlab.com/dslackw/colored/issues/5</span>
+    <span class="n">terminator</span> <span class="o">=</span> <span class="n">_c0wrap</span><span class="p">(</span><span class="n">attr</span><span class="p">(</span><span class="s2">&quot;reset&quot;</span><span class="p">))</span> <span class="k">if</span> <span class="n">reset</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}{}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_c0wrap</span><span class="p">(</span><span class="n">styles</span><span class="p">),</span> <span class="n">text</span><span class="p">,</span> <span class="n">terminator</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../material.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gridmodel.html">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

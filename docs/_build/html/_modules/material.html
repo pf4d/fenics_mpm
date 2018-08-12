@@ -1,0 +1,531 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>material &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for material</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: iso-8859-15 -*-</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span>                  <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span>      <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span>   <span class="nn">fenics_mpm.helper</span>      <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">raiseNotDefined</span>
+<span class="kn">from</span>   <span class="nn">fenics_mpm</span>             <span class="k">import</span> <span class="n">mpm_module</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="Material"><a class="viewcode-back" href="../material.html#material.Material">[docs]</a><span class="k">class</span> <span class="nc">Material</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Representation of an abstract material with initial conditions given by the </span>
+<span class="sd">  parameters length :math:`n_p` :class:`~numpy.ndarray` vectors ``m``, ``x`` </span>
+<span class="sd">  and ``u``.</span>
+
+<span class="sd">  :param x: particle position vector :math:`\mathbf{x}_p`</span>
+<span class="sd">  :param u: particle velocity vector :math:`\mathbf{u}_p`</span>
+<span class="sd">  :param m: particle mass vector :math:`\mathbf{m}_p`</span>
+<span class="sd">  :param V: particle volume vector :math:`\mathbf{V}_p`</span>
+<span class="sd">  :param rho: particle density :math:`\rho`</span>
+<span class="sd">  :type x: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type u: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type m: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type V: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type rho: float</span>
+
+<span class="sd">  In creation of this class, a number of particle state paramters are initialized.  These are:</span>
+
+<span class="sd">  * ``self.n``        -- number of particles :math:`n_p`</span>
+<span class="sd">  * ``self.d``        -- topological dimension :math:`d`</span>
+<span class="sd">  * ``self.m``        -- :math:`n_p \times 1` mass vector :math:`\mathbf{m}_p`</span>
+<span class="sd">  * ``self.x``        -- :math:`n_p \times d` position vector :math:`\mathbf{x}_p`</span>
+<span class="sd">  * ``self.u``        -- :math:`n_p \times d` velocity vector :math:`\mathbf{u}_p`</span>
+<span class="sd">  * ``self.a``        -- :math:`n_p \times d` acceleration vector :math:`\mathbf{a}_p`</span>
+<span class="sd">  * ``self.grad_u``   -- :math:`n_p \times (d \times d)` velocity gradient tensors :math:`\nabla \mathbf{u}_p`</span>
+<span class="sd">  * ``self.vrt``      -- :math:`n_p \times n_n` grid nodal indicies for points :math:`i`</span>
+<span class="sd">  * ``self.phi``      -- :math:`n_p \times n_n` grid basis values at points :math:`\phi(\mathbf{x}_p)`</span>
+<span class="sd">  * ``self.grad_phi`` -- :math:`n_p \times (n_n \times d)` grid basis gradient tensors at points :math:`\nabla \phi_i(\mathbf{x}_p)`</span>
+<span class="sd">  * ``self.rho0``     -- :math:`n_p \times 1` initial density vector :math:`\rho_p^0`</span>
+<span class="sd">  * ``self.rho``      -- :math:`n_p \times 1` density vector :math:`\rho_p^t`</span>
+<span class="sd">  * ``self.V0``       -- :math:`n_p \times 1` initial volume vector :math:`V_p^0`</span>
+<span class="sd">  * ``self.V``        -- :math:`n_p \times 1` volume vector :math:`V_p`</span>
+<span class="sd">  * ``self.F``        -- :math:`n_p \times (d \times d)` deformation gradient tensors :math:`F_p`</span>
+<span class="sd">  * ``self.sigma``    -- :math:`n_p \times (d \times d)` stress tensors :math:`\sigma_p`</span>
+<span class="sd">  * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`</span>
+<span class="sd">  * ``self.I``        -- :math:`n_p \times (d \times d)` identity tensors :math:`I`</span>
+<span class="sd">  * ``self.vrt``      -- :math:`n_p \times n_v` nodal vertex indices for each particle</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">V</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">this</span>     <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="p">)</span>  <span class="c1"># pointer to this base class</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span>     <span class="o">=</span> <span class="n">name</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING BASE MATERIAL `</span><span class="si">%s</span><span class="s2">` :::&quot;</span> <span class="o">%</span> <span class="n">name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="k">if</span>     <span class="p">(</span><span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">rho</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">V</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> \
+        <span class="ow">or</span> <span class="p">(</span><span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">rho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">V</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)):</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;&gt;&gt;&gt; MATERIALS ARE CREATED EITHER WITH MASS VECTOR `m` OR WITH A &quot;</span> \
+          <span class="s2">&quot;DENSITY `rho` AND VOLUME VECTOR `V` &lt;&lt;&lt;&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span> <span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># cpp arguments, if needed these are set in child classes</span>
+    <span class="c1"># (find example child classes after this class) :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cpp_args</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">n</span>        <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span><span class="mi">0</span><span class="p">])</span>        <span class="c1"># number of particles</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">d</span>        <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>          <span class="c1"># topological dimension</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span>        <span class="o">=</span> <span class="n">x</span>                  <span class="c1"># position vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">u</span>        <span class="o">=</span> <span class="n">u</span>                  <span class="c1"># velocity vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">m</span>        <span class="o">=</span> <span class="n">m</span>                  <span class="c1"># mass vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>      <span class="o">=</span> <span class="n">rho</span>                <span class="c1"># density vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span>     <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># initial density vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">V</span>        <span class="o">=</span> <span class="n">V</span>                  <span class="c1"># volume vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">V0</span>       <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># initial volume vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">a</span>        <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># acceleration vector</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u</span>   <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># velocity gradient tensor</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vrt</span>      <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># grid nodal indicies for points</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">phi</span>      <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># grid basis values at points</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi</span> <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># grid basis gradient values at points</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F</span>        <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># deformation gradient tensor</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>    <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># stress tensor</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span>  <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># strain-rate tensor</span>
+
+    <span class="c1"># identity tensors :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">I</span>        <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+    
+<div class="viewcode-block" id="Material.cpp_module"><a class="viewcode-back" href="../material.html#material.Material.cpp_module">[docs]</a>  <span class="k">def</span> <span class="nf">cpp_module</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the appropriate cpp module to instantiate this material.</span>
+
+<span class="sd">    This method must be implemented by child classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">raiseNotDefined</span><span class="p">()</span></div>
+  
+<div class="viewcode-block" id="Material.get_cpp_material"><a class="viewcode-back" href="../material.html#material.Material.get_cpp_material">[docs]</a>  <span class="k">def</span> <span class="nf">get_cpp_material</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    instantiate and return the cpp module for this material with element type</span>
+<span class="sd">    ``element``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create the underlying C++ code representation :</span>
+    <span class="n">mod</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cpp_module</span><span class="p">()(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> 
+                            <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">u</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span>
+                            <span class="n">element</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_args</span><span class="p">)</span>
+
+    <span class="c1"># if the material has been initialized with a mass vector :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">mod</span><span class="o">.</span><span class="n">set_initialized_by_mass</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+      <span class="n">mod</span><span class="o">.</span><span class="n">initialize_mass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">)</span>
+
+    <span class="c1"># otherwise, the material has been initialized with a constant density :</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">V</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+      <span class="n">mod</span><span class="o">.</span><span class="n">set_initialized_by_mass</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+      <span class="n">mod</span><span class="o">.</span><span class="n">initialize_volume</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">V</span><span class="p">)</span>
+      <span class="n">mod</span><span class="o">.</span><span class="n">initialize_mass_from_density</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rho</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mod</span></div>
+
+<div class="viewcode-block" id="Material.set_cpp_material"><a class="viewcode-back" href="../material.html#material.Material.set_cpp_material">[docs]</a>  <span class="k">def</span> <span class="nf">set_cpp_material</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cpp_mat</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Instantiante the C++ code object ``self.cpp_mat`` for this material</span>
+<span class="sd">    to ``cpp_mat``.</span>
+<span class="sd">    </span>
+<span class="sd">    :param element: The FEniCS element used.</span>
+<span class="sd">    :type element: :class:`~ufl.finiteelement.finiteelement.FiniteElement`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span> <span class="o">=</span> <span class="n">cpp_mat</span> </div>
+
+<div class="viewcode-block" id="Material.color"><a class="viewcode-back" href="../material.html#material.Material.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The color used for printing messages to the screen.</span>
+
+<span class="sd">    :rtype: string</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="s1">&#39;148&#39;</span></div>
+
+<div class="viewcode-block" id="Material.calculate_strain_rate"><a class="viewcode-back" href="../material.html#material.Material.calculate_strain_rate">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_strain_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the particle strain-rate tensor</span>
+<span class="sd">    </span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \dot{\epsilon}_p = \frac{1}{2} \left( \nabla \mathbf{u}_p + \left( \nabla \mathbf{u}_p \right)^{\intercal} \right)</span>
+
+<span class="sd">    from particle velocity :math:`\mathbf{u}_p`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">epsilon_n</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># calculate particle strain-rate tensors :</span>
+    <span class="k">for</span> <span class="n">grad_u_p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_u</span><span class="p">:</span>
+      <span class="n">dudx</span>   <span class="o">=</span> <span class="n">grad_u_p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+      <span class="n">dudy</span>   <span class="o">=</span> <span class="n">grad_u_p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+      <span class="n">dvdx</span>   <span class="o">=</span> <span class="n">grad_u_p</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+      <span class="n">dvdy</span>   <span class="o">=</span> <span class="n">grad_u_p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+      <span class="n">eps_xx</span> <span class="o">=</span> <span class="n">dudx</span>
+      <span class="n">eps_xy</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">dudy</span> <span class="o">+</span> <span class="n">dvdx</span><span class="p">)</span>
+      <span class="n">eps_yy</span> <span class="o">=</span> <span class="n">dvdy</span>
+      <span class="n">eps</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="p">[</span><span class="n">eps_xx</span><span class="p">,</span> <span class="n">eps_xy</span><span class="p">,</span> <span class="n">eps_xy</span><span class="p">,</span> <span class="n">eps_yy</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span> <span class="p">)</span>
+      <span class="n">epsilon_n</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">epsilon_n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.calculate_stress"><a class="viewcode-back" href="../material.html#material.Material.calculate_stress">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method must be implemented by child classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">raiseNotDefined</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Material.plot"><a class="viewcode-back" href="../material.html#material.Material.plot">[docs]</a>  <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot the positions of each particle with coordinates ``self.X`` to the </span>
+<span class="sd">    screen.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[:,</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[:,</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;r*&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_vrt"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_vrt">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_vrt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the nodal indices at each particle&#39;s position from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vrt_1</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_vrt_1</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vrt_2</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_vrt_2</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vrt_3</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_vrt_3</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">vrt_4</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_vrt_4</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_phi"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_phi">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_phi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the grid basis function values evaluated at each particle&#39;s current position from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">phi_1</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_phi_1</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">phi_2</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_phi_2</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">phi_3</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_phi_3</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">phi_4</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_phi_4</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_grad_phi"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_grad_phi">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grad_phi</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle basis function gradient values from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_1x</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_1x</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_1y</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_1y</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_1z</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_1z</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_2x</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_2x</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_2y</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_2y</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_2z</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_2z</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_3x</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_3x</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_3y</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_3y</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_3z</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_3z</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_4x</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_4x</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_4y</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_4y</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi_4z</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_phi_4z</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_grad_u"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_grad_u">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grad_u</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle velocity gradient from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_xx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_xy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_xz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_xz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_yx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_yx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_yy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_zx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_zx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_zy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_zy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad_u_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_grad_u_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_x"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_x">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_x</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle position vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_x</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_y</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_z</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_u"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_u">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_u</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle velocity vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">u_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_u_x</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">u_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_u_y</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">u_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_u_z</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_a"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_a">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_a</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle acceleration vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">a_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_a_x</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">a_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_a_y</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">a_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_a_z</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_F"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_F">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_F</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle deformation gradient from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_xx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_xy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_xz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_xz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_yx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_yx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_yy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_zx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_zx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_zy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_zy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">F_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_F_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_epsilon"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_epsilon">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_epsilon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle strain tensor from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_xx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_xy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_xz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_xz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_yy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_sigma"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_sigma">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle stress tensor from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_xx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_xy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_xz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_xz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_yy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sigma_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_sigma_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Material.retrieve_cpp_rho0"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_rho0">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_rho0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the initial particle density vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_rho0</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="Material.retrieve_cpp_rho"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_rho">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_rho</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the current particle density vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">rho</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_rho</span><span class="p">(),</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_V"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_V">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_V</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the current particle volume vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">V</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_V</span><span class="p">(),</span>    <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Material.retrieve_cpp_V0"><a class="viewcode-back" href="../material.html#material.Material.retrieve_cpp_V0">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_V0</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the initial particle volume vector from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">V0</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_V0</span><span class="p">(),</span>   <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="ElasticMaterial"><a class="viewcode-back" href="../material.html#material.ElasticMaterial">[docs]</a><span class="k">class</span> <span class="nc">ElasticMaterial</span><span class="p">(</span><span class="n">Material</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Representation of an elastic material with initial conditions given by the </span>
+<span class="sd">  parameters ``m``, ``x``, ``u``, ``E``, and ``nu``.</span>
+
+<span class="sd">  :param m: particle mass vector :math:`\mathbf{m}_p`</span>
+<span class="sd">  :param x: particle position vector :math:`\mathbf{x}_p`</span>
+<span class="sd">  :param u: particle velocity vector :math:`\mathbf{u}_p`</span>
+<span class="sd">  :param E: Young&#39;s modulus :math:`E`</span>
+<span class="sd">  :param nu: Poisson&#39;s ratio :math:`\nu`</span>
+<span class="sd">  :type m: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type x: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type u: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type E: float</span>
+<span class="sd">  :type nu: float</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">E</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">V</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING ELASTIC MATERIAL `</span><span class="si">%s</span><span class="s2">` :::&quot;</span> <span class="o">%</span> <span class="n">name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">Material</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">V</span><span class="p">,</span> <span class="n">rho</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">E</span>        <span class="o">=</span> <span class="n">E</span>         <span class="c1"># Young&#39;s modulus</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">nu</span>       <span class="o">=</span> <span class="n">nu</span>        <span class="c1"># Poisson&#39;s ratio</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">cpp_args</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">E</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nu</span><span class="p">}</span>
+
+    <span class="c1"># LamÃ© parameters :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>       <span class="o">=</span> <span class="n">E</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">nu</span><span class="p">))</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">lmbda</span>    <span class="o">=</span> <span class="n">E</span><span class="o">*</span><span class="n">nu</span> <span class="o">/</span> <span class="p">((</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">nu</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">nu</span><span class="p">))</span>
+  
+<div class="viewcode-block" id="ElasticMaterial.cpp_module"><a class="viewcode-back" href="../material.html#material.ElasticMaterial.cpp_module">[docs]</a>  <span class="k">def</span> <span class="nf">cpp_module</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the appropriate cpp module to instantiate this material.</span>
+
+<span class="sd">    This method must be implemented by child classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create the underlying C++ code representation :</span>
+    <span class="k">return</span> <span class="n">mpm_module</span><span class="o">.</span><span class="n">MPMElasticMaterial</span></div>
+
+<div class="viewcode-block" id="ElasticMaterial.color"><a class="viewcode-back" href="../material.html#material.ElasticMaterial.color">[docs]</a>  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;150&#39;</span></div>
+
+<div class="viewcode-block" id="ElasticMaterial.calculate_stress"><a class="viewcode-back" href="../material.html#material.ElasticMaterial.calculate_stress">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate elastic particle-Cauchy-stress tensor</span>
+<span class="sd">    </span>
+<span class="sd">    .. math::</span>
+
+<span class="sd">      \sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I</span>
+
+<span class="sd">    with LamÃ© parameters :math:`\mu` and :math:`\lambda`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># calculate particle stress :</span>
+    <span class="k">for</span> <span class="n">epsilon_p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span><span class="p">:</span>
+      <span class="c1">#sigma =  2.0*self.mu*eps + self.lmbda*tr(eps)*Identity(self.dim)</span>
+      <span class="n">trace_eps</span>  <span class="o">=</span> <span class="n">epsilon_p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">epsilon_p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+      <span class="n">c1</span>         <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">mu</span>
+      <span class="n">c2</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lmbda</span> <span class="o">*</span> <span class="n">trace_eps</span>
+      <span class="n">sig_xx</span>     <span class="o">=</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">epsilon_p</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">c2</span>
+      <span class="n">sig_xy</span>     <span class="o">=</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">epsilon_p</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> 
+      <span class="n">sig_yy</span>     <span class="o">=</span> <span class="n">c1</span> <span class="o">*</span> <span class="n">epsilon_p</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="n">c2</span>
+      <span class="n">sigma_p</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="p">[</span><span class="n">sig_xx</span><span class="p">,</span> <span class="n">sig_xy</span><span class="p">,</span> <span class="n">sig_xy</span><span class="p">,</span> <span class="n">sig_yy</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span> <span class="p">)</span>
+      <span class="n">sigma</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigma_p</span><span class="p">)</span>
+    
+    <span class="c1"># return particle Cauchy stress tensors :</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div></div>
+
+
+
+
+<span class="k">class</span> <span class="nc">ImpenetrableMaterial</span><span class="p">(</span><span class="n">Material</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  Representation of an impenetrable boundary with initial conditions given by the </span>
+<span class="sd">  parameters ``m``, ``x``, and ``u``.</span>
+
+<span class="sd">  :param m: particle mass vector :math:`\mathbf{m}_p`</span>
+<span class="sd">  :param x: particle position vector :math:`\mathbf{x}_p`</span>
+<span class="sd">  :param u: particle velocity vector :math:`\mathbf{u}_p`</span>
+<span class="sd">  :type m: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type x: :class:`~numpy.ndarray`</span>
+<span class="sd">  :type u: :class:`~numpy.ndarray`</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">V</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rho</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING IMPENETRABLE MATERIAL `</span><span class="si">%s</span><span class="s2">` :::&quot;</span> <span class="o">%</span> <span class="n">name</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="n">Material</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">V</span><span class="p">,</span> <span class="n">rho</span><span class="p">)</span>
+  
+  <span class="k">def</span> <span class="nf">cpp_module</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    return the appropriate cpp module to instantiate this material.</span>
+
+<span class="sd">    This method must be implemented by child classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># create the underlying C++ code representation :</span>
+    <span class="k">return</span> <span class="n">mpm_module</span><span class="o">.</span><span class="n">MPMImpenetrableMaterial</span>
+
+  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;150&#39;</span>
+
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../material.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gridmodel.html">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

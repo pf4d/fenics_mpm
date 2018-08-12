@@ -1,0 +1,7 @@
+fenics\_mpm.model module
+========================
+
+.. automodule:: fenics_mpm.model
+    :members:
+    :undoc-members:
+    :show-inheritance:

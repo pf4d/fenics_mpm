@@ -1,0 +1,705 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>model &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for model</h1><div class="highlight"><pre>
+<span></span><span class="c1"># -*- coding: iso-8859-15 -*-</span>
+
+<span class="kn">from</span>   <span class="nn">fenics_mpm</span>          <span class="k">import</span> <span class="n">mpm_module</span>
+<span class="kn">from</span>   <span class="nn">fenics_mpm.helper</span>   <span class="k">import</span> <span class="n">print_text</span><span class="p">,</span> <span class="n">get_text</span><span class="p">,</span> <span class="n">print_min_max</span>
+<span class="kn">from</span>   <span class="nn">time</span>                <span class="k">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="nn">dolfin</span>                  <span class="k">as</span> <span class="nn">dol</span>
+<span class="kn">import</span> <span class="nn">numpy</span>                   <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="Model"><a class="viewcode-back" href="../model.html#model.Model">[docs]</a><span class="k">class</span> <span class="nc">Model</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+  <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  A model which links a :class:`~gridmodel.GridModel` to a set of :class:`~material.Material`\s; the material point method algorithm.</span>
+
+<span class="sd">  :param out_dir: directory to save results, defalult is ``./output/``.  Currently not used by this class.</span>
+<span class="sd">  :param grid_model: the finite-element model instance.</span>
+<span class="sd">  :param dt: the timestep :math:`\Delta t`.</span>
+<span class="sd">  :type out_dir: string</span>
+<span class="sd">  :type grid_model: :class:`~gridmodel.GridModel`</span>
+<span class="sd">  :type dt: float</span>
+
+<span class="sd">  The instantiation of this class creates the following class variables :</span>
+
+<span class="sd">  * ``self.grid_model`` -- the :class:`~gridmodel.GridModel` instance for this problem</span>
+<span class="sd">  * ``self.dt`` -- the time-step :math:`\Delta t` to use</span>
+<span class="sd">  * ``self.materials`` -- an initially empty :py:obj:`list` of materials</span>
+<span class="sd">  &quot;&quot;&quot;</span>
+
+  <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">,</span> <span class="n">grid_model</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class connects the grid to each material.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">this</span> <span class="o">=</span> <span class="bp">self</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING MPM MODEL :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">out_dir</span>    <span class="o">=</span> <span class="n">out_dir</span>      <span class="c1"># output directory</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span> <span class="o">=</span> <span class="n">grid_model</span>   <span class="c1"># grid model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>         <span class="o">=</span> <span class="n">dt</span>           <span class="c1"># time step</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">t</span>          <span class="o">=</span> <span class="kc">None</span>         <span class="c1"># starting time, set by self.mpm()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">iter</span>       <span class="o">=</span> <span class="mi">0</span>            <span class="c1"># the timestep iteration</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span>    <span class="o">=</span> <span class="n">verbose</span>      <span class="c1"># print stuff or not</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">materials</span>  <span class="o">=</span> <span class="p">[]</span>           <span class="c1"># list of Material objects, initially none</span>
+    
+    <span class="c1"># create an MPMMaterial instance from the module just created :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span> <span class="o">=</span> <span class="n">mpm_module</span><span class="o">.</span><span class="n">MPMModel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">dofs</span><span class="p">,</span>
+                                       <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;intc&#39;</span><span class="p">),</span>
+                                       <span class="n">dt</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="c1"># intialize the cell diameter :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">set_h</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">())</span>
+    
+    <span class="c1"># intialize the cell volume :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">set_V</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Ve</span><span class="o">.</span><span class="n">vector</span><span class="p">()</span><span class="o">.</span><span class="n">get_local</span><span class="p">())</span>
+  
+    <span class="c1"># TODO: set the boundary conditions for C++ code :</span>
+    <span class="c1">#self.set_boundary_conditions()</span>
+  
+  <span class="k">def</span> <span class="nf">color</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;cyan&#39;</span>
+
+<div class="viewcode-block" id="Model.add_material"><a class="viewcode-back" href="../model.html#model.Model.add_material">[docs]</a>  <span class="k">def</span> <span class="nf">add_material</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Add :class:`~material.Material` ``M`` to the list of materials ``self.materials``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: ADDING MATERIAL :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="n">cpp_mat</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">get_cpp_material</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">element</span><span class="p">)</span>
+    <span class="n">M</span><span class="o">.</span><span class="n">set_cpp_material</span><span class="p">(</span><span class="n">cpp_mat</span><span class="p">)</span>           <span class="c1"># give the material a cpp class</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">add_material</span><span class="p">(</span><span class="n">cpp_mat</span><span class="p">)</span>    <span class="c1"># add it to MPMModel.cpp</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>              <span class="c1"># keep track in Python</span></div>
+
+<div class="viewcode-block" id="Model.set_boundary_conditions"><a class="viewcode-back" href="../model.html#model.Model.set_boundary_conditions">[docs]</a>  <span class="k">def</span> <span class="nf">set_boundary_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">set_boundary_conditions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">bc_vrt</span><span class="p">,</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">bc_val</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.formulate_material_basis_functions"><a class="viewcode-back" href="../model.html#model.Model.formulate_material_basis_functions">[docs]</a>  <span class="k">def</span> <span class="nf">formulate_material_basis_functions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each particle for each material ``M`` in :py:obj:`list` ``self.materials`` and calculate the particle interpolation function :math:`\phi_i(\mathbf{x}_p)` and gradient function :math:`\nabla \phi_i(\mathbf{x}_p)` values for each of the :math:`n_n` nodes of the corresponding grid cell.  This overwrites each :class:`~material.Material`\s ``M.vrt``, ``M.phi``, and ``M.grad_phi`` values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: FORMULATING BASIS FUNCTIONS :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">formulate_material_basis_functions</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.interpolate_material_mass_to_grid"><a class="viewcode-back" href="../model.html#model.Model.interpolate_material_mass_to_grid">[docs]</a>  <span class="k">def</span> <span class="nf">interpolate_material_mass_to_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and interpolate the :math:`p=1,2,\ldots,n_p` particle masses :math:`m_p` given by ``M.m`` to the :class:`~gridmodel.GridModel` instance ``self.grid_model.m``.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      m_i = \sum_{p=1}^{n_p} \phi_p(\mathbf{x}_p) m_p</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INTERPOLATING MATERIAL MASS TO GRID  :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">interpolate_material_mass_to_grid</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.interpolate_material_velocity_to_grid"><a class="viewcode-back" href="../model.html#model.Model.interpolate_material_velocity_to_grid">[docs]</a>  <span class="k">def</span> <span class="nf">interpolate_material_velocity_to_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and interpolate the :math:`p=1,2,\ldots,n_p` particle velocity vectors :math:`\mathbf{u}_p` given by ``M.u`` to the :class:`~gridmodel.GridModel` instance ``self.grid_model.U3``.  In order to conserve velocity, weight by particle weight fraction :math:`m_p / m_i` for each :math:`i = 1,2,\ldots,n_n` nodes.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{u}_i = \sum_{p=1}^{n_p} \frac{m_p}{m_i} \phi_p(\mathbf{x}_p) \mathbf{u}_p</span>
+
+<span class="sd">    Note that this requires that :math:`m_i` be calculated by calling :meth:`~model.Model.interpolate_material_mass_to_grid`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INTERPOLATING MATERIAL VELOCITY TO GRID :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">interpolate_material_velocity_to_grid</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_material_initial_mass"><a class="viewcode-back" href="../model.html#model.Model.calculate_material_initial_mass">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_material_initial_mass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle masses :math:`m_p` given by ``M.m`` using particle volume :math:`V_p` and constant material density :math:`\rho` :</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      m_p = \frac{V_p}{\rho}.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING MATERIAL INITIAL MASS :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># calculate particle masses :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_material_initial_mass</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_material_initial_density"><a class="viewcode-back" href="../model.html#model.Model.calculate_material_initial_density">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_material_initial_density</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities :math:`\rho_p` given by ``M.rho`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal masses :math:`m_i` and nodal cell diameter volume estimates :math:`v_i = \frac{4}{3} \pi \left(\frac{h_i}{2}\right)^3` using approximate nodal cell diameter :math:`h_i`.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \rho_p = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \frac{m_i}{v_i}</span>
+<span class="sd">    </span>
+<span class="sd">    Note that this is useful only for the initial density :math:`\rho_p^0` calculation and aftwards should evolve thereafter with :math:`\rho_p = \rho_p^0 / \mathrm{det}(F_p)`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING MATERIAL INITIAL DENSITY :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># calculate particle densities :</span>
+    <span class="c1">#NOTE: this is not needed now -&gt; self.mpm_cpp.calculate_grid_volume()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_material_initial_density</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_material_initial_volume"><a class="viewcode-back" href="../model.html#model.Model.calculate_material_initial_volume">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_material_initial_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle volumes :math:`V_p` given by ``M.V`` from particle mass :math:`m_p` and density :math:`\rho_p`.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      V_p = \frac{m_p}{\rho_p}.</span>
+<span class="sd">    </span>
+<span class="sd">    Note that this is useful only for the initial particle volume :math:`V_p^0` calculation and aftwards should evolve with :math:`V_p = V_p^0 \mathrm{det}(F_p)`.  Also, this requires that the particle density be initialized by calling :meth:`~model.Model.calculate_material_density`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING MATERIAL INITIAL VOLUME :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># calculate particle densities :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_material_initial_volume</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_material_velocity_gradient"><a class="viewcode-back" href="../model.html#model.Model.calculate_material_velocity_gradient">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_material_velocity_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle velocity gradient vectors :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` by interpolating the :math:`i=1,2,\ldots,n_n` nodal velocity vectors :math:`\nabla \mathbf{u}_i` using the grid basis function gradients evaluated at the particle position :math:`\nabla \phi_i(\mathbf{x}_p)`.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \nabla \mathbf{u}_p = \sum_{i=1}^{n_n} \nabla \phi_i(\mathbf{x}_p) \mathbf{u}_i.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING MATERIAL VELOCITY GRADIENT :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># calculate particle velocity gradients :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_material_velocity_gradient</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.interpolate_grid_velocity_to_material"><a class="viewcode-back" href="../model.html#model.Model.interpolate_grid_velocity_to_material">[docs]</a>  <span class="k">def</span> <span class="nf">interpolate_grid_velocity_to_material</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and interpolate the :math:`i=1,2,\ldots,n_n` grid velocity vectors :math:`\mathbf{u}_i` to each of the :math:`p=1,2,\ldots,n_p` particle velocity vectors :math:`\mathbf{u}_p^*` given by ``M.u_star``.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{u}_p^* = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \mathbf{u}_i</span>
+<span class="sd">    </span>
+<span class="sd">    Note that this is an intermediate step used by :meth:`~model.Model.advect_material_particles`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INTERPOLATING GRID VELOCITY TO MATERIAL :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">interpolate_grid_velocity_to_material</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.interpolate_grid_acceleration_to_material"><a class="viewcode-back" href="../model.html#model.Model.interpolate_grid_acceleration_to_material">[docs]</a>  <span class="k">def</span> <span class="nf">interpolate_grid_acceleration_to_material</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and interpolate the :math:`i=1,2,\ldots,n_n` grid acceleration vectors :math:`\mathbf{a}_i` to each of the :math:`p=1,2,\ldots,n_p` particle acceleration vectors :math:`\mathbf{a}_p` given by ``M.a``.  That is,</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{a}_p = \sum_{i=1}^{n_n} \phi_i(\mathbf{x}_p) \mathbf{a}_i</span>
+<span class="sd">    </span>
+<span class="sd">    These particle accelerations are used to calculate the new particle velocities by :meth:`~model.Model.advect_material_particles`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INTERPOLATING GRID ACCELERATION TO MATERIAL :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+  
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">interpolate_grid_acceleration_to_material</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.initialize_material_tensors"><a class="viewcode-back" href="../model.html#model.Model.initialize_material_tensors">[docs]</a>  <span class="k">def</span> <span class="nf">initialize_material_tensors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle incremental deformation gradient tensors set to ``M.dF`` as</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathrm{d}F_p = I + \Delta t \nabla \mathbf{u}_p</span>
+
+<span class="sd">    with particle velocity gradient :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` and time-step :math:`\Delta t` from ``self.dt``; the deformation gradient tensors </span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      F_p = \mathrm{d}F_p</span>
+
+<span class="sd">    set to ``M.F``; strain-rate tensor :math:`\dot{\epsilon}_p` given by :func:`~material.Material.calculate_strain_rate` set to ``M.epsilon``; and Cauchy-stress tensor :math:`\sigma_p` given by :func:`~material.Material.calculate_stress` set to ``M.sigma``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: INITIALIZING MATERIAL TENSORS :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">calculate_material_velocity_gradient</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">initialize_material_tensors</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.update_material_density"><a class="viewcode-back" href="../model.html#model.Model.update_material_density">[docs]</a>  <span class="k">def</span> <span class="nf">update_material_density</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle densities from the incremental particle deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \rho_p^t = \mathrm{det}(\mathrm{d}F_p)^{-1} \rho_p^{t-1}.</span>
+
+<span class="sd">    This is equivalent to the operation</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      V_p^t = \mathrm{det}(F_p)^{-1} \rho_p^0,</span>
+
+<span class="sd">    with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial density :math:`\rho_p^0` calculated by :func:`~model.Model.calculate_material_initial_density` and set to ``M.rho0``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING MATERIAL VOLUME :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">update_material_density</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.update_material_volume"><a class="viewcode-back" href="../model.html#model.Model.update_material_volume">[docs]</a>  <span class="k">def</span> <span class="nf">update_material_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle volumes from the incremental particle deformation gradient tensors :math:`\mathrm{d}F_p` given by ``M.dF`` at the previous time-step :math:`t-1` from the formula</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      V_p^t = \mathrm{det}(\mathrm{d}F_p) V_p^{t-1}.</span>
+
+<span class="sd">    This is equivalent to the operation</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      V_p^t = \mathrm{det}(F_p) V_p^0,</span>
+
+<span class="sd">    with particle deformation gradient tensor :math:`F_p` given by ``M.F`` and initial volume :math:`V_p^0` calculated by :func:`~model.Model.calculate_material_initial_volume` and set to ``M.V0``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING MATERIAL VOLUME :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+    
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">update_material_volume</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.update_material_deformation_gradient"><a class="viewcode-back" href="../model.html#model.Model.update_material_deformation_gradient">[docs]</a>  <span class="k">def</span> <span class="nf">update_material_deformation_gradient</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and update the :math:`p=1,2,\ldots,n_p` particle incremental deformation gradient tensors set to ``M.dF`` as</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathrm{d}F_p = I + \left( \nabla \mathbf{u}_p \right) \Delta t </span>
+
+<span class="sd">    with particle velocity gradient :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` and time-step :math:`\Delta t` from ``self.dt``; and update the deformation gradient tensors </span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      F_p^t = \mathrm{d}F_p \circ F_p^{t-1}</span>
+
+<span class="sd">    set to ``M.F``.  Here, :math:`\circ` is the element-wise Hadamard product.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING MATERIAL DEFORMATION GRADIENT :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">update_material_deformation_gradient</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.update_material_stress"><a class="viewcode-back" href="../model.html#model.Model.update_material_stress">[docs]</a>  <span class="k">def</span> <span class="nf">update_material_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` incremental particle strain rate tensors :math:`\dot{\epsilon}_p^*` returned by :func:`~material.Material.calculate_strain_rate`; then use these incremental strain rates to update the particle strain-rate tensors ``M.epsilon`` by the explicit forward-Euler finite-difference scheme</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \dot{\epsilon}_p^t = \dot{\epsilon}_p^{t-1} + \dot{\epsilon}_p^* \Delta t </span>
+
+<span class="sd">    with time-step :math:`\Delta t` from ``self.dt``.  This updated strain-rate tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING MATERIAL STRESS :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">update_material_stress</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_grid_internal_forces"><a class="viewcode-back" href="../model.html#model.Model.calculate_grid_internal_forces">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_grid_internal_forces</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and interpolate the :math:`p=1,2,\ldots,n_p` particle stress divergence terms :math:`\nabla \cdot \sigma_p` to the :math:`i=1,2,\ldots,n_n` internal force vectors :math:`\mathbf{f}_i^{\mathrm{int}}` containted at ``self.grid_model.f_int`` by</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{f}_i^{\mathrm{int}} = - \sum_{p=1}^{n_p} \nabla \phi_i(\mathbf{x}_p) \cdot \sigma_p V_p</span>
+
+<span class="sd">    This is the weak-stress-divergence volume integral.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING GRID INTERNAL FORCES :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_grid_internal_forces</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.update_grid_velocity"><a class="viewcode-back" href="../model.html#model.Model.update_grid_velocity">[docs]</a>  <span class="k">def</span> <span class="nf">update_grid_velocity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the grid velocity :math:`\mathbf{u}_i` located at ``self.grid_model.U3`` from the current acceleration vector :math:`\mathbf{a}_i` and time-step :math:`\Delta t` from the explicit forward-Euler finite-difference scheme</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \mathbf{a}_i \Delta t.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING GRID VELOCITY :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">update_grid_velocity</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.calculate_grid_acceleration"><a class="viewcode-back" href="../model.html#model.Model.calculate_grid_acceleration">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_grid_acceleration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the :math:`i=1,2,\ldots,n_n` grid acceleration vectors :math:`\mathbf{a}_i` containted at ``self.grid_model.a3`` by</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{a}_i = \frac{\mathbf{f}_i^{\mathrm{int}} + \mathbf{f}_i^{\mathrm{ext}}}{m_i},</span>
+
+<span class="sd">    where the grid mass :math:`m_i` has been limited to be :math:`\geq \varepsilon = 1 \times 10^{-2}`, and external forces are currently only :math:`\mathbf{f}_i^{\mathrm{ext}} = \mathbf{0}`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: CALCULATING GRID ACCELERATIONS :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">calculate_grid_acceleration</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Model.advect_material_particles"><a class="viewcode-back" href="../model.html#model.Model.advect_material_particles">[docs]</a>  <span class="k">def</span> <span class="nf">advect_material_particles</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    First, interpolate the :math:`i=1,2,\ldots,n_n` grid accelerations :math:`\mathbf{a}_i` and velocities :math:`\mathbf{u}_i` by the functions :func:`~model.Model.interpolate_grid_acceleration_to_material` and :func:`~model.Model.interpolate_grid_velocity_to_material` respectively.  Then iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and increment the :math:`p=1,2,\ldots,n_p` intermediate particle velocities :math:`\mathbf{u}_p^*` and particle positions :math:`\mathbf{x}_p` by the explicit forward-Euler finite-difference scheme</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">      \mathbf{u}_p^t &amp;= \mathbf{u}_p^{t-1} + \mathbf{a}_p \Delta t \\</span>
+<span class="sd">      \mathbf{x}_p^t &amp;= \mathbf{x}_p^{t-1} + \mathbf{u}_p^* \Delta t.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: ADVECTING MATERIAL PARTICLES :::&quot;</span>
+      <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># advect the material particles :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">advect_material_particles</span><span class="p">()</span></div>
+  
+<div class="viewcode-block" id="Model.retrieve_cpp_grid_m"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_grid_m">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grid_m</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the mass vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.m``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME: figure out a way to directly update grid_model.m :</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;m&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_m</span><span class="p">())</span>
+      
+    <span class="c1"># assign the new mass to the grid model variable :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">update_mass</span><span class="p">(</span><span class="n">m</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.retrieve_cpp_grid_U3"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_grid_U3">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grid_U3</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the velocity vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.u`` and ``self.grid_model.v``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME: figure out a way to directly update grid_model.U3 :</span>
+    <span class="n">u</span> <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;u&#39;</span><span class="p">)</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;v&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_u_x</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_u_y</span><span class="p">())</span>
+
+    <span class="c1"># assign the variables to the functions</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assu</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assv</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.retrieve_cpp_grid_f_int"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_grid_f_int">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grid_f_int</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the internal force vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.f_int_x`` and ``self.grid_model.f_int_y``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME: figure out a way to directly update grid_model.f_int :</span>
+    <span class="n">f_int_x</span>  <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;f_int_x&#39;</span><span class="p">)</span>
+    <span class="n">f_int_y</span>  <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;f_int_y&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">f_int_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_f_int_x</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">f_int_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_f_int_y</span><span class="p">())</span>
+
+    <span class="c1"># assign the variables to the functions</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">update_internal_force_vector</span><span class="p">([</span><span class="n">f_int_x</span><span class="p">,</span> <span class="n">f_int_y</span><span class="p">])</span></div>
+    
+<div class="viewcode-block" id="Model.retrieve_cpp_grid_a3"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_grid_a3">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grid_a3</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the acceleration vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.a_x`` and ``self.grid_model.a_y``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME: figure out a way to directly update grid_model.a3 :</span>
+    <span class="n">a_x</span> <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;a_x&#39;</span><span class="p">)</span>
+    <span class="n">a_y</span> <span class="o">=</span> <span class="n">dol</span><span class="o">.</span><span class="n">Function</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;a_y&#39;</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">a_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_a_x</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">assign_variable</span><span class="p">(</span><span class="n">a_y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">get_a_y</span><span class="p">())</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">update_acceleration</span><span class="p">([</span><span class="n">a_x</span><span class="p">,</span> <span class="n">a_y</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Model.retrieve_cpp_grid_properties"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_grid_properties">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_grid_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transfer grid properties from C++ back to python for further analysis</span>
+<span class="sd">    with PyLab.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_grid_m</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_grid_U3</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_grid_f_int</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_grid_a3</span><span class="p">()</span></div>
+  
+<div class="viewcode-block" id="Model.retrieve_cpp_material_properties"><a class="viewcode-back" href="../model.html#model.Model.retrieve_cpp_material_properties">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_material_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Transfer material properties from C++ back to python for further analysis</span>
+<span class="sd">    with PyLab.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># iterate through all materials :</span>
+    <span class="k">for</span> <span class="n">M</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">materials</span><span class="p">:</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_vrt</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_phi</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_grad_phi</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_grad_u</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_x</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_u</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_a</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_F</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_epsilon</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_sigma</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_rho</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_V</span><span class="p">()</span>
+      <span class="n">M</span><span class="o">.</span><span class="n">retrieve_cpp_V0</span><span class="p">()</span>
+
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">grad_u</span><span class="p">,</span>  <span class="s1">&#39;M.grad_u&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">x</span><span class="p">,</span>       <span class="s1">&#39;M.x&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">u</span><span class="p">,</span>       <span class="s1">&#39;M.u&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">a</span><span class="p">,</span>       <span class="s1">&#39;M.a&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">F</span><span class="p">,</span>       <span class="s1">&#39;M.F_0&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">epsilon</span><span class="p">,</span> <span class="s1">&#39;M.epsilon_0&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">sigma</span><span class="p">,</span>   <span class="s1">&#39;M.sigma_0&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">rho</span><span class="p">,</span>     <span class="s1">&#39;M.rho_0&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">V</span><span class="p">,</span>       <span class="s1">&#39;M.V&#39;</span><span class="p">)</span>
+        <span class="n">print_min_max</span><span class="p">(</span><span class="n">M</span><span class="o">.</span><span class="n">V0</span><span class="p">,</span>      <span class="s1">&#39;M.V_0&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Model.mpm"><a class="viewcode-back" href="../model.html#model.Model.mpm">[docs]</a>  <span class="k">def</span> <span class="nf">mpm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t_start</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">cb_ftn</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The material point method algorithm performed from time ``t_start`` to ``t_end``.</span>
+
+<span class="sd">    :param t_start: starting time of the simulation</span>
+<span class="sd">    :param t_end: ending time of the simulation</span>
+<span class="sd">    :param cb_ftn: callback function</span>
+<span class="sd">    :type t_start: float</span>
+<span class="sd">    :type t_end: float</span>
+<span class="sd">    :type cb_ftn: function</span>
+<span class="sd">  </span>
+<span class="sd">    For any given time-step, the algorithm consists of:</span>
+
+<span class="sd">    * :func:`~model.Model.formulate_material_basis_functions`</span>
+<span class="sd">    * :func:`~model.Model.interpolate_material_mass_to_grid`</span>
+<span class="sd">    * :func:`~model.Model.interpolate_material_velocity_to_grid`</span>
+<span class="sd">    </span>
+<span class="sd">    If this is the initialization step (``t == t_start``):</span>
+
+<span class="sd">    * :func:`~model.Model.initialize_material_tensors`</span>
+<span class="sd">    * :func:`~model.Model.calculate_material_density`</span>
+<span class="sd">    * :func:`~model.Model.calculate_material_initial_volume`</span>
+
+<span class="sd">    Then continue the grid calculation stage :</span>
+<span class="sd">    </span>
+<span class="sd">    * :func:`~model.Model.calculate_grid_internal_forces`</span>
+<span class="sd">    * :func:`~model.Model.calculate_grid_acceleration`</span>
+<span class="sd">    * :func:`~model.Model.update_grid_velocity`</span>
+<span class="sd">  </span>
+<span class="sd">    Then the particle calculation stage :</span>
+
+<span class="sd">    * :func:`~model.Model.calculate_material_velocity_gradient`</span>
+<span class="sd">    * :func:`~model.Model.update_material_deformation_gradient`</span>
+<span class="sd">    * :func:`~model.Model.update_material_volume`</span>
+<span class="sd">    * :func:`~model.model.update_material_stress`</span>
+<span class="sd">    * :func:`~model.model.interpolate_grid_acceleration_to_material`</span>
+<span class="sd">    * :func:`~model.model.interpolate_grid_velocity_to_material`</span>
+<span class="sd">    * :func:`~model.Model.advect_material_particles`</span>
+
+<span class="sd">    At the end of the algorithm, the grid properties are made available from the C++ backend : </span>
+
+<span class="sd">    * :func:`~model.Model.retrieve_cpp_material_properties`</span>
+<span class="sd">    * :func:`~model.Model.retrieve_cpp_grid_properties`</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: BEGIN MPM ALGORITHM :::&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+
+    <span class="c1"># initialize counter :</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">t_start</span>
+
+    <span class="c1"># starting time :</span>
+    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+    <span class="c1"># set up screen printing :</span>
+    <span class="n">s0</span>    <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\r</span><span class="s1">&gt;&gt;&gt; simulation time: &#39;</span>
+    <span class="n">s2</span>    <span class="o">=</span> <span class="s1">&#39; s, CPU time for last dt: &#39;</span>
+    <span class="n">s4</span>    <span class="o">=</span> <span class="s1">&#39; s &lt;&lt;&lt;&#39;</span>
+    <span class="n">text0</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+    <span class="n">text2</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+    <span class="n">text4</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s4</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">)</span>
+      
+    <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">&lt;</span> <span class="n">t_end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">:</span>
+
+      <span class="c1"># we are now on the next iteration :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">iter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+      <span class="c1"># start time over :</span>
+      <span class="n">tic</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+      <span class="c1">#=========================================================================</span>
+      <span class="c1"># begin MPM algorithm :</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">==</span> <span class="n">t_start</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">mpm</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mpm_cpp</span><span class="o">.</span><span class="n">mpm</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+      <span class="c1">## get basis function values at material point locations :</span>
+      <span class="c1">#self.formulate_material_basis_functions()</span>
+      <span class="c1">#</span>
+      <span class="c1">## interpolation from particle stage :</span>
+      <span class="c1">#self.interpolate_material_mass_to_grid()</span>
+      <span class="c1">#self.interpolate_material_velocity_to_grid()</span>
+      <span class="c1">#</span>
+      <span class="c1">## initialization step :</span>
+      <span class="c1">#if self.t == t_start:</span>
+      <span class="c1">#  self.initialize_material_tensors()</span>
+      <span class="c1">#  self.calculate_material_initial_density()</span>
+      <span class="c1">#  self.calculate_material_initial_volume()</span>
+      <span class="c1">#  </span>
+      <span class="c1">## grid calculation stage : </span>
+      <span class="c1">#self.calculate_grid_internal_forces()</span>
+      <span class="c1">#self.calculate_grid_acceleration()</span>
+      <span class="c1">#self.update_grid_velocity()</span>
+
+      <span class="c1">## particle calculation stage :</span>
+      <span class="c1">#self.calculate_material_velocity_gradient()</span>
+      <span class="c1">#self.update_material_deformation_gradient()</span>
+      <span class="c1">#self.update_material_volume()</span>
+      <span class="c1">#self.update_material_stress()</span>
+      <span class="c1">#self.interpolate_grid_acceleration_to_material()</span>
+      <span class="c1">#self.interpolate_grid_velocity_to_material()</span>
+      <span class="c1">#self.advect_material_particles()</span>
+      
+      <span class="c1"># : end MPM algorithm</span>
+      <span class="c1">#=========================================================================</span>
+      
+      <span class="c1"># call the callback function, if desired :</span>
+      <span class="k">if</span> <span class="n">cb_ftn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="p">:</span>
+          <span class="n">s</span>    <span class="o">=</span> <span class="s2">&quot;::: calling callback function :::&quot;</span>
+          <span class="n">print_text</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">this</span><span class="p">)</span>
+        <span class="n">cb_ftn</span><span class="p">()</span>
+
+      <span class="c1"># increment time step :</span>
+      <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dt</span>
+
+      <span class="c1"># print the time to the screen :</span>
+      <span class="n">s1</span>    <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.3e</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span>
+      <span class="n">s3</span>    <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%.3e</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">tic</span><span class="p">)</span>
+      <span class="n">text1</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">text3</span> <span class="o">=</span> <span class="n">get_text</span><span class="p">(</span><span class="n">s3</span><span class="p">,</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+      <span class="n">text</span>  <span class="o">=</span> <span class="n">text0</span> <span class="o">+</span> <span class="n">text1</span> <span class="o">+</span> <span class="n">text2</span> <span class="o">+</span> <span class="n">text3</span> <span class="o">+</span> <span class="n">text4</span>
+
+      <span class="c1"># don&#39;t continue to fill the screen with numbers if verbosity is off :</span>
+      <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="kc">False</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_model</span><span class="o">.</span><span class="n">verbose</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span> 
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+      <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="n">text</span>
+
+    <span class="c1"># calculate total time to compute</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+    <span class="n">m</span>  <span class="o">=</span> <span class="n">dt</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">h</span>  <span class="o">=</span> <span class="n">m</span> <span class="o">/</span> <span class="mf">60.0</span>
+    <span class="n">s</span>  <span class="o">=</span> <span class="n">dt</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">m</span>  <span class="o">=</span> <span class="n">m</span> <span class="o">%</span> <span class="mi">60</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">total time to perform transient run: </span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2">:</span><span class="si">%02d</span><span class="s2"> (</span><span class="si">%.3e</span><span class="s2"> s)&quot;</span>
+    <span class="n">print_text</span><span class="p">(</span><span class="n">text</span> <span class="o">%</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span><span class="n">m</span><span class="p">,</span><span class="n">s</span><span class="p">,</span><span class="n">dt</span><span class="p">),</span> <span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+   
+    <span class="c1"># always get the properties back from C++ land : </span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_material_properties</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">retrieve_cpp_grid_properties</span><span class="p">()</span></div></div>
+
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../material.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gridmodel.html">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

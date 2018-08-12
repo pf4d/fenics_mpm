@@ -1,0 +1,182 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>fenics_mpm.MPMModelcpp &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for fenics_mpm.MPMModelcpp</h1><div class="highlight"><pre>
+<span></span><span class="c1"># open the cpp code :</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span>   <span class="nn">dolfin</span>  <span class="k">import</span> <span class="n">compile_extension_module</span>
+
+<span class="n">cpp_src_dir</span>     <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;/cpp/&quot;</span>
+<span class="n">headers</span>         <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MPMMaterial.h&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MPMElasticMaterial.h&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MPMImpenetrableMaterial.h&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MPMModel.h&quot;</span><span class="p">]</span>
+<span class="n">code</span>            <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+<span class="k">for</span> <span class="n">header_file</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+  <span class="n">header_file</span>   <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">cpp_src_dir</span> <span class="o">+</span> <span class="n">header_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+  <span class="n">code</span>         <span class="o">+=</span> <span class="n">header_file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+  <span class="n">header_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">system_headers</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;numpy/arrayobject.h&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;dolfin/geometry/BoundingBoxTree.h&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;dolfin/fem/GenericDofMap.h&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;dolfin/function/FunctionSpace.h&#39;</span><span class="p">]</span>
+<span class="n">swigargs</span>        <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;-c++&#39;</span><span class="p">,</span> <span class="s1">&#39;-fcompact&#39;</span><span class="p">,</span> <span class="s1">&#39;-O&#39;</span><span class="p">,</span> <span class="s1">&#39;-I.&#39;</span><span class="p">,</span> <span class="s1">&#39;-small&#39;</span><span class="p">]</span>
+<span class="n">cmake_packages</span>  <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DOLFIN&#39;</span><span class="p">]</span>
+<span class="n">module_name</span>     <span class="o">=</span> <span class="s2">&quot;MPMModelcpp&quot;</span>
+<span class="n">sources</span>         <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MPMMaterial.cpp&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MPMElasticMaterial.cpp&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MsdfPMImpenetrableMaterial.cpp&quot;</span><span class="p">,</span>
+                   <span class="s2">&quot;MPMModel.cpp&quot;</span><span class="p">]</span>
+<span class="n">source_dir</span>      <span class="o">=</span> <span class="n">cpp_src_dir</span>
+<span class="n">include_dirs</span>    <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">cpp_src_dir</span><span class="p">]</span> 
+<span class="n">additional_decl</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="si">%i</span><span class="s2">nit%{</span>
+<span class="s2">  import_array();</span>
+<span class="s2">  %}</span>
+
+<span class="s2">  // Include global SWIG interface files:</span>
+<span class="s2">  // Typemaps, shared_ptr declarations, exceptions, version</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">nclude &lt;boost_shared_ptr.i&gt;</span>
+
+<span class="s2">  // Global typemaps and forward declarations</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">nclude &quot;dolfin/swig/typemaps/includes.i&quot;</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">nclude &quot;dolfin/swig/forwarddeclarations.i&quot;</span>
+
+<span class="s2">  // Global exceptions</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">nclude &lt;exception.i&gt;</span>
+
+<span class="s2">  // Local shared_ptr declarations</span>
+<span class="s2">  </span><span class="si">%s</span><span class="s2">hared_ptr(dolfin::Function)</span>
+<span class="s2">  </span><span class="si">%s</span><span class="s2">hared_ptr(dolfin::FunctionSpace)</span>
+
+<span class="s2">  // </span><span class="si">%i</span><span class="s2">mport types from submodule function of SWIG module function</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">mport(module=&quot;dolfin.cpp.function&quot;) &quot;dolfin/function/Function.h&quot;</span>
+<span class="s2">  </span><span class="si">%i</span><span class="s2">mport(module=&quot;dolfin.cpp.function&quot;) &quot;dolfin/function/FunctionSpace.h&quot;</span>
+
+<span class="s2">  </span><span class="si">%f</span><span class="s2">eature(&quot;autodoc&quot;, &quot;1&quot;);</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="c1">#compiled_module = instant.build_module(</span>
+<span class="c1">#    modulename = module_name,</span>
+<span class="c1">#    code=code,</span>
+<span class="c1">#    source_directory=source_dir,</span>
+<span class="c1">#    additional_declarations=additional_decl,</span>
+<span class="c1">#    system_headers=system_headers,</span>
+<span class="c1">#    include_dirs=include_dirs,</span>
+<span class="c1">#    swigargs=swigargs,</span>
+<span class="c1">#    sources=sources,</span>
+<span class="c1">#    cmake_packages=cmake_packages)</span>
+
+<span class="c1"># compile this with Instant JIT compiler :</span>
+<span class="n">inst_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;code&#39;</span>                      <span class="p">:</span> <span class="n">code</span><span class="p">,</span>
+               <span class="s1">&#39;module_name&#39;</span>               <span class="p">:</span> <span class="n">module_name</span><span class="p">,</span>
+               <span class="s1">&#39;source_directory&#39;</span>          <span class="p">:</span> <span class="n">cpp_src_dir</span><span class="p">,</span>
+               <span class="s1">&#39;sources&#39;</span>                   <span class="p">:</span> <span class="n">sources</span><span class="p">,</span>
+               <span class="s1">&#39;additional_system_headers&#39;</span> <span class="p">:</span> <span class="p">[],</span>
+               <span class="s1">&#39;include_dirs&#39;</span>              <span class="p">:</span> <span class="n">include_dirs</span><span class="p">}</span>
+
+<div class="viewcode-block" id="get_compile_cpp_code"><a class="viewcode-back" href="../../fenics_mpm.MPMModelcpp.html#fenics_mpm.MPMModelcpp.get_compile_cpp_code">[docs]</a><span class="k">def</span> <span class="nf">get_compile_cpp_code</span><span class="p">():</span>
+  <span class="k">return</span> <span class="n">compile_extension_module</span><span class="p">(</span><span class="o">**</span><span class="n">inst_params</span><span class="p">)</span></div>
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../material.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../gridmodel.html">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

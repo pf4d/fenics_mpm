@@ -1,0 +1,19 @@
+fenics\_mpm package
+===================
+
+.. automodule:: fenics_mpm
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+
+   fenics_mpm.MPMModelcpp
+   fenics_mpm.gridmodel
+   fenics_mpm.helper
+   fenics_mpm.material
+   fenics_mpm.model
+

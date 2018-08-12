@@ -1,0 +1,7 @@
+fenics\_mpm.material module
+===========================
+
+.. automodule:: fenics_mpm.material
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -1,0 +1,342 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>GridModel &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Model" href="model.html" />
+    <link rel="prev" title="Materials" href="material.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="gridmodel">
+<h1>GridModel<a class="headerlink" href="#gridmodel" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="gridmodel.GridModel">
+<em class="property">class </em><code class="descclassname">gridmodel.</code><code class="descname">GridModel</code><span class="sig-paren">(</span><em>mesh</em>, <em>out_dir='./output/'</em>, <em>verbose=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Representation of the model on a finite-element grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>out_dir</strong> (<em>string</em>) – directory to save results, defalult is <code class="docutils literal notranslate"><span class="pre">./output/</span></code>.</li>
+<li><strong>mesh</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code>) – the finite-element mesh.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="gridmodel.GridModel.assign_variable">
+<code class="descname">assign_variable</code><span class="sig-paren">(</span><em>u</em>, <em>var</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.assign_variable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.assign_variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Manually assign the values from <code class="docutils literal notranslate"><span class="pre">var</span></code> to <code class="docutils literal notranslate"><span class="pre">u</span></code>.  The parameter <code class="docutils literal notranslate"><span class="pre">var</span></code>
+may be a string pointing to the location of an <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>, 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>, or an xml file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, float, int) – FEniCS <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> assigning to</li>
+<li><strong>var</strong> (float, int, <code class="xref py py-class docutils literal notranslate"><span class="pre">Expression</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>, string, <code class="xref py py-class docutils literal notranslate"><span class="pre">HDF5File</span></code>, <a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – value assigning from</li>
+<li><strong>annotate</strong> – allow <code class="docutils literal notranslate"><span class="pre">dolfin_adjoint</span></code> annotation</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>The color used for printing messages to the screen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.generate_function_spaces">
+<code class="descname">generate_function_spaces</code><span class="sig-paren">(</span><em>order=1</em>, <em>use_periodic=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.generate_function_spaces"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.generate_function_spaces" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates the finite-element function spaces used with topological dimension <span class="math notranslate nohighlight">\(d\)</span> set by variable <code class="docutils literal notranslate"><span class="pre">self.top_dim</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>order</strong> – order <span class="math notranslate nohighlight">\(k\)</span> of the shape function, currently only supported are Lagrange <span class="math notranslate nohighlight">\(P_1\)</span> elements.</li>
+<li><strong>use_periodic</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – use periodic boundaries along lateral boundary (currently not supported).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>The element shape-functions available from this method are :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.Q</span></code>  – <span class="math notranslate nohighlight">\(\mathcal{H}^k(\Omega)\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.Q3</span></code> – <span class="math notranslate nohighlight">\([\mathcal{H}^k(\Omega)]^3\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.V</span></code>  – <span class="math notranslate nohighlight">\([\mathcal{H}^k(\Omega)]^d\)</span>  formed using <code class="xref py py-func docutils literal notranslate"><span class="pre">VectorFunctionSpace()</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.T</span></code>  – <span class="math notranslate nohighlight">\([\mathcal{H}^k(\Omega)]^{d \times d}\)</span> formed using <code class="xref py py-func docutils literal notranslate"><span class="pre">TensorFunctionSpace()</span></code></li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.initialize_variables">
+<code class="descname">initialize_variables</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.initialize_variables"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.initialize_variables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the model variables to default values.  The variables 
+defined here are:</p>
+<p>Various things :</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.element</span></code>    – the finite-element</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.top_dim</span></code>    – the topological dimension</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.dofmap</span></code>     – <code class="xref py py-class docutils literal notranslate"><span class="pre">DofMap</span></code> for converting between vertex to nodal indicies</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.h</span></code>          – Cell diameter formed by calling <code class="xref py py-func docutils literal notranslate"><span class="pre">CellDiameter()</span></code> with <code class="docutils literal notranslate"><span class="pre">self.mesh</span></code></li>
+</ul>
+<p>Grid velocity vector <span class="math notranslate nohighlight">\(\mathbf{u}_i = [u\ v\ w]^{\intercal}\)</span>:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.U_mag</span></code>      – velocity vector magnitude</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.U3</span></code>         – velocity vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.u</span></code>          – <span class="math notranslate nohighlight">\(x\)</span>-component of velocity vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.v</span></code>          – <span class="math notranslate nohighlight">\(y\)</span>-component of velocity vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.w</span></code>          – <span class="math notranslate nohighlight">\(z\)</span>-component of velocity vector</li>
+</ul>
+<p>Grid acceleration vector <span class="math notranslate nohighlight">\(\mathbf{a}_i = [a_x\ a_y\ a_z]^{\intercal}\)</span>:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.a_mag</span></code>      – acceleration vector magnitude</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.a3</span></code>         – acceleration vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.a_x</span></code>        – <span class="math notranslate nohighlight">\(x\)</span>-component of acceleration vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.a_y</span></code>        – <span class="math notranslate nohighlight">\(y\)</span>-component of acceleration vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.a_z</span></code>        – <span class="math notranslate nohighlight">\(z\)</span>-component of acceleration vector</li>
+</ul>
+<p>Grid internal force vector <span class="math notranslate nohighlight">\(\mathbf{f}_i^{\mathrm{int}} = [f_x^{\mathrm{int}}\ f_y^{\mathrm{int}}\ f_z^{\mathrm{int}}]^{\intercal}\)</span>:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.f_int_mag</span></code>  – internal force vector magnitude</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.f_int</span></code>      – internal force vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.f_int_x</span></code>    – <span class="math notranslate nohighlight">\(x\)</span>-component of internal force vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.f_int_y</span></code>    – <span class="math notranslate nohighlight">\(y\)</span>-component of internal force vector</li>
+<li><code class="docutils literal notranslate"><span class="pre">self.f_int_z</span></code>    – <span class="math notranslate nohighlight">\(z\)</span>-component of internal force vector</li>
+</ul>
+<p>Grid mass <span class="math notranslate nohighlight">\(m_i\)</span>:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.m</span></code>          – mass <span class="math notranslate nohighlight">\(m_i\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.m0</span></code>         – inital mass <span class="math notranslate nohighlight">\(m_i^0\)</span></li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.save_pvd">
+<code class="descname">save_pvd</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>f=None</em>, <em>t=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.save_pvd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.save_pvd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by 
+<code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> object, save to this instead.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">t</span></code> is a float or an int, mark the file with the timestep <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
+<li><strong>name</strong> – the name of the <code class="docutils literal notranslate"><span class="pre">.xdmf</span></code> file to save</li>
+<li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>) – the file to save to</li>
+<li><strong>t</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/2.7/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – the timestep to mark the file with</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.save_xdmf">
+<code class="descname">save_xdmf</code><span class="sig-paren">(</span><em>u</em>, <em>name</em>, <em>f=None</em>, <em>t=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.save_xdmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.save_xdmf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> with name <code class="docutils literal notranslate"><span class="pre">name</span></code> of the 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> <code class="docutils literal notranslate"><span class="pre">u</span></code> to the <code class="docutils literal notranslate"><span class="pre">xdmf</span></code> directory specified by 
+<code class="docutils literal notranslate"><span class="pre">self.out_dir</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">f</span></code> is a <code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code> object, save to this instead.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">t</span></code> is a float or an int, mark the file with the timestep <code class="docutils literal notranslate"><span class="pre">t</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>u</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code> or <code class="xref py py-class docutils literal notranslate"><span class="pre">GenericVector</span></code>) – the function to save</li>
+<li><strong>name</strong> – the name of the .xdmf file to save</li>
+<li><strong>f</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">XDMFFile</span></code>) – the file to save to</li>
+<li><strong>t</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/2.7/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – the timestep to mark the file with</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.set_boundary_conditions">
+<code class="descname">set_boundary_conditions</code><span class="sig-paren">(</span><em>boundary_subdomains</em>, <em>boundary_values</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.set_boundary_conditions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.set_boundary_conditions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.update_acceleration">
+<code class="descname">update_acceleration</code><span class="sig-paren">(</span><em>a</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.update_acceleration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.update_acceleration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the grid acceleration <span class="math notranslate nohighlight">\(\mathbf{a}_i = [a_x\ a_y\ a_z]^{\intercal}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.a3</span></code> to parameter <code class="docutils literal notranslate"><span class="pre">a</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>a</strong> (list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>s) – grid acceleration</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.update_internal_force_vector">
+<code class="descname">update_internal_force_vector</code><span class="sig-paren">(</span><em>f_int</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.update_internal_force_vector"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.update_internal_force_vector" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the grid acceleration <span class="math notranslate nohighlight">\(\mathbf{f}_i^{\mathrm{int}} = [f_x^{\mathrm{int}}\ f_y^{\mathrm{int}}\ f_z^{\mathrm{int}}]^{\intercal}\)</span> to paramter <code class="docutils literal notranslate"><span class="pre">f_int</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>f_int</strong> (list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>s) – grid internal force</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.update_mass">
+<code class="descname">update_mass</code><span class="sig-paren">(</span><em>m</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.update_mass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.update_mass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the grid mass <span class="math notranslate nohighlight">\(m_i\)</span>, <code class="docutils literal notranslate"><span class="pre">self.m</span></code> to parameter <code class="docutils literal notranslate"><span class="pre">m</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>m</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>,) – grid mass</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gridmodel.GridModel.update_velocity">
+<code class="descname">update_velocity</code><span class="sig-paren">(</span><em>U</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gridmodel.html#GridModel.update_velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gridmodel.GridModel.update_velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the grid velocity <span class="math notranslate nohighlight">\(\mathbf{u}_i = [u\ v\ w]^{\intercal}\)</span>, <code class="docutils literal notranslate"><span class="pre">self.U3</span></code> to parameter <code class="docutils literal notranslate"><span class="pre">U</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>U</strong> (list of <code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code>s) – grid velocity</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="material.html">Materials</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="material.html" title="previous chapter">Materials</a></li>
+      <li>Next: <a href="model.html" title="next chapter">Model</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/gridmodel.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

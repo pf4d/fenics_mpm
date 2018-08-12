@@ -1,0 +1,398 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>fenics_mpm.material module &#8212; fenics_mpm 1.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-fenics_mpm.material">
+<span id="fenics-mpm-material-module"></span><h1>fenics_mpm.material module<a class="headerlink" href="#module-fenics_mpm.material" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="fenics_mpm.material.ElasticMaterial">
+<em class="property">class </em><code class="descclassname">fenics_mpm.material.</code><code class="descname">ElasticMaterial</code><span class="sig-paren">(</span><em>name</em>, <em>x</em>, <em>u</em>, <em>E</em>, <em>nu</em>, <em>m=None</em>, <em>V=None</em>, <em>rho=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ElasticMaterial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ElasticMaterial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fenics_mpm.material.Material" title="fenics_mpm.material.Material"><code class="xref py py-class docutils literal notranslate"><span class="pre">fenics_mpm.material.Material</span></code></a></p>
+<p>Representation of an elastic material with initial conditions given by the 
+parameters <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">u</span></code>, <code class="docutils literal notranslate"><span class="pre">E</span></code>, and <code class="docutils literal notranslate"><span class="pre">nu</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>m</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle mass vector <span class="math notranslate nohighlight">\(\mathbf{m}_p\)</span></li>
+<li><strong>x</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle position vector <span class="math notranslate nohighlight">\(\mathbf{x}_p\)</span></li>
+<li><strong>u</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle velocity vector <span class="math notranslate nohighlight">\(\mathbf{u}_p\)</span></li>
+<li><strong>E</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – Young’s modulus <span class="math notranslate nohighlight">\(E\)</span></li>
+<li><strong>nu</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – Poisson’s ratio <span class="math notranslate nohighlight">\(\nu\)</span></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="fenics_mpm.material.ElasticMaterial.calculate_stress">
+<code class="descname">calculate_stress</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ElasticMaterial.calculate_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ElasticMaterial.calculate_stress" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate elastic particle-Cauchy-stress tensor</p>
+<div class="math notranslate nohighlight">
+\[\sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I\]</div>
+<p>with Lamé parameters <span class="math notranslate nohighlight">\(\mu\)</span> and <span class="math notranslate nohighlight">\(\lambda\)</span>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.ElasticMaterial.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ElasticMaterial.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ElasticMaterial.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>The color used for printing messages to the screen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.ElasticMaterial.cpp_module">
+<code class="descname">cpp_module</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ElasticMaterial.cpp_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ElasticMaterial.cpp_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the appropriate cpp module to instantiate this material.</p>
+<p>This method must be implemented by child classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fenics_mpm.material.ImpenetrableMaterial">
+<em class="property">class </em><code class="descclassname">fenics_mpm.material.</code><code class="descname">ImpenetrableMaterial</code><span class="sig-paren">(</span><em>name</em>, <em>x</em>, <em>u</em>, <em>m=None</em>, <em>V=None</em>, <em>rho=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ImpenetrableMaterial"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ImpenetrableMaterial" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#fenics_mpm.material.Material" title="fenics_mpm.material.Material"><code class="xref py py-class docutils literal notranslate"><span class="pre">fenics_mpm.material.Material</span></code></a></p>
+<p>Representation of an impenetrable boundary with initial conditions given by the 
+parameters <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code>, and <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>m</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle mass vector <span class="math notranslate nohighlight">\(\mathbf{m}_p\)</span></li>
+<li><strong>x</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle position vector <span class="math notranslate nohighlight">\(\mathbf{x}_p\)</span></li>
+<li><strong>u</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle velocity vector <span class="math notranslate nohighlight">\(\mathbf{u}_p\)</span></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="fenics_mpm.material.ImpenetrableMaterial.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ImpenetrableMaterial.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ImpenetrableMaterial.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>The color used for printing messages to the screen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.ImpenetrableMaterial.cpp_module">
+<code class="descname">cpp_module</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ImpenetrableMaterial.cpp_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ImpenetrableMaterial.cpp_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the appropriate cpp module to instantiate this material.</p>
+<p>This method must be implemented by child classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fenics_mpm.material.Material">
+<em class="property">class </em><code class="descclassname">fenics_mpm.material.</code><code class="descname">Material</code><span class="sig-paren">(</span><em>name</em>, <em>x</em>, <em>u</em>, <em>m=None</em>, <em>V=None</em>, <em>rho=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/2.7/library/functions.html#object" title="(in Python v2.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Representation of an abstract material with initial conditions given by the 
+parameters length <span class="math notranslate nohighlight">\(n_p\)</span> <a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a> vectors <code class="docutils literal notranslate"><span class="pre">m</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code> 
+and <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>x</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle position vector <span class="math notranslate nohighlight">\(\mathbf{x}_p\)</span></li>
+<li><strong>u</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle velocity vector <span class="math notranslate nohighlight">\(\mathbf{u}_p\)</span></li>
+<li><strong>m</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle mass vector <span class="math notranslate nohighlight">\(\mathbf{m}_p\)</span></li>
+<li><strong>V</strong> (<a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></a>) – particle volume vector <span class="math notranslate nohighlight">\(\mathbf{V}_p\)</span></li>
+<li><strong>rho</strong> (<a class="reference external" href="https://docs.python.org/2.7/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a>) – particle density <span class="math notranslate nohighlight">\(\rho\)</span></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>In creation of this class, a number of particle state paramters are initialized.  These are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">self.n</span></code>        – number of particles <span class="math notranslate nohighlight">\(n_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.d</span></code>        – topological dimension <span class="math notranslate nohighlight">\(d\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.m</span></code>        – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> mass vector <span class="math notranslate nohighlight">\(\mathbf{m}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.x</span></code>        – <span class="math notranslate nohighlight">\(n_p \times d\)</span> position vector <span class="math notranslate nohighlight">\(\mathbf{x}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.u</span></code>        – <span class="math notranslate nohighlight">\(n_p \times d\)</span> velocity vector <span class="math notranslate nohighlight">\(\mathbf{u}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.a</span></code>        – <span class="math notranslate nohighlight">\(n_p \times d\)</span> acceleration vector <span class="math notranslate nohighlight">\(\mathbf{a}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.grad_u</span></code>   – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> velocity gradient tensors <span class="math notranslate nohighlight">\(\nabla \mathbf{u}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.vrt</span></code>      – <span class="math notranslate nohighlight">\(n_p \times n_n\)</span> grid nodal indicies for points <span class="math notranslate nohighlight">\(i\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.phi</span></code>      – <span class="math notranslate nohighlight">\(n_p \times n_n\)</span> grid basis values at points <span class="math notranslate nohighlight">\(\phi(\mathbf{x}_p)\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.grad_phi</span></code> – <span class="math notranslate nohighlight">\(n_p \times (n_n \times d)\)</span> grid basis gradient tensors at points <span class="math notranslate nohighlight">\(\nabla \phi_i(\mathbf{x}_p)\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.rho0</span></code>     – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> initial density vector <span class="math notranslate nohighlight">\(\rho_p^0\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.rho</span></code>      – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> density vector <span class="math notranslate nohighlight">\(\rho_p^t\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.V0</span></code>       – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> initial volume vector <span class="math notranslate nohighlight">\(V_p^0\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.V</span></code>        – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> volume vector <span class="math notranslate nohighlight">\(V_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.F</span></code>        – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> deformation gradient tensors <span class="math notranslate nohighlight">\(F_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.sigma</span></code>    – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> stress tensors <span class="math notranslate nohighlight">\(\sigma_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.epsilon</span></code>  – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> strain-rate tensors <span class="math notranslate nohighlight">\(\dot{\epsilon}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.I</span></code>        – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> identity tensors <span class="math notranslate nohighlight">\(I\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.vrt</span></code>      – <span class="math notranslate nohighlight">\(n_p \times n_v\)</span> nodal vertex indices for each particle</li>
+</ul>
+<dl class="method">
+<dt id="fenics_mpm.material.Material.calculate_strain_rate">
+<code class="descname">calculate_strain_rate</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.calculate_strain_rate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.calculate_strain_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the particle strain-rate tensor</p>
+<div class="math notranslate nohighlight">
+\[\dot{\epsilon}_p = \frac{1}{2} \left( \nabla \mathbf{u}_p + \left( \nabla \mathbf{u}_p \right)^{\intercal} \right)\]</div>
+<p>from particle velocity <span class="math notranslate nohighlight">\(\mathbf{u}_p\)</span>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.calculate_stress">
+<code class="descname">calculate_stress</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.calculate_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.calculate_stress" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method must be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.color">
+<code class="descname">color</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.color"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.color" title="Permalink to this definition">¶</a></dt>
+<dd><p>The color used for printing messages to the screen.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">string</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.cpp_module">
+<code class="descname">cpp_module</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.cpp_module"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.cpp_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>return the appropriate cpp module to instantiate this material.</p>
+<p>This method must be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.get_cpp_material">
+<code class="descname">get_cpp_material</code><span class="sig-paren">(</span><em>element</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.get_cpp_material"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.get_cpp_material" title="Permalink to this definition">¶</a></dt>
+<dd><p>instantiate and return the cpp module for this material with element type
+<code class="docutils literal notranslate"><span class="pre">element</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.plot">
+<code class="descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.plot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the positions of each particle with coordinates <code class="docutils literal notranslate"><span class="pre">self.X</span></code> to the 
+screen.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_F">
+<code class="descname">retrieve_cpp_F</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_F"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_F" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle deformation gradient from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_V">
+<code class="descname">retrieve_cpp_V</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_V"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_V" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current particle volume vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_V0">
+<code class="descname">retrieve_cpp_V0</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_V0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_V0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the initial particle volume vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_a">
+<code class="descname">retrieve_cpp_a</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_a"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_a" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle acceleration vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_epsilon">
+<code class="descname">retrieve_cpp_epsilon</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_epsilon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_epsilon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle strain tensor from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_grad_phi">
+<code class="descname">retrieve_cpp_grad_phi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_grad_phi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_grad_phi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle basis function gradient values from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_grad_u">
+<code class="descname">retrieve_cpp_grad_u</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_grad_u"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_grad_u" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle velocity gradient from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_phi">
+<code class="descname">retrieve_cpp_phi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_phi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_phi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the grid basis function values evaluated at each particle’s current position from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_rho">
+<code class="descname">retrieve_cpp_rho</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_rho"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_rho" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the current particle density vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_rho0">
+<code class="descname">retrieve_cpp_rho0</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_rho0"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_rho0" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the initial particle density vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_sigma">
+<code class="descname">retrieve_cpp_sigma</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_sigma"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_sigma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle stress tensor from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_u">
+<code class="descname">retrieve_cpp_u</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_u"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_u" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle velocity vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_vrt">
+<code class="descname">retrieve_cpp_vrt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_vrt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_vrt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the nodal indices at each particle’s position from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_x">
+<code class="descname">retrieve_cpp_x</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_x"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_x" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle position vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.set_cpp_material">
+<code class="descname">set_cpp_material</code><span class="sig-paren">(</span><em>cpp_mat</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.set_cpp_material"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.set_cpp_material" title="Permalink to this definition">¶</a></dt>
+<dd><p>Instantiante the C++ code object <code class="docutils literal notranslate"><span class="pre">self.cpp_mat</span></code> for this material
+to <code class="docutils literal notranslate"><span class="pre">cpp_mat</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>element</strong> (<a class="reference external" href="https://fenics.readthedocs.io/projects/ufl/en/latest/api-doc/ufl.finiteelement.html#ufl.finiteelement.finiteelement.FiniteElement" title="(in Unified Form Language (UFL) v2018.2.0.dev0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">FiniteElement</span></code></a>) – The FEniCS element used.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">fenics_mpm</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Preliminaries</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hello_world.html">Hello fenics_mpm!</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Module overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="material.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gridmodel.html">GridModel</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model.html">Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">helper</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Evan M. Cummings.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/fenics_mpm.material.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
