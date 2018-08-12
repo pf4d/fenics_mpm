@@ -25,8 +25,7 @@ sources         = ["MPMMaterial.cpp",
                    "MsdfPMImpenetrableMaterial.cpp",
                    "MPMModel.cpp"]
 source_dir      = cpp_src_dir
-include_dirs    = [".", cpp_src_dir, 
-                   '/usr/lib/petscdir/3.7.3/x86_64-linux-gnu-real/include/']
+include_dirs    = [".", cpp_src_dir] 
 additional_decl = """
 %init%{
   import_array();
