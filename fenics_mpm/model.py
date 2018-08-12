@@ -349,7 +349,7 @@ class Model(object):
     r"""
     First, this method expects that the :math:`i=1,2,\ldots,n_n` grid accelerations :math:`\mathbf{a}_i` and velocities :math:`\mathbf{u}_i` have been interpolated from the grid to the particles by the functions :func:`~model.Model.interpolate_grid_acceleration_to_material` and :func:`~model.Model.interpolate_grid_velocity_to_material` respectively.
     These Python functions in turn call C++ functions which create intermediate velocities :math:`\mathbf{u}_p^*` and accelerations :math:`\mathbf{a}_p^*` that are only availabe within the C++ code.
-    Then calling this function will iterate through each of the :class:`~material.Material`\s in ``self.materials`` and increment the :math:`p=1,2,\ldots,n_p` intermediate particle velocities :math:`\mathbf{u}_p^*` and particle positions :math:`\mathbf{x}_p` using the intermediate particle acclerations :math:`\mathbf{a}_p^*` by the explicit second-order accurate finite-difference scheme
+    Then calling this function will iterate through each of the :class:`~material.Material`\s in ``self.materials`` and increment the :math:`p=1,2,\ldots,n_p` particle velocities :math:`\mathbf{u}_p` and particle positions :math:`\mathbf{x}_p` using the intermediate particle velocities :math:`\mathbf{u}_p^*` and acclerations :math:`\mathbf{a}_p^*` by the explicit second-order accurate finite-difference scheme
 
     .. math::
       \mathbf{u}_p^t &= \mathbf{u}_p^{t-1} + \frac{1}{2} \left( \mathbf{a}_p^{t-1} + \mathbf{a}_p^* \right) \Delta t \\
