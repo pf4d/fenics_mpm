@@ -1,6 +1,10 @@
 # -*- coding: iso-8859-15 -*-
 
-from   dolfin            import *
+from   dolfin            import Function, parameters, dof_to_vertex_map, MPI, \
+                                mpi_comm_world, FiniteElement, FunctionSpace, \
+                                MixedElement, VectorFunctionSpace, \
+                                TensorFunctionSpace, project, CellDiameter, \
+                                CellVolume, FunctionAssigner
 from   fenics_mpm.helper import print_text, print_min_max
 import numpy                 as np
 

@@ -1,4 +1,5 @@
 from fenics_mpm import *
+from fenics     import UnitSquareMesh, File
 
 #===============================================================================
 # model properties :

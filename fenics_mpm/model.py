@@ -1,9 +1,9 @@
 # -*- coding: iso-8859-15 -*-
 
-from   dolfin              import *
 from   fenics_mpm          import mpm_module
 from   fenics_mpm.helper   import print_text, get_text, print_min_max
 from   time                import time
+import dolfin                  as dol
 import numpy                   as np
 import sys
 
@@ -365,7 +365,7 @@ class Model(object):
     Get the mass vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.m``.
     """
     #FIXME: figure out a way to directly update grid_model.m :
-    m = Function(self.grid_model.Q, name='m')
+    m = dol.Function(self.grid_model.Q, name='m')
     self.grid_model.assign_variable(m, self.mpm_cpp.get_m())
       
     # assign the new mass to the grid model variable :
@@ -376,8 +376,8 @@ class Model(object):
     Get the velocity vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.u`` and ``self.grid_model.v``.
     """
     #FIXME: figure out a way to directly update grid_model.U3 :
-    u = Function(self.grid_model.Q, name='u')
-    v = Function(self.grid_model.Q, name='v')
+    u = dol.Function(self.grid_model.Q, name='u')
+    v = dol.Function(self.grid_model.Q, name='v')
     self.grid_model.assign_variable(u, self.mpm_cpp.get_u_x())
     self.grid_model.assign_variable(v, self.mpm_cpp.get_u_y())
 
@@ -390,8 +390,8 @@ class Model(object):
     Get the internal force vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.f_int_x`` and ``self.grid_model.f_int_y``.
     """
     #FIXME: figure out a way to directly update grid_model.f_int :
-    f_int_x  = Function(self.grid_model.Q, name='f_int_x')
-    f_int_y  = Function(self.grid_model.Q, name='f_int_y')
+    f_int_x  = dol.Function(self.grid_model.Q, name='f_int_x')
+    f_int_y  = dol.Function(self.grid_model.Q, name='f_int_y')
     self.grid_model.assign_variable(f_int_x, self.mpm_cpp.get_f_int_x())
     self.grid_model.assign_variable(f_int_y, self.mpm_cpp.get_f_int_y())
 
@@ -403,8 +403,8 @@ class Model(object):
     Get the acceleration vector from C++ model ``self.mpm_cpp`` and set to ``self.grid_model.a_x`` and ``self.grid_model.a_y``.
     """
     #FIXME: figure out a way to directly update grid_model.a3 :
-    a_x = Function(self.grid_model.Q, name='a_x')
-    a_y = Function(self.grid_model.Q, name='a_y')
+    a_x = dol.Function(self.grid_model.Q, name='a_x')
+    a_y = dol.Function(self.grid_model.Q, name='a_y')
     self.grid_model.assign_variable(a_x, self.mpm_cpp.get_a_x())
     self.grid_model.assign_variable(a_y, self.mpm_cpp.get_a_y())
     self.grid_model.update_acceleration([a_x, a_y])

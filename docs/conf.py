@@ -18,7 +18,6 @@
 
 import os
 import sys
-import subprocess
 sys.path.insert(0, os.path.abspath('../fenics_mpm/'))
 
 # -- General configuration ------------------------------------------------
@@ -31,7 +30,6 @@ intersphinx_mapping = \
   'matplotlib': ('http://matplotlib.sourceforge.net/', None),
   'dolfin'    : ('https://fenics.readthedocs.io/en/latest/', None),
   'ufl'       : ('https://fenics.readthedocs.io/projects/ufl/en/latest/', None)
-
 }
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -40,16 +38,16 @@ intersphinx_mapping = \
 
 # mock out packages for autodock
 
-#from mock import Mock as MagicMock
-#
-#class Mock(MagicMock):
-#  __all__ = []
-#  @classmethod
-#  def __getattr__(cls, name):
-#    return Mock()
-#
-#MOCK_MODULES = ['fenics', 'ufl']
-#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+from mock import Mock as MagicMock
+
+class Mock(MagicMock):
+  __all__ = []
+  @classmethod
+  def __getattr__(cls, name):
+    return Mock()
+
+MOCK_MODULES = ['dolfin', 'ufl']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 #if os.environ.get('READTHEDOCS', None) == 'True':
 #  sys.path.insert(0,'.')
@@ -376,31 +374,31 @@ texinfo_documents = [
 #
 # texinfo_no_detailmenu = False
 
-# Automate building apidoc when building with readthedocs
-# https://github.com/rtfd/readthedocs.org/issues/1139
-def run_apidoc(_):
-    ignore_paths = [
-    ]
-
-    argv = [
-        "-f",
-        "-T",
-        "-e",
-        "-M",
-        "-o", ".",
-        "../fenics_mpm"
-    ] + ignore_paths
-
-    try:
-        # Sphinx 1.7+
-        from sphinx.ext import apidoc
-        apidoc.main(argv)
-    except ImportError:
-        # Sphinx 1.6 (and earlier)
-        from sphinx import apidoc
-        argv.insert(0, apidoc.__file__)
-        apidoc.main(argv)
-
-
-def setup(app):
-    app.connect('builder-inited', run_apidoc)
+## Automate building apidoc when building with readthedocs
+## https://github.com/rtfd/readthedocs.org/issues/1139
+#def run_apidoc(_):
+#    ignore_paths = [
+#    ]
+#
+#    argv = [
+#        "-f",
+#        "-T",
+#        "-e",
+#        "-M",
+#        "-o", ".",
+#        "../fenics_mpm"
+#    ] + ignore_paths
+#
+#    try:
+#        # Sphinx 1.7+
+#        from sphinx.ext import apidoc
+#        apidoc.main(argv)
+#    except ImportError:
+#        # Sphinx 1.6 (and earlier)
+#        from sphinx import apidoc
+#        argv.insert(0, apidoc.__file__)
+#        apidoc.main(argv)
+#
+#
+#def setup(app):
+#    app.connect('builder-inited', run_apidoc)

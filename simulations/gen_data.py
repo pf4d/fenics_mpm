@@ -1,5 +1,6 @@
 from fenics_mpm import *
 from mshr       import *
+from fenics     import Point
 import os
 
 #===============================================================================

@@ -20,7 +20,7 @@ mpl.rcParams['text.latex.preamble']  = ['\usepackage[mathscr]{euscript}']
 import os
 from   dolfin  import compile_extension_module, parameters
 
-parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
+#parameters['form_compiler']['cpp_optimize_flags'] = "-O3"
 
 cpp_src_dir     = os.path.dirname(os.path.abspath(__file__)) + "/cpp/"
 headers         = ["MPMMaterial.h",

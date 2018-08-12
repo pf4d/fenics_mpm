@@ -1,7 +1,8 @@
 # -*- coding: iso-8859-15 -*-
 
 import inspect
-from   dolfin   import *
+from   dolfin   import Function, GenericVector, Constant, MPI, mpi_comm_world, \
+                       cells
 from   colored  import fg, attr
 import numpy        as np
 
