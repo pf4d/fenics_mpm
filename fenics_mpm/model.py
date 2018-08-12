@@ -272,12 +272,12 @@ class Model(object):
     Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and update the :math:`p=1,2,\ldots,n_p` particle incremental deformation gradient tensors set to ``M.dF`` as
 
     .. math::
-      \mathrm{d}F_p = I + \left( \nabla \mathbf{u}_p \right) \Delta t 
+      \mathrm{d}F_p^t = I + \frac{1}{2} \left( \nabla \mathbf{u}_p^{t-1} + \nabla \mathbf{u}_p^t \right) \Delta t
 
     with particle velocity gradient :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` and time-step :math:`\Delta t` from ``self.dt``; and update the deformation gradient tensors 
 
     .. math::
-      F_p^t = \mathrm{d}F_p \circ F_p^{t-1}
+      F_p^t = \mathrm{d}F_p^t \circ F_p^{t-1}
 
     set to ``M.F``.  Here, :math:`\circ` is the element-wise Hadamard product.
     """
@@ -289,12 +289,12 @@ class Model(object):
 
   def update_material_stress(self):
     r"""
-    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` incremental particle strain rate tensors :math:`\dot{\epsilon}_p^*` returned by :func:`~material.Material.calculate_strain_rate`; then use these incremental strain rates to update the particle strain-rate tensors ``M.epsilon`` by the explicit forward-Euler finite-difference scheme
+    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle strain rate tensors :math:`\dot{\epsilon}_p` returned by :func:`~material.Material.calculate_strain_rate` saved to ``M.depsilon``; then use these incremental strain rates to update the particle strain tensors ``M.epsilon`` by the explicit forward-Euler finite-difference scheme
 
     .. math::
-      \dot{\epsilon}_p^t = \dot{\epsilon}_p^{t-1} + \dot{\epsilon}_p^* \Delta t 
+      \epsilon_p^t = \epsilon_p^{t-1} + \dot{\epsilon}_p \Delta t 
 
-    with time-step :math:`\Delta t` from ``self.dt``.  This updated strain-rate tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. 
+    with time-step :math:`\Delta t` from ``self.dt``.  This updated strain tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. 
     """
     if self.verbose:
       s = "::: UPDATING MATERIAL STRESS :::"
@@ -319,10 +319,10 @@ class Model(object):
 
   def update_grid_velocity(self):
     r"""
-    Update the grid velocity :math:`\mathbf{u}_i` located at ``self.grid_model.U3`` from the current acceleration vector :math:`\mathbf{a}_i` and time-step :math:`\Delta t` from the explicit forward-Euler finite-difference scheme
+    Update the grid velocity :math:`\mathbf{u}_i` located at ``self.grid_model.U3`` from the current acceleration vector :math:`\mathbf{a}_i` and time-step :math:`\Delta t` from the Crank-Nicolson finite-difference scheme
 
     .. math::
-      \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \mathbf{a}_i \Delta t.
+      \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \frac{1}{2} \left( \mathbf{a}_i^t + \mathbf{a}_i^{t-1} \right) \Delta t.
     """
     if self.verbose:
       s = "::: UPDATING GRID VELOCITY :::"
@@ -474,7 +474,7 @@ class Model(object):
     If this is the initialization step (``t == t_start``):
 
     * :func:`~model.Model.initialize_material_tensors`
-    * :func:`~model.Model.calculate_material_density`
+    * :func:`~model.Model.calculate_material_initial_density`
     * :func:`~model.Model.calculate_material_initial_volume`
 
     Then continue the grid calculation stage :
@@ -488,9 +488,9 @@ class Model(object):
     * :func:`~model.Model.calculate_material_velocity_gradient`
     * :func:`~model.Model.update_material_deformation_gradient`
     * :func:`~model.Model.update_material_volume`
-    * :func:`~model.model.update_material_stress`
-    * :func:`~model.model.interpolate_grid_acceleration_to_material`
-    * :func:`~model.model.interpolate_grid_velocity_to_material`
+    * :func:`~model.Model.update_material_stress`
+    * :func:`~model.Model.interpolate_grid_acceleration_to_material`
+    * :func:`~model.Model.interpolate_grid_velocity_to_material`
     * :func:`~model.Model.advect_material_particles`
 
     At the end of the algorithm, the grid properties are made available from the C++ backend : 

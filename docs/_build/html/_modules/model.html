@@ -428,12 +428,12 @@
 <span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and update the :math:`p=1,2,\ldots,n_p` particle incremental deformation gradient tensors set to ``M.dF`` as</span>
 
 <span class="sd">    .. math::</span>
-<span class="sd">      \mathrm{d}F_p = I + \left( \nabla \mathbf{u}_p \right) \Delta t </span>
+<span class="sd">      \mathrm{d}F_p^t = I + \frac{1}{2} \left( \nabla \mathbf{u}_p^{t-1} + \nabla \mathbf{u}_p^t \right) \Delta t</span>
 
 <span class="sd">    with particle velocity gradient :math:`\nabla \mathbf{u}_p` given by ``M.grad_u`` and time-step :math:`\Delta t` from ``self.dt``; and update the deformation gradient tensors </span>
 
 <span class="sd">    .. math::</span>
-<span class="sd">      F_p^t = \mathrm{d}F_p \circ F_p^{t-1}</span>
+<span class="sd">      F_p^t = \mathrm{d}F_p^t \circ F_p^{t-1}</span>
 
 <span class="sd">    set to ``M.F``.  Here, :math:`\circ` is the element-wise Hadamard product.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -445,12 +445,12 @@
 
 <div class="viewcode-block" id="Model.update_material_stress"><a class="viewcode-back" href="../model.html#model.Model.update_material_stress">[docs]</a>  <span class="k">def</span> <span class="nf">update_material_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` incremental particle strain rate tensors :math:`\dot{\epsilon}_p^*` returned by :func:`~material.Material.calculate_strain_rate`; then use these incremental strain rates to update the particle strain-rate tensors ``M.epsilon`` by the explicit forward-Euler finite-difference scheme</span>
+<span class="sd">    Iterate through each ``M`` :class:`~material.Material`\s in ``self.materials`` and calculate the :math:`p=1,2,\ldots,n_p` particle strain rate tensors :math:`\dot{\epsilon}_p` returned by :func:`~material.Material.calculate_strain_rate` saved to ``M.depsilon``; then use these incremental strain rates to update the particle strain tensors ``M.epsilon`` by the explicit forward-Euler finite-difference scheme</span>
 
 <span class="sd">    .. math::</span>
-<span class="sd">      \dot{\epsilon}_p^t = \dot{\epsilon}_p^{t-1} + \dot{\epsilon}_p^* \Delta t </span>
+<span class="sd">      \epsilon_p^t = \epsilon_p^{t-1} + \dot{\epsilon}_p \Delta t </span>
 
-<span class="sd">    with time-step :math:`\Delta t` from ``self.dt``.  This updated strain-rate tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. </span>
+<span class="sd">    with time-step :math:`\Delta t` from ``self.dt``.  This updated strain tensor is then used to update the material stress :math:`\sigma_p` by :func:`~material.Material.calculate_stress`. </span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING MATERIAL STRESS :::&quot;</span>
@@ -475,10 +475,10 @@
 
 <div class="viewcode-block" id="Model.update_grid_velocity"><a class="viewcode-back" href="../model.html#model.Model.update_grid_velocity">[docs]</a>  <span class="k">def</span> <span class="nf">update_grid_velocity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Update the grid velocity :math:`\mathbf{u}_i` located at ``self.grid_model.U3`` from the current acceleration vector :math:`\mathbf{a}_i` and time-step :math:`\Delta t` from the explicit forward-Euler finite-difference scheme</span>
+<span class="sd">    Update the grid velocity :math:`\mathbf{u}_i` located at ``self.grid_model.U3`` from the current acceleration vector :math:`\mathbf{a}_i` and time-step :math:`\Delta t` from the Crank-Nicolson finite-difference scheme</span>
 
 <span class="sd">    .. math::</span>
-<span class="sd">      \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \mathbf{a}_i \Delta t.</span>
+<span class="sd">      \mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \frac{1}{2} \left( \mathbf{a}_i^t + \mathbf{a}_i^{t-1} \right) \Delta t.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
       <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;::: UPDATING GRID VELOCITY :::&quot;</span>
@@ -630,7 +630,7 @@
 <span class="sd">    If this is the initialization step (``t == t_start``):</span>
 
 <span class="sd">    * :func:`~model.Model.initialize_material_tensors`</span>
-<span class="sd">    * :func:`~model.Model.calculate_material_density`</span>
+<span class="sd">    * :func:`~model.Model.calculate_material_initial_density`</span>
 <span class="sd">    * :func:`~model.Model.calculate_material_initial_volume`</span>
 
 <span class="sd">    Then continue the grid calculation stage :</span>
@@ -644,9 +644,9 @@
 <span class="sd">    * :func:`~model.Model.calculate_material_velocity_gradient`</span>
 <span class="sd">    * :func:`~model.Model.update_material_deformation_gradient`</span>
 <span class="sd">    * :func:`~model.Model.update_material_volume`</span>
-<span class="sd">    * :func:`~model.model.update_material_stress`</span>
-<span class="sd">    * :func:`~model.model.interpolate_grid_acceleration_to_material`</span>
-<span class="sd">    * :func:`~model.model.interpolate_grid_velocity_to_material`</span>
+<span class="sd">    * :func:`~model.Model.update_material_stress`</span>
+<span class="sd">    * :func:`~model.Model.interpolate_grid_acceleration_to_material`</span>
+<span class="sd">    * :func:`~model.Model.interpolate_grid_velocity_to_material`</span>
 <span class="sd">    * :func:`~model.Model.advect_material_particles`</span>
 
 <span class="sd">    At the end of the algorithm, the grid properties are made available from the C++ backend : </span>

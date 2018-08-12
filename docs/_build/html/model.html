@@ -330,7 +330,7 @@ Then calling this function will iterate through each of the <a class="reference 
 <p>If this is the initialization step (<code class="docutils literal notranslate"><span class="pre">t</span> <span class="pre">==</span> <span class="pre">t_start</span></code>):</p>
 <ul class="simple">
 <li><a class="reference internal" href="#model.Model.initialize_material_tensors" title="model.Model.initialize_material_tensors"><code class="xref py py-func docutils literal notranslate"><span class="pre">initialize_material_tensors()</span></code></a></li>
-<li><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_material_density()</span></code></li>
+<li><a class="reference internal" href="#model.Model.calculate_material_initial_density" title="model.Model.calculate_material_initial_density"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_material_initial_density()</span></code></a></li>
 <li><a class="reference internal" href="#model.Model.calculate_material_initial_volume" title="model.Model.calculate_material_initial_volume"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_material_initial_volume()</span></code></a></li>
 </ul>
 <p>Then continue the grid calculation stage :</p>
@@ -344,9 +344,9 @@ Then calling this function will iterate through each of the <a class="reference 
 <li><a class="reference internal" href="#model.Model.calculate_material_velocity_gradient" title="model.Model.calculate_material_velocity_gradient"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_material_velocity_gradient()</span></code></a></li>
 <li><a class="reference internal" href="#model.Model.update_material_deformation_gradient" title="model.Model.update_material_deformation_gradient"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_material_deformation_gradient()</span></code></a></li>
 <li><a class="reference internal" href="#model.Model.update_material_volume" title="model.Model.update_material_volume"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_material_volume()</span></code></a></li>
-<li><code class="xref py py-func docutils literal notranslate"><span class="pre">update_material_stress()</span></code></li>
-<li><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate_grid_acceleration_to_material()</span></code></li>
-<li><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate_grid_velocity_to_material()</span></code></li>
+<li><a class="reference internal" href="#model.Model.update_material_stress" title="model.Model.update_material_stress"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_material_stress()</span></code></a></li>
+<li><a class="reference internal" href="#model.Model.interpolate_grid_acceleration_to_material" title="model.Model.interpolate_grid_acceleration_to_material"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate_grid_acceleration_to_material()</span></code></a></li>
+<li><a class="reference internal" href="#model.Model.interpolate_grid_velocity_to_material" title="model.Model.interpolate_grid_velocity_to_material"><code class="xref py py-func docutils literal notranslate"><span class="pre">interpolate_grid_velocity_to_material()</span></code></a></li>
 <li><a class="reference internal" href="#model.Model.advect_material_particles" title="model.Model.advect_material_particles"><code class="xref py py-func docutils literal notranslate"><span class="pre">advect_material_particles()</span></code></a></li>
 </ul>
 <p>At the end of the algorithm, the grid properties are made available from the C++ backend :</p>
@@ -402,9 +402,9 @@ with PyLab.</p>
 <dl class="method">
 <dt id="model.Model.update_grid_velocity">
 <code class="descname">update_grid_velocity</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.update_grid_velocity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.update_grid_velocity" title="Permalink to this definition">¶</a></dt>
-<dd><p>Update the grid velocity <span class="math notranslate nohighlight">\(\mathbf{u}_i\)</span> located at <code class="docutils literal notranslate"><span class="pre">self.grid_model.U3</span></code> from the current acceleration vector <span class="math notranslate nohighlight">\(\mathbf{a}_i\)</span> and time-step <span class="math notranslate nohighlight">\(\Delta t\)</span> from the explicit forward-Euler finite-difference scheme</p>
+<dd><p>Update the grid velocity <span class="math notranslate nohighlight">\(\mathbf{u}_i\)</span> located at <code class="docutils literal notranslate"><span class="pre">self.grid_model.U3</span></code> from the current acceleration vector <span class="math notranslate nohighlight">\(\mathbf{a}_i\)</span> and time-step <span class="math notranslate nohighlight">\(\Delta t\)</span> from the Crank-Nicolson finite-difference scheme</p>
 <div class="math notranslate nohighlight">
-\[\mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \mathbf{a}_i \Delta t.\]</div>
+\[\mathbf{u}_i^t = \mathbf{u}_i^{t-1} + \frac{1}{2} \left( \mathbf{a}_i^t + \mathbf{a}_i^{t-1} \right) \Delta t.\]</div>
 </dd></dl>
 
 <dl class="method">
@@ -412,10 +412,10 @@ with PyLab.</p>
 <code class="descname">update_material_deformation_gradient</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.update_material_deformation_gradient"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.update_material_deformation_gradient" title="Permalink to this definition">¶</a></dt>
 <dd><p>Iterate through each <code class="docutils literal notranslate"><span class="pre">M</span></code> <a class="reference internal" href="material.html#material.Material" title="material.Material"><code class="xref py py-class docutils literal notranslate"><span class="pre">Material</span></code></a>s in <code class="docutils literal notranslate"><span class="pre">self.materials</span></code> and update the <span class="math notranslate nohighlight">\(p=1,2,\ldots,n_p\)</span> particle incremental deformation gradient tensors set to <code class="docutils literal notranslate"><span class="pre">M.dF</span></code> as</p>
 <div class="math notranslate nohighlight">
-\[\mathrm{d}F_p = I + \left( \nabla \mathbf{u}_p \right) \Delta t \]</div>
+\[\mathrm{d}F_p^t = I + \frac{1}{2} \left( \nabla \mathbf{u}_p^{t-1} + \nabla \mathbf{u}_p^t \right) \Delta t\]</div>
 <p>with particle velocity gradient <span class="math notranslate nohighlight">\(\nabla \mathbf{u}_p\)</span> given by <code class="docutils literal notranslate"><span class="pre">M.grad_u</span></code> and time-step <span class="math notranslate nohighlight">\(\Delta t\)</span> from <code class="docutils literal notranslate"><span class="pre">self.dt</span></code>; and update the deformation gradient tensors</p>
 <div class="math notranslate nohighlight">
-\[F_p^t = \mathrm{d}F_p \circ F_p^{t-1}\]</div>
+\[F_p^t = \mathrm{d}F_p^t \circ F_p^{t-1}\]</div>
 <p>set to <code class="docutils literal notranslate"><span class="pre">M.F</span></code>.  Here, <span class="math notranslate nohighlight">\(\circ\)</span> is the element-wise Hadamard product.</p>
 </dd></dl>
 
@@ -434,10 +434,10 @@ with PyLab.</p>
 <dl class="method">
 <dt id="model.Model.update_material_stress">
 <code class="descname">update_material_stress</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/model.html#Model.update_material_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#model.Model.update_material_stress" title="Permalink to this definition">¶</a></dt>
-<dd><p>Iterate through each <code class="docutils literal notranslate"><span class="pre">M</span></code> <a class="reference internal" href="material.html#material.Material" title="material.Material"><code class="xref py py-class docutils literal notranslate"><span class="pre">Material</span></code></a>s in <code class="docutils literal notranslate"><span class="pre">self.materials</span></code> and calculate the <span class="math notranslate nohighlight">\(p=1,2,\ldots,n_p\)</span> incremental particle strain rate tensors <span class="math notranslate nohighlight">\(\dot{\epsilon}_p^*\)</span> returned by <a class="reference internal" href="material.html#material.Material.calculate_strain_rate" title="material.Material.calculate_strain_rate"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_strain_rate()</span></code></a>; then use these incremental strain rates to update the particle strain-rate tensors <code class="docutils literal notranslate"><span class="pre">M.epsilon</span></code> by the explicit forward-Euler finite-difference scheme</p>
+<dd><p>Iterate through each <code class="docutils literal notranslate"><span class="pre">M</span></code> <a class="reference internal" href="material.html#material.Material" title="material.Material"><code class="xref py py-class docutils literal notranslate"><span class="pre">Material</span></code></a>s in <code class="docutils literal notranslate"><span class="pre">self.materials</span></code> and calculate the <span class="math notranslate nohighlight">\(p=1,2,\ldots,n_p\)</span> particle strain rate tensors <span class="math notranslate nohighlight">\(\dot{\epsilon}_p\)</span> returned by <a class="reference internal" href="material.html#material.Material.calculate_strain_rate" title="material.Material.calculate_strain_rate"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_strain_rate()</span></code></a> saved to <code class="docutils literal notranslate"><span class="pre">M.depsilon</span></code>; then use these incremental strain rates to update the particle strain tensors <code class="docutils literal notranslate"><span class="pre">M.epsilon</span></code> by the explicit forward-Euler finite-difference scheme</p>
 <div class="math notranslate nohighlight">
-\[\dot{\epsilon}_p^t = \dot{\epsilon}_p^{t-1} + \dot{\epsilon}_p^* \Delta t \]</div>
-<p>with time-step <span class="math notranslate nohighlight">\(\Delta t\)</span> from <code class="docutils literal notranslate"><span class="pre">self.dt</span></code>.  This updated strain-rate tensor is then used to update the material stress <span class="math notranslate nohighlight">\(\sigma_p\)</span> by <a class="reference internal" href="material.html#material.Material.calculate_stress" title="material.Material.calculate_stress"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_stress()</span></code></a>.</p>
+\[\epsilon_p^t = \epsilon_p^{t-1} + \dot{\epsilon}_p \Delta t \]</div>
+<p>with time-step <span class="math notranslate nohighlight">\(\Delta t\)</span> from <code class="docutils literal notranslate"><span class="pre">self.dt</span></code>.  This updated strain tensor is then used to update the material stress <span class="math notranslate nohighlight">\(\sigma_p\)</span> by <a class="reference internal" href="material.html#material.Material.calculate_stress" title="material.Material.calculate_stress"><code class="xref py py-func docutils literal notranslate"><span class="pre">calculate_stress()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="method">

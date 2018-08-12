@@ -34,12 +34,12 @@ void MPMElasticMaterial::calculate_stress()
 {
   double c2, trace_eps;
 
-  // calculate particle strain-rate tensors :
+  // calculate particle stress tensors :
   # pragma omp parallel for schedule(auto)
   for (unsigned int i = 0; i < n_p; i++)
   {
     
-    // there is always one component of epsilon :
+    // there is always one component of strain :
     trace_eps = epsilon_xx[i];
 
     // two or three dimensions there is one more :

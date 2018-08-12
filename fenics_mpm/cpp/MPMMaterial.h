@@ -95,6 +95,12 @@ namespace dolfin
       std::vector<double>&        get_epsilon_yy()     {return epsilon_yy;};
       std::vector<double>&        get_epsilon_yz()     {return epsilon_yz;};
       std::vector<double>&        get_epsilon_zz()     {return epsilon_zz;};
+      std::vector<double>&        get_depsilon_xx()    {return depsilon_xx;};
+      std::vector<double>&        get_depsilon_xy()    {return depsilon_xy;};
+      std::vector<double>&        get_depsilon_xz()    {return depsilon_xz;};
+      std::vector<double>&        get_depsilon_yy()    {return depsilon_yy;};
+      std::vector<double>&        get_depsilon_yz()    {return depsilon_yz;};
+      std::vector<double>&        get_depsilon_zz()    {return depsilon_zz;};
       std::vector<unsigned int>&  get_vrt_1()          {return vrt_1;};
       std::vector<unsigned int>&  get_vrt_2()          {return vrt_2;};
       std::vector<unsigned int>&  get_vrt_3()          {return vrt_3;};
@@ -122,7 +128,6 @@ namespace dolfin
       void         initialize_mass_from_density(const double rho_a);
       unsigned int get_num_particles() const {return n_p;};
       void         calculate_strain_rate();
-      void         calculate_incremental_strain_rate();
       virtual void calculate_stress() = 0;
 
       void         initialize_tensors(double dt);
@@ -206,18 +211,18 @@ namespace dolfin
       std::vector<double>        sigma_yy;       // stress tensor yy
       std::vector<double>        sigma_yz;       // stress tensor yz, zy
       std::vector<double>        sigma_zz;       // stress tensor zz
-      std::vector<double>        epsilon_xx;     // strain-rate tensor xx
-      std::vector<double>        epsilon_xy;     // strain-rate tensor xy, yx
-      std::vector<double>        epsilon_xz;     // strain-rate tensor xz, zx
-      std::vector<double>        epsilon_yy;     // strain-rate tensor yy
-      std::vector<double>        epsilon_yz;     // strain-rate tensor yz, zy
-      std::vector<double>        epsilon_zz;     // strain-rate tensor zz
-      std::vector<double>        depsilon_xx;    // inc. st.-rate tensor xx
-      std::vector<double>        depsilon_xy;    // inc. st.-rate tensor xy, yx
-      std::vector<double>        depsilon_xz;    // inc. st.-rate tensor xz, zx
-      std::vector<double>        depsilon_yy;    // inc. st.-rate tensor yy
-      std::vector<double>        depsilon_yz;    // inc. st.-rate tensor yz, zy
-      std::vector<double>        depsilon_zz;    // inc. st.-rate tensor zz
+      std::vector<double>        epsilon_xx;     // strain tensor xx
+      std::vector<double>        epsilon_xy;     // strain tensor xy, yx
+      std::vector<double>        epsilon_xz;     // strain tensor xz, zx
+      std::vector<double>        epsilon_yy;     // strain tensor yy
+      std::vector<double>        epsilon_yz;     // strain tensor yz, zy
+      std::vector<double>        epsilon_zz;     // strain tensor zz
+      std::vector<double>        depsilon_xx;    // strain-rate tensor xx
+      std::vector<double>        depsilon_xy;    // strain-rate tensor xy, yx
+      std::vector<double>        depsilon_xz;    // strain-rate tensor xz, zx
+      std::vector<double>        depsilon_yy;    // strain-rate tensor yy
+      std::vector<double>        depsilon_yz;    // strain-rate tensor yz, zy
+      std::vector<double>        depsilon_zz;    // strain-rate tensor zz
       std::vector<unsigned int>  vrt_1;       // grid nodal indicies
       std::vector<unsigned int>  vrt_2;       // grid nodal indicies
       std::vector<unsigned int>  vrt_3;       // grid nodal indicies

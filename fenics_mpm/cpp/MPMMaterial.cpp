@@ -254,36 +254,6 @@ void MPMMaterial::calculate_strain_rate()
   for (unsigned int i = 0; i < n_p; ++i)
   {
     // we always have at least one component :
-    epsilon_xx[i] = grad_u_xx[i];
-  
-    // if this is a two- or three-dimensional problem, 
-    // allocate space for the y componets :
-    if (gdim == 2 or gdim == 3)
-    {
-      // two extra tensor components :
-      epsilon_xy[i] = 0.5 * (grad_u_xy[i] + grad_u_yx[i]);
-      epsilon_yy[i] = grad_u_yy[i];
-    }
-
-    // if this is a three-dimensional problem, 
-    // allocate space for the z components :
-    if (gdim == 3)
-    {
-      // three extra tensor components :
-      epsilon_xz[i] = 0.5 * (grad_u_xz[i] + grad_u_zx[i]);
-      epsilon_yz[i] = 0.5 * (grad_u_yz[i] + grad_u_zy[i]);
-      epsilon_zz[i] = grad_u_zz[i];
-    }
-  }
-}
-
-void MPMMaterial::calculate_incremental_strain_rate()
-{
-  // calculate particle strain-rate tensor commponents :
-  # pragma omp parallel for simd schedule(auto)
-  for (unsigned int i = 0; i < n_p; ++i)
-  {
-    // we always have at least one component :
     depsilon_xx[i] = grad_u_xx[i];
   
     // if this is a two- or three-dimensional problem, 
@@ -490,7 +460,7 @@ void MPMMaterial::update_volume()
 
 void MPMMaterial::update_stress(double dt)
 {
-  calculate_incremental_strain_rate();  // calculate depsilon
+  calculate_strain_rate();  // calculate depsilon
   
   // calculate particle strain-rate tensor commponents :
   # pragma omp parallel for simd schedule(auto)

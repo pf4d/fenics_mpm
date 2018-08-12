@@ -42,7 +42,8 @@ class Material(object):
   * ``self.V``        -- :math:`n_p \times 1` volume vector :math:`V_p`
   * ``self.F``        -- :math:`n_p \times (d \times d)` deformation gradient tensors :math:`F_p`
   * ``self.sigma``    -- :math:`n_p \times (d \times d)` stress tensors :math:`\sigma_p`
-  * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`
+  * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain tensors :math:`\epsilon_p`
+  * ``self.depsilon`` -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`
   * ``self.I``        -- :math:`n_p \times (d \times d)` identity tensors :math:`I`
   * ``self.vrt``      -- :math:`n_p \times n_v` nodal vertex indices for each particle
   """
@@ -82,7 +83,8 @@ class Material(object):
     self.grad_phi = None               # grid basis gradient values at points
     self.F        = None               # deformation gradient tensor
     self.sigma    = None               # stress tensor
-    self.epsilon  = None               # strain-rate tensor
+    self.epsilon  = None               # strain tensor
+    self.depsilon = None               # strain-rate tensor
 
     # identity tensors :
     self.I        = np.array([np.identity(self.d).flatten()]*self.n)
@@ -148,7 +150,7 @@ class Material(object):
 
     from particle velocity :math:`\mathbf{u}_p`.
     """
-    epsilon_n = []
+    depsilon_n = []
 
     # calculate particle strain-rate tensors :
     for grad_u_p in self.grad_u:
@@ -160,8 +162,8 @@ class Material(object):
       eps_xy = 0.5*(dudy + dvdx)
       eps_yy = dvdy
       eps    = np.array( [eps_xx, eps_xy, eps_xy, eps_yy], dtype=float )
-      epsilon_n.append(eps)
-    return np.array(epsilon_n, dtype=float)
+      depsilon_n.append(eps)
+    return np.array(depsilon_n, dtype=float)
 
   def calculate_stress(self):
     r"""
@@ -277,6 +279,17 @@ class Material(object):
     self.epsilon_yz = np.array(self.cpp_mat.get_epsilon_yz(), dtype=float)
     self.epsilon_zz = np.array(self.cpp_mat.get_epsilon_zz(), dtype=float)
 
+  def retrieve_cpp_depsilon(self):
+    """
+    Get the particle strain-rate tensor from the C++ model.
+    """
+    self.depsilon_xx = np.array(self.cpp_mat.get_depsilon_xx(), dtype=float)
+    self.depsilon_xy = np.array(self.cpp_mat.get_depsilon_xy(), dtype=float)
+    self.depsilon_xz = np.array(self.cpp_mat.get_depsilon_xz(), dtype=float)
+    self.depsilon_yy = np.array(self.cpp_mat.get_depsilon_yy(), dtype=float)
+    self.depsilon_yz = np.array(self.cpp_mat.get_depsilon_yz(), dtype=float)
+    self.depsilon_zz = np.array(self.cpp_mat.get_depsilon_zz(), dtype=float)
+
   def retrieve_cpp_sigma(self):
     """
     Get the particle stress tensor from the C++ model.
@@ -366,7 +379,7 @@ class ElasticMaterial(Material):
     
     .. math::
 
-      \sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I
+      \sigma_p = 2 \mu \epsilon_p + \lambda \mathrm{tr} \left( \epsilon_p \right) I
 
     with Lamé parameters :math:`\mu` and :math:`\lambda`.
     """

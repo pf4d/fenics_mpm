@@ -198,7 +198,8 @@
 <span class="sd">  * ``self.V``        -- :math:`n_p \times 1` volume vector :math:`V_p`</span>
 <span class="sd">  * ``self.F``        -- :math:`n_p \times (d \times d)` deformation gradient tensors :math:`F_p`</span>
 <span class="sd">  * ``self.sigma``    -- :math:`n_p \times (d \times d)` stress tensors :math:`\sigma_p`</span>
-<span class="sd">  * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`</span>
+<span class="sd">  * ``self.epsilon``  -- :math:`n_p \times (d \times d)` strain tensors :math:`\epsilon_p`</span>
+<span class="sd">  * ``self.depsilon`` -- :math:`n_p \times (d \times d)` strain-rate tensors :math:`\dot{\epsilon}_p`</span>
 <span class="sd">  * ``self.I``        -- :math:`n_p \times (d \times d)` identity tensors :math:`I`</span>
 <span class="sd">  * ``self.vrt``      -- :math:`n_p \times n_v` nodal vertex indices for each particle</span>
 <span class="sd">  &quot;&quot;&quot;</span>
@@ -238,7 +239,8 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">grad_phi</span> <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># grid basis gradient values at points</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">F</span>        <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># deformation gradient tensor</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">sigma</span>    <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># stress tensor</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span>  <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># strain-rate tensor</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">epsilon</span>  <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># strain tensor</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon</span> <span class="o">=</span> <span class="kc">None</span>               <span class="c1"># strain-rate tensor</span>
 
     <span class="c1"># identity tensors :</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">I</span>        <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()]</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
@@ -304,7 +306,7 @@
 
 <span class="sd">    from particle velocity :math:`\mathbf{u}_p`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">epsilon_n</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">depsilon_n</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="c1"># calculate particle strain-rate tensors :</span>
     <span class="k">for</span> <span class="n">grad_u_p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_u</span><span class="p">:</span>
@@ -316,8 +318,8 @@
       <span class="n">eps_xy</span> <span class="o">=</span> <span class="mf">0.5</span><span class="o">*</span><span class="p">(</span><span class="n">dudy</span> <span class="o">+</span> <span class="n">dvdx</span><span class="p">)</span>
       <span class="n">eps_yy</span> <span class="o">=</span> <span class="n">dvdy</span>
       <span class="n">eps</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="p">[</span><span class="n">eps_xx</span><span class="p">,</span> <span class="n">eps_xy</span><span class="p">,</span> <span class="n">eps_xy</span><span class="p">,</span> <span class="n">eps_yy</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span> <span class="p">)</span>
-      <span class="n">epsilon_n</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">epsilon_n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+      <span class="n">depsilon_n</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eps</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">depsilon_n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Material.calculate_stress"><a class="viewcode-back" href="../../fenics_mpm.html#fenics_mpm.Material.calculate_stress">[docs]</a>  <span class="k">def</span> <span class="nf">calculate_stress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
@@ -433,6 +435,17 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">epsilon_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_epsilon_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
 
+<div class="viewcode-block" id="Material.retrieve_cpp_depsilon"><a class="viewcode-back" href="../../fenics_mpm.html#fenics_mpm.Material.retrieve_cpp_depsilon">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_depsilon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the particle strain-rate tensor from the C++ model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_xx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_xx</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_xy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_xz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_xz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_yy</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_yz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_yz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">depsilon_zz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cpp_mat</span><span class="o">.</span><span class="n">get_depsilon_zz</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></div>
+
 <div class="viewcode-block" id="Material.retrieve_cpp_sigma"><a class="viewcode-back" href="../../fenics_mpm.html#fenics_mpm.Material.retrieve_cpp_sigma">[docs]</a>  <span class="k">def</span> <span class="nf">retrieve_cpp_sigma</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the particle stress tensor from the C++ model.</span>
@@ -522,7 +535,7 @@
 <span class="sd">    </span>
 <span class="sd">    .. math::</span>
 
-<span class="sd">      \sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I</span>
+<span class="sd">      \sigma_p = 2 \mu \epsilon_p + \lambda \mathrm{tr} \left( \epsilon_p \right) I</span>
 
 <span class="sd">    with LamÃ© parameters :math:`\mu` and :math:`\lambda`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>

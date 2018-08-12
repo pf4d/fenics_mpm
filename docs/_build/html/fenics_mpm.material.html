@@ -183,7 +183,7 @@ parameters <code class="docutils literal notranslate"><span class="pre">m</span>
 <code class="descname">calculate_stress</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#ElasticMaterial.calculate_stress"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.ElasticMaterial.calculate_stress" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate elastic particle-Cauchy-stress tensor</p>
 <div class="math notranslate nohighlight">
-\[\sigma_p = 2 \mu \dot{\epsilon}_p + \lambda \mathrm{tr} \left( \dot{\epsilon}_p \right) I\]</div>
+\[\sigma_p = 2 \mu \epsilon_p + \lambda \mathrm{tr} \left( \epsilon_p \right) I\]</div>
 <p>with Lamé parameters <span class="math notranslate nohighlight">\(\mu\)</span> and <span class="math notranslate nohighlight">\(\lambda\)</span>.</p>
 </dd></dl>
 
@@ -292,7 +292,8 @@ and <code class="docutils literal notranslate"><span class="pre">u</span></code>
 <li><code class="docutils literal notranslate"><span class="pre">self.V</span></code>        – <span class="math notranslate nohighlight">\(n_p \times 1\)</span> volume vector <span class="math notranslate nohighlight">\(V_p\)</span></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.F</span></code>        – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> deformation gradient tensors <span class="math notranslate nohighlight">\(F_p\)</span></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.sigma</span></code>    – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> stress tensors <span class="math notranslate nohighlight">\(\sigma_p\)</span></li>
-<li><code class="docutils literal notranslate"><span class="pre">self.epsilon</span></code>  – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> strain-rate tensors <span class="math notranslate nohighlight">\(\dot{\epsilon}_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.epsilon</span></code>  – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> strain tensors <span class="math notranslate nohighlight">\(\epsilon_p\)</span></li>
+<li><code class="docutils literal notranslate"><span class="pre">self.depsilon</span></code> – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> strain-rate tensors <span class="math notranslate nohighlight">\(\dot{\epsilon}_p\)</span></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.I</span></code>        – <span class="math notranslate nohighlight">\(n_p \times (d \times d)\)</span> identity tensors <span class="math notranslate nohighlight">\(I\)</span></li>
 <li><code class="docutils literal notranslate"><span class="pre">self.vrt</span></code>      – <span class="math notranslate nohighlight">\(n_p \times n_v\)</span> nodal vertex indices for each particle</li>
 </ul>
@@ -368,6 +369,12 @@ screen.</p>
 <dt id="fenics_mpm.material.Material.retrieve_cpp_a">
 <code class="descname">retrieve_cpp_a</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_a"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_a" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the particle acceleration vector from the C++ model.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fenics_mpm.material.Material.retrieve_cpp_depsilon">
+<code class="descname">retrieve_cpp_depsilon</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/fenics_mpm/material.html#Material.retrieve_cpp_depsilon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#fenics_mpm.material.Material.retrieve_cpp_depsilon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the particle strain-rate tensor from the C++ model.</p>
 </dd></dl>
 
 <dl class="method">
