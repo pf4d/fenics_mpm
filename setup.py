@@ -1,10 +1,10 @@
 from distutils.core import setup, Extension
 
 extension = Extension('fenics_mpm', \
-                      ['fenics_mpm/cpp/MPMElasticMaterial.h', \
-                       'fenics_mpm/cpp/MPMImpenetrableMaterial.h', \
-                       'fenics_mpm/cpp/MPMMaterial.h', \
-                       'fenics_mpm/cpp/MPMModel.h'], \
+                      ['fenics_mpm/cpp/MPMElasticMaterial.cpp', \
+                       'fenics_mpm/cpp/MPMImpenetrableMaterial.cpp', \
+                       'fenics_mpm/cpp/MPMMaterial.cpp', \
+                       'fenics_mpm/cpp/MPMModel.cpp'], \
                       include_dirs=['fenics_mpm/cpp/'], \
                       language="c++")
 
