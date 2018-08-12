@@ -47,7 +47,7 @@ class Mock(MagicMock):
     return Mock()
 
 MOCK_MODULES = ['dolfin', 'ufl']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 #if os.environ.get('READTHEDOCS', None) == 'True':
 #  sys.path.insert(0,'.')
