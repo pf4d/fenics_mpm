@@ -1,8 +1,0 @@
-./
-
-fenics==2017.2.0
-scipy
-numpy
-matplotlib
-colored
-termcolor

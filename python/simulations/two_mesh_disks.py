@@ -30,13 +30,13 @@ U1 = -u_mag * np.ones([n1,2])
 
 # disk two velocity :
 n2 = np.shape(X2)[0]
-U2 =  u_mag * np.ones([n2,2])
+U2 = u_mag * np.ones([n2,2])
 
-# corresponding Material objects : 
+# corresponding Material objects :
 disk1 = ElasticMaterial('disk1', X1, U1, E, nu, V=V1, rho=rho)
 disk2 = ElasticMaterial('disk2', X2, U2, E, nu, V=V2, rho=rho)
 
-# the finite-element mesh used :    
+# the finite-element mesh used :
 mesh  = UnitSquareMesh(n_x, n_x)
 
 # initialize the model :
@@ -54,18 +54,18 @@ m_file = File(out_dir + '/m.pvd')
 u_file = File(out_dir + '/u.pvd')
 a_file = File(out_dir + '/a.pvd')
 f_file = File(out_dir + '/f.pvd')
- 
+
 # callback function saves result :
 def cb_ftn():
-  if model.iter % save_int == 0:
-    model.retrieve_cpp_grid_m()
-    model.retrieve_cpp_grid_U3()
-    model.retrieve_cpp_grid_f_int()
-    model.retrieve_cpp_grid_a3()
-    grid_model.save_pvd(grid_model.m,     'm',     f=m_file, t=model.t)
-    grid_model.save_pvd(grid_model.U3,    'U3',    f=u_file, t=model.t)
-    grid_model.save_pvd(grid_model.a3,    'a3',    f=a_file, t=model.t)
-    grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
+	if model.iter % save_int == 0:
+		model.retrieve_cpp_grid_m()
+		model.retrieve_cpp_grid_U3()
+		model.retrieve_cpp_grid_f_int()
+		model.retrieve_cpp_grid_a3()
+		grid_model.save_pvd(grid_model.m,     'm',     f=m_file, t=model.t)
+		grid_model.save_pvd(grid_model.U3,    'U3',    f=u_file, t=model.t)
+		grid_model.save_pvd(grid_model.a3,    'a3',    f=a_file, t=model.t)
+		grid_model.save_pvd(grid_model.f_int, 'f_int', f=f_file, t=model.t)
 
 # perform the material point method algorithm :
 model.mpm(t_start = t0, t_end = tf, cb_ftn = cb_ftn)

@@ -20,7 +20,7 @@ domain1    = Circle(Point(0.66, 0.66), r_max)
 mesh1      = generate_mesh(domain1, res)
 X1,V1      = calculate_mesh_midpoints_and_volumes(mesh1)
 
-# lower-left disk : 
+# lower-left disk :
 domain2    = Circle(Point(0.34, 0.34), r_max)
 mesh2      = generate_mesh(domain2, res)
 X2,V2      = calculate_mesh_midpoints_and_volumes(mesh2)

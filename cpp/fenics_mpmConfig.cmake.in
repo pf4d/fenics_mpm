@@ -1,0 +1,22 @@
+@PACKAGE_INIT@
+
+set(PN fenics_mpm)
+
+set_and_check(${PN}_INCLUDE_DIR "@PACKAGE_FENICS_MPM_INCLUDE_DIR@")
+set_and_check(${PN}_ROOT_DIR    "@PACKAGE_FENICS_MPM_ROOT_DIR@")
+set_and_check(${PN}_LIBRARIES   "@PACKAGE_FENICS_MPM_LIBRARIES@")
+
+check_required_components(fenics_mpm)
+
+include(CMakeFindDependencyMacro)
+
+# Capturing values from configure (optional)
+
+# Same syntax as find_package
+find_dependency(Eigen3 3.3 REQUIRED NO_MODULE)
+find_dependency(OpenMP)
+
+# Any extra setup
+
+# Add the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/fenics_mpmTargets.cmake")
