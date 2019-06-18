@@ -101,6 +101,7 @@ ENABLE_LANGUAGE(C)
 
 find_package(DOLFIN REQUIRED)
 include(${DOLFIN_USE_FILE})
+target_link_libraries(fenics_mpm PRIVATE dolfin)
 
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
